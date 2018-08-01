@@ -8,3 +8,5 @@ rt_runticket_manager.py -> rt_pbrunticket_manager.py
 RunStatus.py -> PBRunStatus.py
 upload_report.sh (with versioned uploading)
 toolbox of links and wrapper scripts
+
+So I set all this up and did some GIT commits.
