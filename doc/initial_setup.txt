@@ -1,0 +1,10 @@
+What do I like about Illuminatus and want to keep?
+
+A directory of notes like this
+the activate_venv script (that makes _py3_venv)
+environ.sh.sample
+driver.sh
+rt_runticket_manager.py -> rt_pbrunticket_manager.py
+RunStatus.py -> PBRunStatus.py
+upload_report.sh (with versioned uploading)
+toolbox of links and wrapper scripts

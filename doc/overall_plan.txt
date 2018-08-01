@@ -1,0 +1,11 @@
+The overall plan is in an OO doc called "pacbio_pipeline.odt" so see that.
+
+I may add a copy in here...
+
+At the moment we have the crude cron job that makes tickets, and we have
+~/workspace/pacbio_scripts/Snakefile.process_run that can process a whole run at once, but we
+want to modify it to process a SMRT cell (or a group of them) at a time, in order to start processing the
+first before the last is done.
+
+I was simply running ~/workspace/pacbio_scripts/Snakefile.process_run direct from the shell, and the location
+of /ifs/sequel/ was hard-coded in the script. The output location was the CWD.

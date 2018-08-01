@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Bootstrap a new VEnv in ./_py3_venv suitable for running SMRTino.
+# The idea is that we make a new VEnv for each version released and so
+# we really can roll back to an old version and get the exact same
+# behaviour.
+
+if [[ "$0" == "$BASH_SOURCE" ]] ; then
+    echo "You need to source this file, not run it."
+    exit 1
+fi
+
+activate_venv() {
+    #We need to ensure -u is not set but then put the old value back.
+    reset=`set +o | grep -w nounset` ; set +o nounset
+    source ./_py3_venv/bin/activate
+    $reset
+}
+
+if [ -e ./_py3_venv/bin/activate ] ; then
+
+    activate_venv
+
+else
+    echo "Bootstrapping new VEnv from `which python3`"
+    ( set -e ; #)
+    python3 -mvenv ./_py3_venv
+    activate_venv
+
+    pip3 install --upgrade pip
+    pip3 install Rt
+    pip3 install pystache
+
+    ) ; [ $? = 0 ] || echo "Provisioning VEnv Failed!"
+fi
