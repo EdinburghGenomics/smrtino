@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+import os.path
+from glob import glob
+import sys
+
+# Do I actually need this?
+#from smrtino.XMLParser import XMLParser
+
+class RunStatus:
+    """This Class provides information about a PacBio sequel run, given a run folder.
+       It will parse information from the following sources:
+         */*.subreadset.xml ?? for what ??
+         Run directory content (including pbpipeline subdir) - to obtain status information
+       The status will correspond to a state in the state diagram - see the design doc.
+    """
+    CELL_PENDING    = 0   # waiting for data from the sequencer
+    CELL_READY      = 1   # the pipeline should process this cell now
+    CELL_PROCESSING = 2   # the pipeline is working on this cell
+    CELL_PROCESSED  = 3   # the pipeline has finished on this cell
+    CELL_FAILED     = 4   # the pipeline failed to process this cell
+
+    def __init__( self , pbrun_dir, opts = '' ):
+
+        # here the RunInfo.xml is parsed into an object
+        self.run_path = pbrun_dir
+
+        # In the case where we're looking at an output directory, examine the
+        # pbpipe_from link
+        if os.path.isdir(os.path.join(self.run_path, 'pbpipe_from', 'pbpipeline')):
+            self.run_path = os.path.join(self.run_path, 'pbpipe_from')
+
+        self.quick_mode = 'q' in opts
+
+        self._exists_cache = dict()
+        self._cells_cache = None
+
+        if self.quick_mode:
+            # We only need this if XML has to be parsed.
+            pass
+
+    def _exists( self, glob_pattern ):
+        """ Returns if a file exists and caches the result.
+            The check will be done with glob() so wildcards can be used, and
+            the result will be the number of matches.
+        """
+        if glob_pattern not in self._exists_cache:
+            self._exists_cache[glob_pattern] = glob( os.path.join(self.run_path, glob_pattern) )
+
+        return len( self._exists_cache[glob_pattern] )
+
+    def get_cells( self ):
+        """ Returns a dict of { cellname: status } where status is one of the constants
+            defined above
+            We assume that all of the directories appear right when the run starts, and
+            that a .transferdone file signals the cell is ready
+        """
+        if self._cells_cache is not None:
+            return self._cells_cache
+
+        # OK, we need to work it out...
+        res = dict()
+        cells = glob( os.path.join(self.run_path, '[0-9]_???/') )
+
+        for cell in cells:
+            cellname = cell.rstrip('/').split('/')[-1]
+
+            if self._exists( 'pbpipeline/' + cellname + '.failed' ):
+                # Not sure if we need this?
+                res[cellname] = self.CELL_FAILED
+            elif self._exists( 'pbpipeline/' + cellname + '.done' ):
+                res[cellname] = self.CELL_PROCESSED
+            elif self._exists( 'pbpipeline/' + cellname + '.started' ):
+                res[cellname] = self.CELL_PROCESSING
+            elif self._exists( cellname + '/*.transferdone' ):
+                res[cellname] = self.CELL_READY
+            else:
+                res[cellname] = self.CELL_PENDING
+
+        self._cells_cache = res
+        return res
+
+    def _was_aborted(self):
+        return self._exists( 'pbpipeline/aborted' )
+
+    def get_status( self ):
+        """ Work out the status of a run by checking the existence of various touchfiles
+            found in the run folder.
+            Behaviour with the touchfiles in invalid states is undefined, but we'll always
+            report a valid status and in general, if in doubt, we'll report a status that
+            does not trigger an action.
+            ** This logic is convoluted. Before modifying anything, make a test that reflects
+               the change you want to see, then after making the change always run the tests.
+               Otherwise you will get bitten in the ass!
+        """
+
+        # 'new' takes precedence
+        if not self._exists( 'pbpipeline' ):
+            return "new"
+
+        # Run in aborted state should not be subject to any further processing
+        if self._was_aborted():
+            return "aborted"
+
+        # No provision for 'redo' state just now, but if there was this would need to
+        # go in here to override the failed and complete statuses.
+
+        if self._exists( 'pbpipeline/report.done' ):
+            if self._exists( 'pbpipeline/failed' ):
+                return "failed"
+            else:
+                return "complete"
+
+        if self._exists( 'pbpipeline/report.started' ):
+            # Even if reporting is very quick, we need a state for the run to be in while
+            # it is happening. Alternative would be that driver triggers report after processing
+            # the last SMRT cell, before marking the cell done, but this seems a bit flakey.
+            if self._exists( 'pbpipeline/failed' ):
+                return "failed"
+            else:
+                return "reporting"
+
+        # The 'failed' flag is going to be set if a report fails to generate or there is an
+        # RT error or summat like that.
+        # But until the final report is generated, the master 'failed' flag is ignored, so it's
+        # possible that an interim report fails but then a new cell gets processed and the report
+        # is re-triggered and this time it works and the flag can be cleared. Yeah.
+
+        # At this point we need to know which SMRT cells are ready/done
+        all_cell_statuses = self.get_cells().values()
+
+        # If any cell is ready we need to get it processed
+        if any( v == self.CELL_READY for v in all_cell_statuses ):
+            return "cell_ready"
+
+        # If all are processed we're in state processed, and ready to trigger the final report
+        if all_cell_statuses and all( v == self.CELL_PROCESSED for v in all_cell_statuses ):
+            return "processed"
+
+        # If all are pending or processed we're in state 'idle_awaiting_cells'. This also applies if,
+        # for some reason, the list of cells is empty.
+        if all( v in [self.CELL_PENDING, self.CELL_PROCESSED] for v in all_cell_statuses ):
+            return "idle_awaiting_cells"
+
+        # If all cells are processed or failed we're in state failed
+        # (otherwise delay failure until all cells are accounted for)
+        if all( v in [self.CELL_FAILED, self.CELL_PROCESSED] for v in all_cell_statuses ):
+            return "failed"
+
+        # If any are pending we're in state 'processing_awaiting_cells'
+        if any( v == self.PENDING for v in all_cell_statuses ):
+            return "processing_awaiting_cells"
+
+        # Otherwise we're processing but not expecting any more data
+        return "processing"
+
+    def get_cells_ready(self):
+        """ Get a list of the cells which are ready to be processed, if any.
+        """
+        return [c for c, v in self.get_cells().items() if v == self.CELL_READY]
+
+    def get_run_id(self):
+        """ We can read this from RunDetails in any of the subreadset.xml files, but it's
+            easier to just assume the directory name is the run name. Allow a .xxx extension
+            since there are no '.'s is PacBio run names.
+        """
+        realdir = os.path.basename(os.path.realpath(self.run_path))
+        return realdir.split('.')[0]
+
+    def get_instrument(self):
+        """ We have only one and the serial number is in the run ID
+        """
+        foo = self.get_run_id().split('_')[0]
+        if foo.startswith('r') and len(foo) > 1:
+            return "Sequel_" + foo[1:]
+        else:
+            return 'unknown'
+
+    def get_yaml(self, debug=True):
+        try:
+            return '\n'.join([ 'RunID: '        + self.get_run_id(),
+                               'Instrument: '   + self.get_instrument(),
+                               'Cells: '        + ' '.join(sorted(self.get_cells())),
+                               'CellsReady: '   + ' '.join(sorted(self.get_cells_ready())),
+                               'PipelineStatus: ' + self.get_status() ])
+
+        except Exception: # if we can't read something just produce a blank reply.
+            if debug: raise
+            pstatus = 'aborted' if self._was_aborted() else 'unknown'
+
+            return '\n'.join([ 'RunID: unknown',
+                               'Instrument: unknown',
+                               'Cells: unknown',
+                               'CellsReady: unknown',
+                               'PipelineStatus: ' + pstatus ])
+
+if __name__ == '__main__':
+    #Very cursory option parsing
+    optind = 1 ; opts = ''
+    if sys.argv[optind:] and sys.argv[optind].startswith('-'):
+        optind += 1
+        opts = sys.argv[optind][1:]
+
+    #If no run specified, examine the CWD.
+    runs = sys.argv[optind:] or ['.']
+    for run in runs:
+        run_info = RunStatus(run, opts)
+        print ( run_info.get_yaml( debug=os.environ.get('DEBUG', '0') != '0' ) )
