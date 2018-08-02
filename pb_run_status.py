@@ -2,6 +2,7 @@
 import os.path
 from glob import glob
 import sys
+import logging as L
 
 # Do I actually need this?
 #from smrtino.XMLParser import XMLParser
@@ -18,6 +19,7 @@ class RunStatus:
     CELL_PROCESSING = 2   # the pipeline is working on this cell
     CELL_PROCESSED  = 3   # the pipeline has finished on this cell
     CELL_FAILED     = 4   # the pipeline failed to process this cell
+    CELL_ABORTED    = 5   # cell aborted - disregard it
 
     def __init__( self , pbrun_dir, opts = '' ):
 
@@ -31,12 +33,15 @@ class RunStatus:
 
         self.quick_mode = 'q' in opts
 
-        self._exists_cache = dict()
-        self._cells_cache = None
+        self._clear_cache()
 
         if self.quick_mode:
             # We only need this if XML has to be parsed.
             pass
+
+    def _clear_cache( self ):
+        self._exists_cache = dict()
+        self._cells_cache = None
 
     def _exists( self, glob_pattern ):
         """ Returns if a file exists and caches the result.
@@ -45,6 +50,7 @@ class RunStatus:
         """
         if glob_pattern not in self._exists_cache:
             self._exists_cache[glob_pattern] = glob( os.path.join(self.run_path, glob_pattern) )
+            L.debug("_exists {} => {}".format(glob_pattern, self._exists_cache[glob_pattern]))
 
         return len( self._exists_cache[glob_pattern] )
 
@@ -64,7 +70,9 @@ class RunStatus:
         for cell in cells:
             cellname = cell.rstrip('/').split('/')[-1]
 
-            if self._exists( 'pbpipeline/' + cellname + '.failed' ):
+            if self._exists( 'pbpipeline/' + cellname + '.aborted' ):
+                res[cellname] = self.CELL_ABORTED
+            elif self._exists( 'pbpipeline/' + cellname + '.failed' ):
                 # Not sure if we need this?
                 res[cellname] = self.CELL_FAILED
             elif self._exists( 'pbpipeline/' + cellname + '.done' ):
@@ -80,7 +88,16 @@ class RunStatus:
         return res
 
     def _was_aborted(self):
-        return self._exists( 'pbpipeline/aborted' )
+        if self._exists( 'pbpipeline/aborted' ):
+            return True
+
+        # Or if all idividual cells were aborted...
+        all_cell_statuses = self.get_cells().values()
+        if all_cell_statuses and all( v == self.CELL_ABORTED for v in all_cell_statuses ):
+            return True
+
+        return False
+
 
     def get_status( self ):
         """ Work out the status of a run by checking the existence of various touchfiles
@@ -125,8 +142,13 @@ class RunStatus:
         # possible that an interim report fails but then a new cell gets processed and the report
         # is re-triggered and this time it works and the flag can be cleared. Yeah.
 
-        # At this point we need to know which SMRT cells are ready/done
-        all_cell_statuses = self.get_cells().values()
+        # At this point we need to know which SMRT cells are ready/done. Disregard aborted cells.
+        # If everything was aborted we'll already have decided status='aborted'
+
+        # As with Illuminatus, this logic is a little contorted. The tests reassure me that all is
+        # well. If you see a problem add a test case before attempting a fix.
+
+        all_cell_statuses = [ v for v in self.get_cells().values() if v != self.CELL_ABORTED ]
 
         # If any cell is ready we need to get it processed
         if any( v == self.CELL_READY for v in all_cell_statuses ):
@@ -136,18 +158,18 @@ class RunStatus:
         if all_cell_statuses and all( v == self.CELL_PROCESSED for v in all_cell_statuses ):
             return "processed"
 
-        # If all are pending or processed we're in state 'idle_awaiting_cells'. This also applies if,
-        # for some reason, the list of cells is empty.
-        if all( v in [self.CELL_PENDING, self.CELL_PROCESSED] for v in all_cell_statuses ):
-            return "idle_awaiting_cells"
-
         # If all cells are processed or failed we're in state failed
         # (otherwise delay failure until all cells are accounted for)
-        if all( v in [self.CELL_FAILED, self.CELL_PROCESSED] for v in all_cell_statuses ):
+        if all_cell_statuses and all( v in [self.CELL_FAILED, self.CELL_PROCESSED] for v in all_cell_statuses ):
             return "failed"
 
+        # If none are processing we're in state 'idle_awaiting_cells'. This also applies if,
+        # for some reason, the list of cells is empty.
+        if all( v not in [self.CELL_PROCESSING] for v in all_cell_statuses ):
+            return "idle_awaiting_cells"
+
         # If any are pending we're in state 'processing_awaiting_cells'
-        if any( v == self.PENDING for v in all_cell_statuses ):
+        if any( v == self.CELL_PENDING for v in all_cell_statuses ):
             return "processing_awaiting_cells"
 
         # Otherwise we're processing but not expecting any more data
@@ -199,6 +221,8 @@ if __name__ == '__main__':
     if sys.argv[optind:] and sys.argv[optind].startswith('-'):
         optind += 1
         opts = sys.argv[optind][1:]
+
+    L.basicConfig(level=L.WARNING)
 
     #If no run specified, examine the CWD.
     runs = sys.argv[optind:] or ['.']

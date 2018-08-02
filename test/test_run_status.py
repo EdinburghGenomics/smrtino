@@ -6,6 +6,8 @@ import glob
 from tempfile import mkdtemp
 from shutil import rmtree, copytree
 from pprint import pprint
+import logging as L
+
 
 # Adding this to sys.path makes the test work if you just run it directly.
 sys.path.insert(0,'.')
@@ -13,6 +15,8 @@ from pb_run_status import RunStatus
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/status_check_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
+
+L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))
 
 class T(unittest.TestCase):
 
@@ -76,6 +80,17 @@ class T(unittest.TestCase):
             os.remove(os.path.join(self.run_dir, self.current_run, dp))
     # And the tests...
 
+    def test_onecell_run( self ):
+        """ A really basic test
+        """
+        run_info = self.use_run('r54041_20180613_132039', copy=True)
+
+        self.assertEqual(run_info.get_cells(), {'1_A01': run_info.CELL_PENDING})
+
+        self.touch('1_A01/foo.transferdone')
+        run_info._clear_cache()
+        self.assertEqual(run_info.get_cells(), {'1_A01': run_info.CELL_READY})
+
     def test_run_new( self ):
         """ A totally new run.
         """
@@ -89,6 +104,9 @@ class T(unittest.TestCase):
         # This run has 7 cells
         self.assertCountEqual( run_info.get_cells(), "1_B01  2_C01  3_D01  4_E01  5_F01  6_G01  7_H01".split() )
 
+        # None are ready
+        self.assertCountEqual( run_info.get_cells_ready(), [] )
+
     def test_various_states( self ):
         """ Simulate some pipeline activity on that run.
         """
@@ -98,10 +116,84 @@ class T(unittest.TestCase):
         def gs():
             """ Clear the cache and re-read the status
             """
-            run_info._exists_cache = dict()
+            run_info._clear_cache()
             return run_info.get_status()
 
+        # With the pipeline dir it's no longer new
         self.assertEqual(gs(), 'idle_awaiting_cells')
+
+        # Let a couple of SMRT cells finish
+        self.touch('1_B01/foo.transferdone')
+        self.touch('2_C01/foo.transferdone')
+
+        self.assertEqual(gs(), 'cell_ready')
+        self.assertCountEqual( run_info.get_cells_ready(), ["1_B01", "2_C01"])
+
+        # Start one of them
+        self.touch('pbpipeline/1_B01.started')
+        self.assertEqual(gs(), 'cell_ready')
+
+        # And the other
+        self.touch('pbpipeline/2_C01.started')
+        self.assertEqual(gs(), 'processing_awaiting_cells')
+
+        # Finishing just one should make no difference
+        self.touch('pbpipeline/2_C01.done')
+        self.assertEqual(gs(), 'processing_awaiting_cells')
+
+        # Finishing both...
+        self.touch('pbpipeline/1_B01.done')
+        self.assertEqual(gs(), 'idle_awaiting_cells')
+
+        # Abort the next one
+        self.touch('3_D01/foo.transferdone')
+        self.assertEqual(gs(), 'cell_ready')
+        self.assertCountEqual( run_info.get_cells_ready(), ["3_D01"])
+
+        self.touch('pbpipeline/3_D01.aborted')
+
+        # It should vanish from the list of ready cells (but not the full list)
+        self.assertEqual(gs(), 'idle_awaiting_cells')
+        self.assertCountEqual( run_info.get_cells(), "1_B01 2_C01 3_D01 4_E01 5_F01 6_G01 7_H01".split() )
+        self.assertCountEqual( run_info.get_cells_ready(), [] )
+
+        # Finish the next three
+        self.touch('pbpipeline/4_E01.done')
+        self.touch('pbpipeline/5_F01.done')
+        self.touch('pbpipeline/6_G01.done')
+
+        self.assertEqual(gs(), 'idle_awaiting_cells')
+
+        # And start the last one
+        self.touch('pbpipeline/7_H01.started')
+        self.assertEqual(gs(), 'processing')
+
+        # And complete it
+        self.touch('pbpipeline/7_H01.done')
+        self.assertEqual(gs(), 'processed')
+
+
+    def test_error_states( self ):
+        """ Simulate some pipeline activity on that run.
+        """
+        run_info = self.use_run('r54041_20180518_131155', copy=True)
+        self.md('pbpipeline')
+
+        def gs():
+            """ Clear the cache and re-read the status
+            """
+            run_info._clear_cache()
+            return run_info.get_status()
+
+        # If all but 1 have errors we should still await data from the last one
+        for cell in "1_B01  2_C01  3_D01  4_E01  5_F01  6_G01".split():
+            self.touch('pbpipeline/' + cell + '.failed')
+
+        self.assertEqual(gs(), 'idle_awaiting_cells')
+
+        # If we abort the last one, then that's a fail
+        self.touch('pbpipeline/7_H01.aborted')
+        self.assertEqual(gs(), 'failed')
 
 def dictify(s):
     """ Very very dirty minimal YAML parser is OK for testing.
