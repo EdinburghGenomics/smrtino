@@ -1,0 +1,146 @@
+#!/bin/bash
+# vim: ft=python
+
+# Contents >>>
+#   + Embedded BASH script to bootstrap the workflow
+#   + Initialisation and configuration
+#   + Helper functions
+#   + The rules specific to this workflow
+#   + More generic rules
+
+# Note this workflow normally expects to run on gseg-login0 while viewing files
+# on /fluidfs, which cannot be seen by the worker nodes.
+
+"""true" ### Begin shell script part
+set -u
+
+source "`dirname $0`"/shell_helper_functions.sh
+
+export TOOLBOX="$(find_toolbox)"
+export PATH="${PATH}:$(dirname "$0")"
+
+# This may change in future.
+export FILTER_LOCALLY="$(is_new_cluster && echo 1 || echo 0)"
+
+snakerun_drmaa "$0" "$@"
+
+"exit""" ### End of shell script part
+#!/usr/bin/env snakemake
+import yaml
+from snakemake.utils import format
+from glob import glob
+
+""" So, this is a recipe to process raw SMRT cells from the PacBio Sequel.
+
+    At first, we're not asking for any QC metrics but we do want to:
+
+    1) Zip and md5sum the subreads.bam
+    2) Filter out control sequences (if not already done)
+
+    The script wants to be run in an output dir on /lustre.
+    It will process all SMRT cells specified by config['cells']
+    If should (!) be possible to run multiple instances at once, so long as the
+    cells are not conflicting.
+"""
+TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
+BAM2BAM = TOOLBOX + ' smrt bam2bam'
+
+RUN_DIR  = config['rundir']
+
+def scan_cells(extn=''):
+    """ Work out all the cells to process based on config['cells'] and thus the
+        base names  of the info.yml files that need to be made.
+        This in turn allows me to work out everything else by pattern matching.
+        When run on a worker node this list will come out empty, but that's
+        OK.
+    """
+    all_subreads = [ b[:-len('.subreads.bam')] for b in glob('{}/*/*.subreads.bam'.format(RUN_DIR) ) ]
+
+    # Now see if I need to filter by config['cells']
+    if cells in config:
+        res = [ s for s in all_subreads if b.split('/')[-2] in config['cells'].split() ]
+    else:
+        res = all_subreads
+
+    if not '--no-hooks' in sys.argv:
+        # A hacky way of having an assertion only on the master process.
+        assert res, "No subreads found in {} matching cell [{}].".format(RUN_DIR, config.get('cells', '*'))
+
+    return [ r + extn for r in res ]
+
+'''
+ALL_SUBREADS = [ b[:-len('.subreads.bam')] for b in glob('{}/{}/*/*.subreads.bam'.format(RUN_DIR, RUN_NAME) ) ]
+SPLIT_SUBREADS = [ b.split('/')[-3:] for b in ALL_SUBREADS ]
+'''
+
+# Possibly I should start with a file named '.unfiltered' and then the final
+# file will just be foo.subreads.bam? We'll see.
+FILTER = '.nocontrol'
+
+# Main output is one yml file per cell
+localrules: main, link_file
+rule main:
+    output:
+        yaml = scan_cells(extn='.info.yml')
+    input:
+        md51 = expand( "md5sums/{r[2]}{f}.subreads.bam.md5", r=SPLIT_SUBREADS, f=FILTER )
+    run:
+        with open(output[0], 'w') as ofh:
+            for c in sorted( ['/'.join(r[0:2]) for r in SPLIT_SUBREADS] ):
+                print(c, file=ofh)
+
+# nocontrol filter
+
+# On GSEG this has to be local as the worker nodes can't see IFS...
+if os.environ.get('FILTER_LOCALLY', '0') != '0':
+    localrules: filter_control
+
+rule filter_control:
+    output:
+        bam    = "{file}.nocontrol.subreads.bam",
+        scraps = "{file}.nocontrol.scraps.bam",
+        xml    = "{file}.nocontrol.subreadset.xml"
+    input:
+        bam    = "{file}.subreads.bam",
+        scraps = "{file}.scraps.bam",
+        xml    = "{file}.subreadset.xml"
+    params:
+        ca = '/fluidfs/f1/pacbio/pacbio_references/pacbio_sequel_adapters.fasta',
+        cs = '/fluidfs/f1/pacbio/pacbio_references/pacbio_control_sequence.fasta'
+    run:
+        # If the filtering was already done this is a no-op. Check the XML.
+        import xml.etree.ElementTree as ET
+        root = ET.parse(input['xml']).getroot()
+        ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd' )
+        filter_was_done = bool(root.findall('.//pbmeta:ControlKit', ns))
+
+        if filter_was_done:
+            # We can just copy it.
+            for (infile, outfile) in ( (input[k], output[k]) for k in "bam scraps xml".split() ):
+                shell("cp -Lv {infile} {outfile}")
+
+        else:
+            # Filter with standard sequences
+            shell("{BAM2BAM} {input.bam} {input.scraps} -o {wildcards.file}.nocontrol --controlAdapters={params.ca} --controls={params.cs}")
+
+
+# file fetcher
+# this seems redundant now but should help us move the file source with minimal pipeline changes
+rule link_file:
+    output: temp("{file,[^/.]+}.{extn,(subreads\.bam|scraps\.bam|subreadset\.xml)}")
+    input: lambda wc: [ r+'.'+wc.extn for r in ALL_SUBREADS if r.endswith('/' + os.path.basename(wc.file)) ]
+    shell:
+        "ln -s {input[0]} {output}"
+
+# md5summer that keeps the file path out of the .md5 file
+rule md5sum_file:
+    output: "md5sums/{foo}.md5"
+    input: "{foo}"
+    shell: "( cd `dirname {input}` && md5sum `basename {input}` ) > {output}"
+
+# gzipper that produces byte-identical files each time and discards the input
+# But don't bother gzipping BAM files - they are already compressed.
+rule gzip_file:
+    output: "{file}.gz"
+    input: "{file}"
+    shell: "gzip -6n {input}"

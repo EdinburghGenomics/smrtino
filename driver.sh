@@ -312,7 +312,7 @@ notify_run_complete(){
 
 run_report() {
     # Makes a report. Will not exit on error. I'm assuming all substantial processing
-    # will have been done by Snakefile.process_cella
+    # will have been done by Snakefile.process_cells
 
     # usage: run_report [report_status] [rt_run_status] [plog_dest]
     # A blank rt_run_status will leave the status unchanged. A value of "NONE" will
