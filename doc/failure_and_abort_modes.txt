@@ -1,0 +1,27 @@
+In the world of Illumina, a run is either processed or it isn't.
+We can have "failed" lanes, in that the data is no good. It's also
+possible, I guess, that the data for one lane is corrupt and so it
+can't be processed, but I don't account for that. The failed and aborted
+flags apply to the entire run. The RTAComplete.txt trigger is for the whole
+run.
+
+In PacBio it's not so simple. We can have multiple SMRT cells and some might
+work while others never complete. So I need to have partially aborted runs.
+
+Also, because I'm processing SMRT cells in parallel as they finish, I might
+get a failure on cell 1 but then cell 2 might finish and be OK.
+
+My decision is thus:
+
+Aborting may occur at the cell level or at the run level. Aborted runs are
+skipped just like Illuminatus. Aborted cells are just excluded as if they
+were never there, so a run with some aborted cells may produce a report and
+complete. If all cells are eborted the status of the whole run becomes
+aborted (pb_run_status.py enforces this).
+
+Failure may occur on individual cells too. Failure of a cell or cells will not
+stop processing of other cells on the run and SMRTino will continue to wait for
+and process data. However, once all the cells are done (complete or aborted or failed)
+then if any are failed the status of the run is failed (again pb_run_status will
+enforce this). So the driver needs to be able to flag failures of cells as well as the
+entire run (see pipeline_fail() in the driver).

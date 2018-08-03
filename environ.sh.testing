@@ -4,7 +4,7 @@
 export MAINLOG=/dev/stdout
 
 # Where find runs to process and where to put results
-export IN_LOCATION=~/test_sequel OUT_LOCATION=~/test_pacbio_data
+export FROM_LOCATION=~/test_sequel TO_LOCATION=~/test_pacbio_data
 
 # Bypass RT and use the global partition on SLURM
 export RT_SYSTEM=none CLUSTER_QUEUE=global

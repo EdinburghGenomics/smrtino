@@ -1,0 +1,63 @@
+So at the moment I have pacbio_scripts/Snakefile.process_run that processes a PacBio run.
+
+It's supposed to be run when all SMRT cells are processed and it does some stuff.
+
+
+You run it in the output dir (which is good)
+And it reads from the input dir (which is good - I can use the symlink)
+
+The output looks like this:
+
+.
+├── cells_processed.txt
+├── cluster.yml
+├── m54041_180531_132419.nocontrol.scraps.bam
+├── m54041_180531_132419.nocontrol.subreads.bam
+├── m54041_180531_132419.nocontrol.subreadset.xml
+├── m54041_180531_234248.nocontrol.scraps.bam
+├── m54041_180531_234248.nocontrol.subreads.bam
+├── m54041_180531_234248.nocontrol.subreadset.xml
+├── m54041_180601_100301.nocontrol.scraps.bam
+├── m54041_180601_100301.nocontrol.subreads.bam
+├── m54041_180601_100301.nocontrol.subreadset.xml
+├── md5sums
+│   ├── m54041_180531_132419.nocontrol.subreads.bam.md5
+│   ├── m54041_180531_234248.nocontrol.subreads.bam.md5
+│   └── m54041_180601_100301.nocontrol.subreads.bam.md5
+└── slurm_output
+    ...various log files...
+
+So the reads for all cells (3 in this case) are flattened in the top level
+directory.
+
+And I have md5 sums
+
+And control reads have been removed if necessary.
+
+And I have a cells_processed.txt that looks like this:
+
+% cat cells_processed.txt
+r54041_20180531_131603/1_A01
+r54041_20180531_131603/2_B01
+r54041_20180531_131603/3_C01
+
+That file is the output target of the Snakefile, but I think instead we could have cell_info_{name}.yml
+which will capture soem meta-data about the cell. Then I will obviously have one per cell.
+Or maybe I call them m54041_180531_132419.info.yml which will look better, and I can have the cell number
+as one of the bits of info.
+
+Cool. Let's just do this for now. I'll make a Snakefile.process_cells that takes a --cells parameter,
+and translates this into a list of .info.yml files and makes them. If no common files are touched then
+I should be able to run multiple Snakefiles at once without locking issues (I hope).
+
+We do need to add (or regenerate!) the .pbi files which are index files,
+as well as the other stuff.
+Note Urmi likes the contig_stats.pl which we do indeed use for the ref-free pipelines. But this uses FASTA
+files so I think I need to also do bam2fasta. But that's easy enough.
+
+There is more stuff we need to do, (samtools??) but that can simply be added to the Snakemake rules,
+and then go into some .yml file, and then get sucked into the report at the end.
+
+TODO
+* - change the check that makes 'filter_control' a local rule
+

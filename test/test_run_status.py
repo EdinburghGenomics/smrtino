@@ -13,7 +13,7 @@ import logging as L
 sys.path.insert(0,'.')
 from pb_run_status import RunStatus
 
-DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/status_check_examples')
+DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/mock_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))

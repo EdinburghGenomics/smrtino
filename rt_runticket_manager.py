@@ -2,13 +2,13 @@
 import os, sys, re
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import configparser
-from rt import Rt, AuthorizationError, InvalidUse
+from rt import Rt, AuthorizationError
 
-# This part was copied and modified from illuminatus/rt_pbrunticket_manager.py
+# This part was copied and modified from illuminatus/rt_runticket_manager.py
 # I'm pretty sure that:
 # 1) The RTUtils.py library is no use outside this script (so I just merged them).
 # 2) This whole script could be generic/shared (and thus moved to the toolbox). But
-#    I've not done that yet.
+#    I've not (quite) done that yet.
 
 def resolve_msg(in_val):
     """Replies and comments can be a literal string or "@./file" or "@-"
@@ -43,7 +43,7 @@ def main(args):
 
     rt_config_name = 'test-rt' if args.test else os.environ.get('RT_SYSTEM', 'production-rt')
     with RTManager( config_name = rt_config_name,
-                    queue_setting = 'pbrun_queue' ) as rtm:
+                    queue_setting = args.queue ) as rtm:
 
         # if the ticket does not exist, create it with the supplied message, be
         # that a commet or a reply
@@ -278,6 +278,8 @@ def parse_args(*args):
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("-r", "--run_id", required=True,
                             help="The run id of the ticket.")
+    argparser.add_argument("-Q", "--queue", required=True,
+                            help="The queue to use. A name defined in rt_settings.ini not a literal queue name.")
     argparser.add_argument("--reply",
                             help="Post reply message to the ticket. " +
                                  "Use @foo.txt to read the message from file foo.txt.")

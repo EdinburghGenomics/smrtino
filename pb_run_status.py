@@ -27,7 +27,8 @@ class RunStatus:
         self.run_path = pbrun_dir
 
         # In the case where we're looking at an output directory, examine the
-        # pbpipe_from link
+        # pbpipe_from link (the link in the other direction will be 'pbpipeline/output'
+        # as with Illuminatus
         if os.path.isdir(os.path.join(self.run_path, 'pbpipe_from', 'pbpipeline')):
             self.run_path = os.path.join(self.run_path, 'pbpipe_from')
 
@@ -180,6 +181,11 @@ class RunStatus:
         """
         return [c for c, v in self.get_cells().items() if v == self.CELL_READY]
 
+    def get_cells_aborted(self):
+        """ Get a list of the cells that were aborted, if any.
+        """
+        return [c for c, v in self.get_cells().items() if v == self.CELL_ABORTED]
+
     def get_run_id(self):
         """ We can read this from RunDetails in any of the subreadset.xml files, but it's
             easier to just assume the directory name is the run name. Allow a .xxx extension
@@ -203,6 +209,7 @@ class RunStatus:
                                'Instrument: '   + self.get_instrument(),
                                'Cells: '        + ' '.join(sorted(self.get_cells())),
                                'CellsReady: '   + ' '.join(sorted(self.get_cells_ready())),
+                               'CellsAborted: ' + ' '.join(sorted(self.get_cells_aborted())),
                                'PipelineStatus: ' + self.get_status() ])
 
         except Exception: # if we can't read something just produce a blank reply.
@@ -211,8 +218,9 @@ class RunStatus:
 
             return '\n'.join([ 'RunID: unknown',
                                'Instrument: unknown',
-                               'Cells: unknown',
-                               'CellsReady: unknown',
+                               'Cells: ',
+                               'CellsReady: ',
+                               'CellsAborted: ',
                                'PipelineStatus: ' + pstatus ])
 
 if __name__ == '__main__':
