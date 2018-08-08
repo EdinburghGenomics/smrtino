@@ -190,10 +190,13 @@ action_cell_ready(){
         Snakefile.process_cells --config cells="$CELLSREADY" rundir="pbpipe_from"
       ) |& plog
 
+      # Now we can have an interim report.
+      run_report "Partially processed" "awaiting_cells" | plog && log DONE
+
       for c in $CELLSREADY ; do
           mv pbpipeline/${c}.started pbpipeline/${c}.done
       done
-      #' I'm pretty sure RT errors could/should be non-fatal here.
+      #' I'm pretty sure RT errors need to be non-fatal here.
       rt_runticket_manager --subject demultiplexed \
         --comment "Processing completed for cells $CELLSREADY." || true
       log "  Completed Snakefile.process_cells on $RUNID [$CELLSREADY]."

@@ -30,6 +30,7 @@ else
     pip3 install --upgrade pip
     pip3 install Rt
     pip3 install pystache
+    pip3 install pyyaml
 
     ) ; [ $? = 0 ] || echo "Provisioning VEnv Failed!"
 fi

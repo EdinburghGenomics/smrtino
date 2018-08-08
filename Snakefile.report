@@ -1,0 +1,55 @@
+#!/bin/bash
+# vim: ft=python
+
+# Contents >>>
+#   + Embedded BASH script to bootstrap the workflow
+#   + Initialisation and configuration
+#   + Helper functions
+#   + The rules specific to this workflow
+#   + More generic rules
+
+# Note this workflow is designed to run locally. All of the heavy lifting should
+# have been done by Snakefile.process_cells. It's vaguely useful to have locking here
+# as we might possibly try to make 2 interim reports at once (in which case, just let
+# one fail).
+
+"""true" ### Begin shell script part
+set -u
+
+source "`dirname $0`"/shell_helper_functions.sh
+
+export TOOLBOX="$(find_toolbox)"
+export PATH="${PATH}:$(dirname "$0")"
+
+snakerun_local "$0" "$@"
+
+"exit""" ### End of shell script part
+#!/usr/bin/env snakemake
+import yaml
+from snakemake.utils import format
+from glob import glob
+
+TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
+
+""" Report will be made based upon all the .info.yml files found.
+"""
+INFO_YML = glob("*.info.yml")
+
+# We shall make a single report for the whole run. This is supposed to be fairly simple.
+# If it gets complex we might need a more sophisticated report making strategy.
+rule report_main:
+    output: "run_report.html"
+    input:
+        pan = "run_report.{cc}cells.pan".format(cc=len(INFO_YML))
+    shell:
+        '''{PANDOC} {input.pan} {input.pan}.html
+           ln -s {input.pan}.html {output}
+        '''
+
+rule make_report:
+    output: "run_report.{cc}cells.pan"
+    input:
+        yaml = INFO_YML
+    run:
+        "convert all the INFO_YML into one pandoc report"
+        "add info from cstats.csv if available"

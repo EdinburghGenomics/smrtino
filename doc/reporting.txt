@@ -1,0 +1,29 @@
+Urmi has given some guadance on what she wants to see in the reports regarding stats,
+so I can make a start.
+
+Also there is my initial work scraping info out of the XML files.
+
+And there are some internal things I need to report like was the filter applied or not.
+
+All the actual processing should be done by Snakefile.process_cells which can run whatever
+jobs it needs on the cluster, but should only act on specific cells at once.
+
+The summary report is made by Snakefile.report. It doesn't have much to do, just to trigger
+building of a pandoc report and conversion of that to HTML.
+
+The report should not need to read the pacbio XML files directly, as everything it needs in
+this regard should come from the info.yml files. I'm not sure if it wants to read the CSV files
+or not. I think it does.
+
+
+So we need:
+
+1) A script that reads the xml and makes the yaml - compile_cell_info.py
+
+Where was that old code???
+scan_for_smrt_cells in get_pacbio_yml.py seems to be it.
+
+2) A script that formats the PanDoc reports - make_report.py
+
+Initially I'll make this super super simple. Just cat everything into a big report.
+In fact, it will never be particularly complex.
