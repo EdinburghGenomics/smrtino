@@ -3,6 +3,7 @@ import os, sys, re
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import xml.etree.ElementTree as ET
+import yaml
 
 """ Emits .info.yml files for SMRT cells by parsing the xml files from
     SMRT link, among other things. This script, along with make_report.py,
@@ -18,34 +19,42 @@ def main(args):
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING), stream=sys.stderr)
 
     # Load the file then...
-    L.debug("Reading from {}".format(args.xmlfile))
-    root = ET.parse(args.xmlfile).getroot()
+    xmlfile, = args.xmlfile
+    L.debug("Reading from {}".format(xmlfile))
+    root = ET.parse(xmlfile).getroot()
 
-    info = dict( _filename = args.xmlfile )
+    info = get_the_info(root)
 
-    # Glean info from the file as per scan_for_smrt_cells in get_pacbio_yml.py
+    info['_filename']= xmlfile
 
-    rf = root.find('.//pbmeta:ResultsFolder', ns).text.rstrip('/')
-    cmd = root.find('.//pbmeta:CollectionMetadata', ns)
+    # Print the result
+    print(yaml.safe_dump(info, default_flow_style=False))
 
-    info['run_id'] = rf[-2]
-    info['run_slot'] = rf[-1]  # Also could get this from TimeStampedName
-    info['cell_id'] = cmd.attr('Context')
+def get_the_info(root):
+    """ Glean info from the file as per scan_for_smrt_cells in get_pacbio_yml.py
+    """
+    rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')
+    cmd = root.find('.//pbmeta:CollectionMetadata', _ns)
 
-    well_samples = root.findall('.//pbmeta:WellSample', ns)
+    info = { 'run_id': rf.split('/')[-2],
+             'run_slot': rf.split('/')[-1], # Also could get this from TimeStampedName
+             'cell_id': cmd.attrib.get('Context') }
+
+    well_samples = root.findall('.//pbmeta:WellSample', _ns)
     # There should be 1!
     L.debug("Found {} WellSample records".format(len(well_samples)))
 
     if len(well_samples) == 1:
-       info['ws_name'] = ws.attrib.get('Name', '')
-       info['ws_desc'] = ws.attrib.get('Description', '')
+        ws, = well_samples
 
-       mo = re.match(info['ws_name'], '\d+')
-       if mo:
-        info['ws_project'] = mo.groups(0)
+        info['ws_name'] = ws.attrib.get('Name', '')
+        info['ws_desc'] = ws.attrib.get('Description', '')
 
-    # Print the result
-    print(yaml.safe_dump(info, default_flow_style=False))
+        mo = re.match('\d+', info['ws_name'])
+        if mo:
+            info['ws_project'] = mo.group(0)
+
+    return info
 
 def parse_args(*args):
     description = """ Provide an XML file to digest. YAML will be printed on
