@@ -90,7 +90,8 @@ rule one_cell_info:
         bam_md5    = format("md5sums/{{cell}}{FILTER}.subreads.bam"),
         scraps_md5 = format("md5sums/{{cell}}{FILTER}.scraps.bam"),
         xml        = format("{{cell}}{FILTER}.subreadset.xml"),
-        stats      = format("{{cell}}{FILTER}.cstats.csv"),
+        stats      = format("{{cell}}{FILTER}.subreads.cstats.csv"),
+        scrapstats = format("{{cell}}{FILTER}.scraps.cstats.csv"),
     shell:
         # What needs to go into the YML? Stuff from the XML and also some stuff from the
         # stats.
@@ -126,6 +127,18 @@ rule filter_control:
             # Filter with standard sequences
             shell("{BAM2BAM} {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol")
 
+# Note that our contig stats script outputs
+#  pc/contig_stats.txt
+#  pc/contig_lengths_gc.txt
+# I think we just need the former. In any case we need the shadow rule.
+rule get_contig_stats_csv:
+    output: "{bam}.cstats.csv"
+    input:  "{bam}.bam"
+    shadow: 'shallow'
+    shell:
+        '''{TOOLBOX} contig_stats -t 10 -f <({TOOLBOX} samtools fasta {input.bam})
+           mv pc/contig_stats.txt {output}
+        '''
 
 # md5summer that keeps the file path out of the .md5 file
 rule md5sum_file:

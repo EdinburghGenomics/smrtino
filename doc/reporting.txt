@@ -15,6 +15,9 @@ The report should not need to read the pacbio XML files directly, as everything 
 this regard should come from the info.yml files. I'm not sure if it wants to read the CSV files
 or not. I think it does.
 
+Note - for testing CSV files, here's a nice small BAM file:
+
+samtools fasta /lustre/pacbio/pacbio_data/r54041_20180705_170900/m54041_180706_115949.nocontrol.subreads.bam | less
 
 So we need:
 
@@ -22,6 +25,8 @@ So we need:
 
 Where was that old code???
 scan_for_smrt_cells in get_pacbio_yml.py seems to be it.
+
+Also see the notes in sequelstats.txt
 
 2) A script that formats the PanDoc reports - make_report.py
 
