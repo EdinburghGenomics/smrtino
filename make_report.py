@@ -65,7 +65,7 @@ def parse_args(*args):
                             help="Supply a list of info.yml files to compile into a report.")
     argparser.add_argument("-o", "--out",
                             help="Where to save the report. Defaults to stdout.")
-    argparser.add_argument("-d", "--debug", action="set_true",
+    argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 
     return argparser.parse_args(*args)
