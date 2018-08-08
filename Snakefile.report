@@ -19,6 +19,7 @@ set -u
 source "`dirname $0`"/shell_helper_functions.sh
 
 export TOOLBOX="$(find_toolbox)"
+export TEMPLATES="$(find_templates)"
 export PATH="${PATH}:$(dirname "$0")"
 
 snakerun_local "$0" "$@"
@@ -41,8 +42,14 @@ rule report_main:
     output: "run_report.html"
     input:
         pan = "run_report.{cc}cells.pan".format(cc=len(INFO_YML))
+    params:
+        templates = os.environ.get('TEMPLATES', '.')
     shell:
-        '''{PANDOC} {input.pan} {input.pan}.html
+        '''{PANDOC} -f markdown --template={params.templates}/template.html \
+                                --include-in-header="$pdt"/javascript.js.html \
+                                --include-in-header="$pdt"/local.css.html \
+                                --toc --toc-depth=4 \
+                                -o {input.pan}.html {input.pan}
            ln -s {input.pan}.html {output}
         '''
 
@@ -51,5 +58,4 @@ rule make_report:
     input:
         yaml = INFO_YML
     run:
-        "convert all the INFO_YML into one pandoc report"
-        "add info from cstats.csv if available"
+        "make_report.py -o {output} {input.yaml}"

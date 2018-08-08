@@ -24,6 +24,16 @@ find_toolbox() {
     fi
 }
 
+find_toolbox() {
+    #Similarly for PanDoc templates
+    _def_templates="$(readlink -f $(dirname "$BASH_SOURCE")/templates)"
+    echo "${TEMPLATES:-$_def_templates}"
+
+    if ! [ -e "${TEMPLATES:-$_def_templates}/" ] ; then
+        echo "WARNING - find_templates - No such directory ${TEMPLATES:-$_def_templates}" >&2
+    fi
+}
+
 # Functions to run a Snakefile
 find_snakefile() {
     #Is it in the CWD (or an absolute path)?

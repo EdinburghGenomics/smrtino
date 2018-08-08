@@ -46,7 +46,6 @@ from glob import glob
     cells are not conflicting.
 """
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
-BAM2BAM = TOOLBOX + 'bam2bam'
 
 RUNDIR  = config['rundir']
 
@@ -60,12 +59,12 @@ def scan_cells(extn=''):
     all_subreads = [ b[:-len('.subreads.bam')] for b in glob('{}/*/*.subreads.bam'.format(RUNDIR) ) ]
 
     # Now see if I need to filter by config['cells']
-    if cells in config:
+    if 'cells' in config:
         res = [ s for s in all_subreads if b.split('/')[-2] in config['cells'].split() ]
     else:
         res = all_subreads
 
-    if not '--no-hooks' in sys.argv:
+    if not ('--no-hooks' in sys.argv or config.get('ignore_missing')):
         # A hacky way of having an assertion only on the master process.
         assert res, "No subreads found in {} matching cell [{}].".format(RUNDIR, config.get('cells', '*'))
 
@@ -94,8 +93,8 @@ rule one_cell_info:
         scrapstats = format("{{cell}}{FILTER}.scraps.cstats.csv"),
     shell:
         # What needs to go into the YML? Stuff from the XML and also some stuff from the
-        # stats.
-        "touch {output}"
+        # stats, maybe?
+        "compile_cell_info.py {input.xml} {output}"
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
 if os.environ.get('FILTER_LOCALLY', '0') != '0':
@@ -125,7 +124,7 @@ rule filter_control:
 
         else:
             # Filter with standard sequences
-            shell("{BAM2BAM} {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol")
+            shell("{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol")
 
 # Note that our contig stats script outputs
 #  pc/contig_stats.txt
