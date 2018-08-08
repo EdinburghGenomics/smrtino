@@ -47,7 +47,7 @@ def format_report(all_info):
 
     for k, v in sorted(all_info.items()):
 
-        replines.append("\n### Flowcell {}\n".format(k))
+        replines.append("\n### SMRT Cell {}\n".format(k))
 
         replines.append("```")
         replines.append(pformat(v))

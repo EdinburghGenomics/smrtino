@@ -97,9 +97,9 @@ plog_start() {
 
 # Print a message at the top of the log, and trigger one to print at the end.
 intro="`date`. Running $(readlink -f "$0"); PID=$$"
-log "====`tr -c '' = <<<$intro`==="
+log "====`tr -c '' = <<<$intro`===="
 log "=== $intro ==="
-log "====`tr -c '' = <<<$intro`==="
+log "====`tr -c '' = <<<$intro`===="
 trap 'log "=== `date`. Finished run; PID=$$ ==="' EXIT
 
 ###--->>> PYTHON ENVIRONMENT <<<---###
@@ -367,8 +367,9 @@ run_report() {
 }
 
 send_summary_to_rt() {
-    # Sends a summary to RT. It is assumed that pbpipeline/report_upload_url.txt and
-    # pbpipeline/sample_summary.yml are in place and can be read.
+    # Sends a summary to RT. It is assumed that pbpipeline/report_upload_url.txt is
+    # in place and can be read. In the initial cut, we'll simply list the
+    # SMRT cells on the run, as I'm not sure how soon I get to see the XML meta-data?
     # Other than that, supply run_status and premble if you want this.
     _reply_or_comment="${1:-}"
     _run_status="${2:-}"
@@ -388,7 +389,7 @@ send_summary_to_rt() {
     ( set +u ; rt_runticket_manager "${_run_status[@]}" --"${_reply_or_comment}" \
         @<(echo "$_preamble "$'\n'"$last_upload_report" ;
            echo ;
-           summarize_pbrun_contents.py --from_yml pbpipeline/sample_summary.yml --txt - \
+           make_summary.py --runid "$RUNID" --txt - \
            || echo "Error while summarizing run contents." ) ) 2>&1
 }
 

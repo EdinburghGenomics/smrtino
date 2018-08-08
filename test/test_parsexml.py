@@ -8,7 +8,7 @@ import logging as L
 
 # Adding this to sys.path makes the test work if you just run it directly.
 sys.path.insert(0,'.')
-from compile_cell_info import get_the_info, ET
+from smrtino.ParseXML import get_subreadset_info
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/mock_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
@@ -22,7 +22,7 @@ class T(unittest.TestCase):
         """
         xmlfile = DATA_DIR + "/r54041_20180613_132039/1_A01/subreadset.xml"
 
-        info = get_the_info( ET.parse(xmlfile).getroot() )
+        info = get_subreadset_info( xmlfile )
 
         self.assertEqual(info, {
                         'cell_id': 'm54041_180613_132945',

@@ -9,3 +9,17 @@ first before the last is done.
 
 I was simply running ~/workspace/pacbio_scripts/Snakefile.process_run direct from the shell, and the location
 of /ifs/sequel/ was hard-coded in the script. The output location was the CWD.
+
+
+---
+
+After getting to the point of initial testing, I see I have a problem. I decided that the final output
+of Snakefile.process_cells should be the .info.yml which has all the meta-data for the report. This
+makes sense because then the report just needs to rearrange these files.
+
+But there is some info in the files that we could potentially get right at the start. And maybe we do
+want it - like the project ID. But I don't want to repeat the logic thet reads the XML files and I don't
+want to have to wait until the BAM files are processed to get a summary of the run. What to do?
+I think, this:
+
+Summarize from the XML each time, but break the logic into a library. Yeah. OK.
