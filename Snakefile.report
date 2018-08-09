@@ -45,7 +45,7 @@ rule report_main:
     params:
         templates = os.environ.get('TEMPLATES', '.')
     shell:
-        '''{TOOLBOX} pandoc -f markdown+fenced_divs \
+        '''{TOOLBOX} pandoc -f markdown \
                                 --template={params.templates}/template.html \
                                 --include-in-header={params.templates}/javascript.js.html \
                                 --include-in-header={params.templates}/local.css.html \
