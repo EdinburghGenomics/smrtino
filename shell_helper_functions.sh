@@ -24,7 +24,7 @@ find_toolbox() {
     fi
 }
 
-find_toolbox() {
+find_templates() {
     #Similarly for PanDoc templates
     _def_templates="$(readlink -f $(dirname "$BASH_SOURCE")/templates)"
     echo "${TEMPLATES:-$_def_templates}"
@@ -67,7 +67,7 @@ snakerun_drmaa() {
 
     echo
     if is_new_cluster ; then
-        echo "Running $snakefile in `pwd` on the GSEG cluster"
+        echo "Running $snakefile in `pwd -P` on the GSEG cluster"
         __SNAKE_THREADS="${SNAKE_THREADS:-100}"
 
         mkdir -p ./slurm_output
@@ -83,7 +83,7 @@ snakerun_drmaa() {
              "$@"
 
     else
-        echo "Running $snakefile in `pwd` on the old cluster"
+        echo "Running $snakefile in `pwd -P` on the old cluster"
         __SNAKE_THREADS="${SNAKE_THREADS:-20}"
 
         mkdir -p ./sge_output
@@ -106,7 +106,7 @@ snakerun_single() {
     if is_new_cluster ; then __LOCALJOBS=4 ; else __LOCALJOBS=1 ; fi
 
     echo
-    echo "Running $snakefile in `pwd` in local mode"
+    echo "Running $snakefile in `pwd -P` in local mode"
     snakemake \
          -s "$snakefile" -j $__LOCALJOBS -p -T --rerun-incomplete \
          "$@"
@@ -116,7 +116,7 @@ snakerun_touch() {
     snakefile=`find_snakefile "$1"` ; shift
 
     echo
-    echo "Running $snakefile --touch in `pwd` to update file timestamps"
+    echo "Running $snakefile --touch in `pwd -P` to update file timestamps"
     snakemake -s "$snakefile" --quiet --touch "$@"
     echo "DONE"
 }

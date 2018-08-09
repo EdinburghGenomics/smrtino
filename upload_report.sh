@@ -12,27 +12,11 @@ set -euo pipefail
 cd "${1:-.}"
 runname="`basename $PWD`"
 
-# Make a new versioned directory in all_reports and move the reports in there.
-# We want to do this even if the actual upload will be skipped.
-mkdir -p all_reports/v
-nn=0 ; while [[ $nn -lt 9999 ]] ; do
-    nn=$(( $nn + 1 ))
-    dirtomake=v/`printf $'%04d\n' $nn`
-    # This will exit the loop if it successfully makes a new dir.
-    if mkdir all_reports/"$dirtomake" ; then
-        break
-    else
-        # Don't keep looping if for some reason the directory is missing but could not be created.
-        test -e all_reports/"$dirtomake"
-    fi
-    dirtomake=NONE
-done
-
-# Move the files into this directory. If no files match it's an error.
-mv -t all_reports/"$dirtomake" QC/multiqc_*
-
-# Add a symlink to this latest version
-ln -sfn "$dirtomake" all_reports/latest
+# Confirm we do have all_reports/run_report.html
+if ! [ -L all_reports/run_report.html ] && [ -e all_reports/run_report.html ] ; then
+    echo "No such file all_reports/run_report.html or it is not a link."
+    false
+fi
 
 # Check where (and if) we want to push reports on the server.
 if [ "${REPORT_DESTINATION:-none}" == none ] ; then
@@ -51,14 +35,15 @@ echo "Uploading report for $runname to $dest..." >&2
 rsync -drvlOt all_reports/ $dest/$runname/ >&2
 
 # Add the index. We now have to make this a PHP script but at least the content is totally fixed.
+# This is very similar to what we have on Illuminatus (but not quite).
 ssh ${dest%%:*} "cat > ${dest#*:}/$runname/index.php" <<'END'
 <?php
     # Script added by upload_report.sh in SMRTino.
     # First resolve symlink. The subtlety here is that anyone saving the link will get a permalink,
     # and anyone just reloading the page in their browser will see the old one. I think that's
     # OK. It's easy to change in any case.
-    $latest = readlink("latest");
-    # Get the url and slice off index.php and/or / if found. No, I'm not fluent in PHP!
+    $latest = readlink("all_reports/run_report.html");
+    # Get my own url and slice off index.php and/or / if found. No, I'm not fluent in PHP!
     $myurl = strtok($_SERVER["REQUEST_URI"],'?');
     if( preg_match('/' . basename(__FILE__) . '$/', $myurl )){
         $myurl = substr( $myurl, 0, -(strlen(basename(__FILE__))) );
@@ -66,7 +51,7 @@ ssh ${dest%%:*} "cat > ${dest#*:}/$runname/index.php" <<'END'
     if( preg_match(',/$,', $myurl )){
         $myurl = substr( $myurl, 0, -1 );
     }
-    header("Location: $myurl/$latest/report.html", true, 302);
+    header("Location: $myurl/all_reports/$latest", true, 302);
     exit;
 ?>
 <html>
@@ -75,7 +60,7 @@ ssh ${dest%%:*} "cat > ${dest#*:}/$runname/index.php" <<'END'
 <meta name="robots" content="none" />
 </head>
 <body>
-   You should be redirected to <a href='latest/report.html'>latest/report.html</a>
+   You should be redirected to <a href='all_reports/run_report.html'>all_reports/run_report.html</a>
 </body>
 </html>
 END

@@ -1,0 +1,9 @@
+How to make the reports and display them?
+
+Unlike with Illuminatus, I don't think we need to keep the report history
+in the same way, as there is no re-running with new barcodes shenanigans.
+
+However we do have interim reports. I'll add the number of cells to the report
+name so that these don't get overwritten. Yeah.
+
+And push to web1 as usual. Of course.

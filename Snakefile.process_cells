@@ -47,11 +47,15 @@ from glob import glob
 """
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
-RUNDIR  = config['rundir']
+# Possibly I should start with a file named '.unfiltered' and then the final
+# file will just be foo.subreads.bam? We'll see.
+FILTER = '.nocontrol'
+RUNDIR = config['rundir']
 
-def scan_cells(extn=''):
+def scan_cells():
     """ Work out all the cells to process based on config['cells'] and config['rundir']
-        and thus the base names  of the info.yml files that need to be made.
+        and thus infer the base names  of the info.yml files that need to be made.
+        Return a dict of cell_id->slot_id.
         This in turn allows me to work out everything else by pattern matching.
         When run on a GSEG worker node this list will come out empty, but that's
         OK.
@@ -60,7 +64,7 @@ def scan_cells(extn=''):
 
     # Now see if I need to filter by config['cells']
     if 'cells' in config:
-        res = [ s for s in all_subreads if b.split('/')[-2] in config['cells'].split() ]
+        res = [ s for s in all_subreads if s.split('/')[-2] in config['cells'].split() ]
     else:
         res = all_subreads
 
@@ -68,33 +72,43 @@ def scan_cells(extn=''):
         # A hacky way of having an assertion only on the master process.
         assert res, "No subreads found in {} matching cell [{}].".format(RUNDIR, config.get('cells', '*'))
 
-    return [ r + extn for r in res ]
+    return { r.split('/')[-1]: r.split('/')[-2] for r in res }
 
-# Possibly I should start with a file named '.unfiltered' and then the final
-# file will just be foo.subreads.bam? We'll see.
-FILTER = '.nocontrol'
+# And run this just once
+SCANNED_CELLS = scan_cells()
+
+def find_source_file(extn):
+    """ Shim to get me the source file by adding in the cell slot directory as discovered
+        by scan_cells()
+        I had a different workaround involving linking files but this is more direct.
+        This returns a function which can be used as an input function.
+    """
+    def _ff(wildcards):
+        return "{}/{}/{}{}".format(RUNDIR, SCANNED_CELLS[wildcards.cell], wildcards.cell, extn)
+    return _ff
+
 
 # Main target is one yml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
 localrules: main, one_cell_info, link_file
 rule main:
     input:
-        yaml = scan_cells(extn='.info.yml')
+        yaml = [ c + '.info.yml' for c in SCANNED_CELLS ]
 
 # This rule connects the .info.yml to all the bits of data we need and also generates
 # the .info.yml contents.
 rule one_cell_info:
     output: "{cell}.info.yml"
     input:
-        bam_md5    = format("md5sums/{{cell}}{FILTER}.subreads.bam"),
-        scraps_md5 = format("md5sums/{{cell}}{FILTER}.scraps.bam"),
+        bam_md5    = format("md5sums/{{cell}}{FILTER}.subreads.bam.md5"),
+        scraps_md5 = format("md5sums/{{cell}}{FILTER}.scraps.bam.md5"),
         xml        = format("{{cell}}{FILTER}.subreadset.xml"),
         stats      = format("{{cell}}{FILTER}.subreads.cstats.csv"),
         scrapstats = format("{{cell}}{FILTER}.scraps.cstats.csv"),
     shell:
         # What needs to go into the YML? Stuff from the XML and also some stuff from the
         # stats, maybe?
-        "compile_cell_info.py {input.xml} {output}"
+        "compile_cell_info.py {input.xml} > {output}"
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
 if os.environ.get('FILTER_LOCALLY', '0') != '0':
@@ -107,9 +121,9 @@ rule filter_control:
         scraps = "{cell}.nocontrol.scraps.bam",
         xml    = "{cell}.nocontrol.subreadset.xml"
     input:
-        bam    = format("{RUNDIR}/{{cell}}.subreads.bam"),
-        scraps = format("{RUNDIR}/{{cell}}.scraps.bam"),
-        xml    = format("{RUNDIR}/{{cell}}.subreadset.xml")
+        bam    = find_source_file(".subreads.bam"),
+        scraps = find_source_file(".scraps.bam"),
+        xml    = find_source_file(".subreadset.xml")
     run:
         # If the filtering was already done this is a no-op. Check the XML.
         import xml.etree.ElementTree as ET
@@ -129,13 +143,13 @@ rule filter_control:
 # Note that our contig stats script outputs
 #  pc/contig_stats.txt
 #  pc/contig_lengths_gc.txt
-# I think we just need the former. In any case we need the shadow rule.
+# I think we just need the former. In any case we definitely need this to be a shadow rule.
 rule get_contig_stats_csv:
     output: "{bam}.cstats.csv"
     input:  "{bam}.bam"
     shadow: 'shallow'
     shell:
-        '''{TOOLBOX} contig_stats -t 10 -f <({TOOLBOX} samtools fasta {input.bam})
+        '''{TOOLBOX} contig_stats -t 10 -f <({TOOLBOX} samtools fasta {input})
            mv pc/contig_stats.txt {output}
         '''
 

@@ -22,7 +22,7 @@ export TOOLBOX="$(find_toolbox)"
 export TEMPLATES="$(find_templates)"
 export PATH="${PATH}:$(dirname "$0")"
 
-snakerun_local "$0" "$@"
+snakerun_single "$0" "$@"
 
 "exit""" ### End of shell script part
 #!/usr/bin/env snakemake
@@ -32,30 +32,29 @@ from glob import glob
 
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
-""" Report will be made based upon all the .info.yml files found.
+""" Report will be made based upon all the .info.yml files found. There may be none.
 """
 INFO_YML = glob("*.info.yml")
 
 # We shall make a single report for the whole run. This is supposed to be fairly simple.
 # If it gets complex we might need a more sophisticated report making strategy.
 rule report_main:
-    output: "run_report.html"
+    output: "all_reports/run_report.html"
     input:
-        pan = "run_report.{cc}cells.pan".format(cc=len(INFO_YML))
+        pan = "all_reports/run_report.{cc}cells.pan".format(cc=len(INFO_YML))
     params:
         templates = os.environ.get('TEMPLATES', '.')
     shell:
-        '''{PANDOC} -f markdown --template={params.templates}/template.html \
-                                --include-in-header="$pdt"/javascript.js.html \
-                                --include-in-header="$pdt"/local.css.html \
+        '''{TOOLBOX} pandoc -f markdown --template={params.templates}/template.html \
+                                --include-in-header={params.templates}/javascript.js.html \
+                                --include-in-header={params.templates}/local.css.html \
                                 --toc --toc-depth=4 \
                                 -o {input.pan}.html {input.pan}
-           ln -s {input.pan}.html {output}
+           ln -sr {input.pan}.html {output}
         '''
 
 rule make_report:
-    output: "run_report.{cc}cells.pan"
-    input:
-        yaml = INFO_YML
-    run:
-        "make_report.py -o {output} {input.yaml}"
+    output: "all_reports/run_report.{cc}cells.pan"
+    input:  INFO_YML
+    shell:
+        "make_report.py -o {output} {input}"
