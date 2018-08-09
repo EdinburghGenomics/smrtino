@@ -16,9 +16,5 @@ export RUN_NAME_REGEX='r54041_.*'
 export VERBOSE=${VERBOSE:-1}
 
 # Send reports to ~/test_fastqdata. There won't be a valid http:// link obviously.
-export REPORT_DESTINATION='localhost:test_pacbiodata/uploaded_reports'
+export REPORT_DESTINATION='localhost:test_pacbio_data/uploaded_reports'
 export REPORT_LINK=
-
-# For testing the backup of run data...
-#export BACKUP_NAME_REGEX='......_.*_.*_[^._]*'
-#export BACKUP_LOCATION=~/test_fastqbackup

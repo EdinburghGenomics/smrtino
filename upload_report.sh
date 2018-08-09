@@ -3,7 +3,7 @@ set -euo pipefail
 
 # If you just want to push existing reports to the server, see the RSYNC line below.
 # Eg:
-#  rsync -drvlOt all_reports/ web1.genepool.private:/var/runinfo/smrtino_reports/$(basename $(pwd))/
+#  rsync -drvlOt all_reports web1.genepool.private:/var/runinfo/smrtino_reports/$(basename $(pwd))/
 
 # See doc/how_to_display.txt for thoughts on how this should really work.
 # Normal report destination is web1.genepool.private:/var/runinfo/smrtino_reports
@@ -32,7 +32,7 @@ dest="${REPORT_DESTINATION}"
 # and rsync run through monitor transparently. Really we should have direct access to the
 # DMZ machines.
 echo "Uploading report for $runname to $dest..." >&2
-rsync -drvlOt all_reports/ $dest/$runname/ >&2
+rsync -drvlOt all_reports $dest/$runname/ >&2
 
 # Add the index. We now have to make this a PHP script but at least the content is totally fixed.
 # This is very similar to what we have on Illuminatus (but not quite).

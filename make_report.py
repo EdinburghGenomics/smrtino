@@ -6,8 +6,12 @@ from pprint import pformat
 from datetime import datetime
 import yaml
 
-""" Makes a report (in PanDoc format) for a run. We can only report on
-    processed SMRT cells where the info.yml has been generated.
+""" Makes a report (in PanDoc format) for a run. We will only report on
+    processed SMRT cells where the info.yml has been generated - so no
+    reading the XML directly.
+    Associated files like the CSV stats will be loaded if found (maybe I
+    should link these in the YAML?)
+    Run metadata can also be obtained from the pbpipeline directory.
 """
 
 def main(args):
@@ -17,20 +21,18 @@ def main(args):
     all_info = dict()
     # Basic basic basic
     for y in args.yamls:
+        y_base = re.sub(r'\.info\.yml$', '', y)
+
         with open(y) as yfh:
             yaml_info = yaml.safe_load(yfh)
 
             # Sort by cell ID - all YAML must have this.
-            assert yaml_info.get('cell'), "All yamls must have a cell ID"
+            assert yaml_info.get('cell_id'), "All yamls must have a cell ID"
 
-        cstats = re.sub(r'\.info\.yml$', '.cstats.csv', y)
-        try:
-            with open(cstats) as cfh:
-                yaml_info['cstats'] = cfh.read()
-        except FileNotFoundError:
-            pass
+        # Add in the cstats. This requires some custom parsing of the CSV
+        yaml_info['_cstats'] = find_cstats(y_base)
 
-        all_info[yaml_info['cell']] = yaml_info
+        all_info[yaml_info['cell_id']] = yaml_info
 
     if args.pbpipeline:
         pipedata = get_pipeline_metadata(args.pbpipeline)
@@ -45,6 +47,43 @@ def main(args):
         L.info("Writing to {}.".format(args.out))
         with open(args.out, "w") as ofh:
             print(*rep, sep="\n", file=ofh)
+
+def find_cstats(filebase):
+    """ Given the base name of an .info.yml file, find the related .scraps.cstats.csv
+        and .subreads.cstats.csv and load the contents.
+        I could give the names of these explicitly in the YAML but it seems over-fiddly.
+    """
+    res = dict( headers = None,
+                data = [] )
+
+    # Let's have those stats. I'm only expecting one line in this file, aside from
+    # the header.
+    try:
+        with open(filebase + '.nocontrol.subreads.cstats.csv') as cfh:
+            res['headers'] = next(cfh).rstrip().split(',')
+            res['data'].append(next(cfh).rstrip().split(','))
+            res['data'][-1][0] = "Subreads"
+    except FileNotFoundError:
+        pass
+
+    # And the second one. I could do this with a loop if there were several files.
+    try:
+        with open(filebase + '.nocontrol.scraps.cstats.csv') as cfh:
+            h = next(cfh).rstrip().split(',')
+            if res['headers']:
+                assert res['headers'] == h
+            else:
+                res['headers'] = h
+            res['data'].append(next(cfh).rstrip().split(','))
+            res['data'][-1][0] = "Scraps"
+    except FileNotFoundError:
+        pass
+
+    if res['headers']:
+        res['headers'][0] = "File"
+        return res
+    else:
+        return None
 
 def get_pipeline_metadata(pipe_dir):
     """ Read the files in the pbpipeline directory to find out some stuff about the
@@ -83,20 +122,46 @@ def format_report(all_info, pipedata):
     replines.append( "% SMRTino version {}".format(pipedata.get('version')) )
     replines.append( "% {}".format(datetime.now().strftime("%A, %d %b %Y %H:%M")) )
 
-    replines.append("\n# My lovely report\n")
-
     if not all_info:
-        replines.append("No SMRT Cells have been processed for this run yet.")
+        replines.append("**No SMRT Cells have been processed for this run yet.**")
 
     for k, v in sorted(all_info.items()):
 
-        replines.append("\n### SMRT Cell {}\n".format(k))
+        replines.append("\n# SMRT Cell {}\n".format(k))
 
-        replines.append("```")
-        replines.append(pformat(v))
-        replines.append("```")
+        replines.extend(format_cell(v))
 
     return replines
+
+def format_cell(cdict):
+    """ Format the cell infos as some sort of PanDoc output
+    """
+    res = [':::::: {.bs-callout}']
+
+    res.append('<dl class="dl-horizontal">')
+    for k, v in sorted(cdict.items()):
+        if not(k.startswith('_')):
+            res.append("<dt>" + k + "</dt>")
+            res.append("<dd>" + v + "</dd>")
+    res.append('</dl>')
+
+    # Now add the stats table
+    if cdict.get('_cstats'):
+        res.append('')
+        res.extend(make_table(cdict['_cstats']))
+
+    return res + ['::::::\n']
+
+def make_table(tdict):
+    """ Yet another PanDoc table formatter oh yeah
+    """
+    res = []
+    res.append('|' + '|'.join(tdict['headers'])  + '|')
+    res.append('|' + '|'.join(('-' * len(h)) for h in tdict['headers'])  + '|')
+    for d in tdict['data']:
+        res.append('|' + '|'.join(d)  + '|')
+
+    return res
 
 def parse_args(*args):
     description = """ Makes a report (in PanDoc format) for a run, by compiling the info from the
