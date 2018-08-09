@@ -155,6 +155,7 @@ class T(unittest.TestCase):
         # It should vanish from the list of ready cells (but not the full list)
         self.assertEqual(gs(), 'idle_awaiting_cells')
         self.assertCountEqual( run_info.get_cells(), "1_B01 2_C01 3_D01 4_E01 5_F01 6_G01 7_H01".split() )
+        self.assertCountEqual( run_info.get_cells_aborted(), "3_D01".split() )
         self.assertCountEqual( run_info.get_cells_ready(), [] )
 
         # Finish the next three

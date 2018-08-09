@@ -140,9 +140,9 @@ fi
 # failed)         - the pipeline tried to process the run but failed somewhere
 # unknown)        - anything else. ie. something is broken
 
-# All actions can see CELLS STATUS RUNID INSTRUMENT as reported by pb_run_status.py, and
+# All actions can see CELLS STATUS RUNID INSTRUMENT CELLSABORTED as reported by pb_run_status.py, and
 # RUN_OUTPUT (the input dir is simply the CWD)
-# The cell_ready action can read the CELLS_READY array which is guaranteed to be non-empty
+# The cell_ready action can read the CELLSREADY array which is guaranteed to be non-empty
 
 action_new(){
     # Create a pbpipeline folder and an output folder and send an initial notification to RT
@@ -304,11 +304,16 @@ rt_runticket_manager(){
 notify_run_complete(){
     # Tell RT that the run finished. This may happen if the last SMRT cell finishes
     # or if remaining cells are aborted. The notification should only happen once.
-    if ! [ -e pbpipeline/notify_run_complete.touch ] ; then
+    if ! [ -e pbpipeline/notify_run_complete.done ] ; then
 
-        _comment="All SMRT cells have run. X were aborted." # FIXME - determine X
+        _ca=`wc -w <<<"$CELLSABORTED"`
+        if [ $_ca -gt 0 ] ; then
+            _comment="All SMRT cells have run. $_ca were aborted."
+        else
+            _comment="All SMRT cells have run on the instrument."
+        fi
         if rt_runticket_manager --subject processing --comment "$_comment" ; then
-            touch pbpipeline/notify_run_complete.touch
+            touch pbpipeline/notify_run_complete.done
         fi
     fi
 }
@@ -443,14 +448,15 @@ for run in "$FROM_LOCATION"/*/ ; do
   # invoke runinfo and collect some meta-information about the run. We're passing this info
   # to the state functions via global variables.
   # This construct allows error output to be seen in the log.
-  _runinfo_output="$(pb_run_status.py "$run")" || pb_run_status.py "$run" | log 2>&1
+  _runstatus="$(pb_run_status.py "$run")" || pb_run_status.py "$run" | log 2>&1
 
   # Ugly, but I can't think of a better way...
-  RUNID=`grep ^RunID: <<<"$_runinfo_output"` ;                      RUNID=${RUNID#*: }
-  INSTRUMENT=`grep ^Instrument: <<<"$_runinfo_output"` ;            INSTRUMENT=${INSTRUMENT#*: }
-  CELLS=`grep ^Cells: <<<"$_runinfo_output"` ;                      CELLS=${CELLS#*: }
-  CELLSREADY=`grep ^CellsReady: <<<"$_runinfo_output" || echo ''` ; CELLSREADY=${CELLSREADY#*: }
-  STATUS=`grep ^PipelineStatus: <<<"$_runinfo_output"` ;            STATUS=${STATUS#*: }
+  RUNID=`grep ^RunID: <<<"$_runstatus"` ;                          RUNID=${RUNID#*: }
+  INSTRUMENT=`grep ^Instrument: <<<"$_runstatus"` ;                INSTRUMENT=${INSTRUMENT#*: }
+  CELLS=`grep ^Cells: <<<"$_runstatus"` ;                          CELLS=${CELLS#*: }
+  CELLSREADY=`grep ^CellsReady: <<<"$_runstatus" || echo ''` ;     CELLSREADY=${CELLSREADY#*: }
+  CELLSABORTED=`grep ^CellsAborted: <<<"$_runstatus" || echo ''` ; CELLSABORTED=${CELLSABORTED#*: }
+  STATUS=`grep ^PipelineStatus: <<<"$_runstatus"` ;                STATUS=${STATUS#*: }
 
   if [ "$STATUS" = complete ] || [ "$STATUS" = aborted ] ; then _log=debug ; else _log=log ; fi
   $_log "$run has $RUNID from $INSTRUMENT with cell(s) [$CELLS] and status=$STATUS"

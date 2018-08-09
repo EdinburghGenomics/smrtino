@@ -209,6 +209,7 @@ class T(unittest.TestCase):
         # Mark the run as started, and let's say we're processing read1
         self.shell("mkdir -p " + test_data + "/pbpipeline")
         self.shell("touch " + test_data + "/pbpipeline/1_A01.started")
+        self.shell("touch " + test_data + "/pbpipeline/notify_run_complete.done")
 
         self.bm_rundriver()
         self.assertInStdout("r54041_20180613_132039", "PROCESSING")
@@ -217,6 +218,28 @@ class T(unittest.TestCase):
         expected_calls = self.bm.empty_calls()
         self.assertEqual(self.bm.last_calls, expected_calls)
 
+    def test_run_just_finished(self):
+        """ Run is already processing, but we do want to notify that
+            the run has finished. This is the same as above but without
+            the notify_run_complete.done file.
+        """
+        test_data = self.copy_run("r54041_20180613_132039")
+
+        # Mark the run as started, and let's say we're processing read1
+        self.shell("mkdir -p " + test_data + "/pbpipeline")
+        self.shell("touch " + test_data + "/pbpipeline/1_A01.started")
+
+        self.bm_rundriver()
+        self.assertInStdout("r54041_20180613_132039", "PROCESSING")
+
+        # Message should be sent
+        expected_calls = self.bm.empty_calls()
+        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun_queue '
+                                                     '--subject processing --comment All SMRT cells '
+                                                     'have run on the instrument.']
+        self.assertEqual(self.bm.last_calls, expected_calls)
+
+        self.assertTrue(os.path.exists(test_data + "/pbpipeline/notify_run_complete.done"))
 
 if __name__ == '__main__':
     unittest.main()
