@@ -163,6 +163,8 @@ action_new(){
 
     # Run an initial report but don't abort the pipeline if this fails - the error
     # will be noted by the main loop.
+    # Note this triggers a summary to be sent to RT as a comment, which should create
+    # the new RT ticket.
     run_report "Waiting for cells" "new" | plog && log DONE
 }
 
@@ -179,8 +181,8 @@ action_cell_ready(){
     # Log the start in a way a script can easily read back (humans can check the main log!)
     save_start_time
 
-    # Do we want an RT message for every cell? Maybe just a comment? At the moment we do this.
-    send_summary_to_rt reply processing "Cell(s) ready: $CELLSREADY. Report is at" |& plog
+    # Do we want an RT message for every cell? No, just a comment.
+    send_summary_to_rt comment processing "Cell(s) ready: $CELLSREADY. Report is at" |& plog
 
     BREAK=1
     plog "Preparing to process cell(s) $CELLSREADY into $RUN_OUTPUT"
