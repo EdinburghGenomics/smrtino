@@ -21,7 +21,6 @@ def main(args):
     all_info = dict()
     # Basic basic basic
     for y in args.yamls:
-        y_base = re.sub(r'\.info\.yml$', '', y)
 
         with open(y) as yfh:
             yaml_info = yaml.safe_load(yfh)
@@ -30,6 +29,10 @@ def main(args):
             assert yaml_info.get('cell_id'), "All yamls must have a cell ID"
 
         # Add in the cstats. This requires some custom parsing of the CSV
+        y_base = re.sub(r'\.info\.yml$', '', y)
+        if yaml_info.get('filter_added'):
+            y_base += "." + yaml_info['filter_added']
+
         yaml_info['_cstats'] = find_cstats(y_base)
 
         all_info[yaml_info['cell_id']] = yaml_info

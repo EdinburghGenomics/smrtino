@@ -34,7 +34,7 @@ def main(args):
     L.debug("Reading from {}".format(xmlfile))
     info = get_subreadset_info(xmlfile)
 
-    info['filter_required'] = filtername
+    info['filter_added'] = filtername
     info['_filename'] = xmlfile
 
     # Print the result
