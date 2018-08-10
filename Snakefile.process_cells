@@ -30,32 +30,27 @@ snakerun_drmaa "$0" "$@"
 "exit""" ### End of shell script part
 #!/usr/bin/env snakemake
 import yaml
+import xml.etree.ElementTree as ET
 from snakemake.utils import format
 from glob import glob
 
-""" So, this is a recipe to process raw SMRT cells from the PacBio Sequel.
-
-    At first, we're not asking for any QC metrics but we do want to:
-
-    1) Zip and md5sum the subreads.bam
-    2) Filter out control sequences (if not already done)
+""" So, this is a recipe to process raw SMRT cells from the PacBio Sequel,
+    and start to calculate some stats.
 
     The script wants to be run in an output dir on /lustre.
     It will process all SMRT cells specified by config['cells']
-    If should (!) be possible to run multiple instances at once, so long as the
+    If should (!TESTME!) be possible to run multiple instances at once, so long as the
     cells are not conflicting.
 """
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
-# Possibly I should start with a file named '.unfiltered' and then the final
-# file will just be foo.subreads.bam? We'll see.
-FILTER = '.nocontrol'
+# Do this so we get a quick error if it's missing.
 RUNDIR = config['rundir']
 
 def scan_cells():
     """ Work out all the cells to process based on config['cells'] and config['rundir']
         and thus infer the base names  of the info.yml files that need to be made.
-        Return a dict of cell_id->slot_id.
+        Return a dict of cell_id->{'slot': slot_id, 'filter': /(.nocontrol|)/}.
         This in turn allows me to work out everything else by pattern matching.
         When run on a GSEG worker node this list will come out empty, but that's
         OK.
@@ -72,10 +67,21 @@ def scan_cells():
         # A hacky way of having an assertion only on the master process.
         assert res, "No subreads found in {} matching cell [{}].".format(RUNDIR, config.get('cells', '*'))
 
-    return { r.split('/')[-1]: r.split('/')[-2] for r in res }
+    return { r.split('/')[-1]: { 'slot':   r.split('/')[-2],
+                                 'filter': determine_filter(r) } for r in res }
 
-# And run this just once
-SCANNED_CELLS = scan_cells()
+def determine_filter(cellpath):
+    """ Work out what filter needs to be applied to this cell. The cell is supplied
+        as a full path, since scan_cells() already worked that out.
+    """
+    root = ET.parse(cellpath + '.subreadset.xml').getroot()
+    ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd' )
+    filter_was_done = bool(root.findall('.//pbmeta:ControlKit', ns))
+
+    return '' if filter_was_done else '.nocontrol'
+
+# And run the scan just once
+SC = scan_cells()
 
 def find_source_file(extn):
     """ Shim to get me the source file by adding in the cell slot directory as discovered
@@ -84,61 +90,79 @@ def find_source_file(extn):
         This returns a function which can be used as an input function.
     """
     def _ff(wildcards):
-        return "{}/{}/{}{}".format(RUNDIR, SCANNED_CELLS[wildcards.cell], wildcards.cell, extn)
+        return "{}/{}/{}{}".format(RUNDIR, SC[wildcards.cell]['slot'], wildcards.cell, extn)
     return _ff
 
+def copy_all_files(i, o):
+    """ For rules that like to copy stuff
+    """
+    for (infile, outfile) in ( (i[k], o[k]) for k in o ):
+        shell("cp -Lv {infile} {outfile}")
 
 # Main target is one yml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
 localrules: main, one_cell_info, link_file
 rule main:
     input:
-        yaml = [ c + '.info.yml' for c in SCANNED_CELLS ]
+        yaml = [ c + '.info.yml' for c in SC ]
 
 # This rule connects the .info.yml to all the bits of data we need and also generates
-# the .info.yml contents.
+# the .info.yml contents. The inputs get complex since we need to account for whether
+# filters need to be applied, and if so we need both the filtered and unfiltered .xml files.
 rule one_cell_info:
     output: "{cell}.info.yml"
     input:
-        bam_md5    = format("md5sums/{{cell}}{FILTER}.subreads.bam.md5"),
-        scraps_md5 = format("md5sums/{{cell}}{FILTER}.scraps.bam.md5"),
-        xml        = format("{{cell}}{FILTER}.subreadset.xml"),
-        stats      = format("{{cell}}{FILTER}.subreads.cstats.csv"),
-        scrapstats = format("{{cell}}{FILTER}.scraps.cstats.csv"),
+        bam_md5    = lambda wc: "md5sums/" + wc.cell + SC[wc.cell]['filter'] + ".subreads.bam.md5",
+        scraps_md5 = lambda wc: "md5sums/" + wc.cell + SC[wc.cell]['filter'] + ".scraps.bam.md5",
+        xml1       = lambda wc: wc.cell + ".subreadset.xml" if SC[wc.cell]['filter'] else [],
+        xml2       = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreadset.xml",
+        stats      = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreads.cstats.csv",
+        scrapstats = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".scraps.cstats.csv",
     shell:
         # What needs to go into the YML? Stuff from the XML and also some stuff from the
-        # stats, maybe?
-        "compile_cell_info.py {input.xml} > {output}"
+        # stats, maybe? At present the script will discover extra files automagically.
+        "compile_cell_info.py {input.xml2} > {output}"
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
 if os.environ.get('FILTER_LOCALLY', '0') != '0':
-    localrules: filter_control
+    localrules: filter_control, copy_reads, copy_xml
 
-# This copies the files, optionally applying the nocontrol filter.
+# This copies the files, without applying any filter.
+rule copy_reads:
+    output:
+        bam    = "{cell,[^./]+}.subreads.bam",
+        pbi    = "{cell,[^./]+}.subreads.bam.pbi",
+        scraps = "{cell,[^./]+}.scraps.bam",
+    input:
+        bam    = find_source_file(".subreads.bam"),
+        pbi    = find_source_file(".subreads.bam.pbi"),
+        scraps = find_source_file(".scraps.bam"),
+    run:
+        copy_all_files(input, output)
+
+# This has to be separate since it happens regardless of the filter applied
+rule copy_xml:
+    output:
+        xml    = "{cell,[^./]+}.subreadset.xml"
+    input:
+        xml    = find_source_file(".subreadset.xml")
+    run:
+        copy_all_files(input, output)
+
+# This applies the control removal filter via bam2bam, resulting in files with .nocontrol added to
+# the name and new xml/pbi files.
 rule filter_control:
     output:
-        bam    = "{cell}.nocontrol.subreads.bam",
-        scraps = "{cell}.nocontrol.scraps.bam",
-        xml    = "{cell}.nocontrol.subreadset.xml"
+        bam    = "{cell,[^./]+}.nocontrol.subreads.bam",
+        bam    = "{cell,[^./]+}.nocontrol.subreads.bam.pbi",
+        scraps = "{cell,[^./]+}.nocontrol.scraps.bam",
+        xml    = "{cell,[^./]+}.nocontrol.subreadset.xml"
     input:
         bam    = find_source_file(".subreads.bam"),
         scraps = find_source_file(".scraps.bam"),
-        xml    = find_source_file(".subreadset.xml")
-    run:
-        # If the filtering was already done this is a no-op. Check the XML.
-        import xml.etree.ElementTree as ET
-        root = ET.parse(input['xml']).getroot()
-        ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd' )
-        filter_was_done = bool(root.findall('.//pbmeta:ControlKit', ns))
-
-        if filter_was_done:
-            # We can just copy it.
-            for (infile, outfile) in ( (input[k], output[k]) for k in "bam scraps xml".split() ):
-                shell("cp -Lv {infile} {outfile}")
-
-        else:
-            # Filter with standard sequences
-            shell("{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol")
+    shell:
+        # Filter with standard sequences (would we ever use anything else??)
+        shell("{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol")
 
 # Note that our contig stats script outputs
 #  pc/contig_stats.txt

@@ -17,13 +17,25 @@ def main(args):
 
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING), stream=sys.stderr)
 
-    # Load the file then...
-    xmlfile, = args.xmlfile
-    L.debug("Reading from {}".format(xmlfile))
+    # If a filter was applied then we actually want to look at the unfiltered version
+    # Splitting paths is always fiddly...
+    pbits = args.xmlfile[0].split('/')
+    fbits = pbits[-1].split('.')
+    if len(fbits) == 4:
+        L.debug("File was filtered. Loading unfiltered version.")
+        filtername = fbits[1]
+        pbits[-1] = '{}.{}.{}'.format( fbits[0], *fbits[2:] )
+    else:
+        filtername = None
+    # Reconstrunct path...
+    xmlfile = '/'.join(pbits)
 
+    # Load the file then...
+    L.debug("Reading from {}".format(xmlfile))
     info = get_subreadset_info(xmlfile)
 
-    info['_filename']= xmlfile
+    info['filter_required'] = filtername
+    info['_filename'] = xmlfile
 
     # Print the result
     print(yaml.safe_dump(info, default_flow_style=False))

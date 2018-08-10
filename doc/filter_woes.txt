@@ -1,0 +1,21 @@
+So my original idea was that all the output files would be named .nocontrol.xxx
+following the principle that if two files have the same name they should have the same
+content and so if there is a chance we might actually be filtering the content then
+we should rename the files. So far, so good.
+
+But then if we rename the files, the .subreadset.xml becomes invalid, as it refers to
+the original file names.
+
+Also note that we always need the original subreadset.xml as it contains vital infos
+about the sample etc.
+
+So, annoying as it is, how about this:
+
+The .nocontrol should only be applied if it is actually needed. If not, the files are copied
+and all is well.
+
+If bam2bam is invoked then the original subreadset.xml should be copied, and this should always be
+the source of meta-data. But obviously the metrics need to be calculated on the filtered file,
+so the .csv always needs to be on the .nocontrol file.
+
+Hmmm. Annoying.

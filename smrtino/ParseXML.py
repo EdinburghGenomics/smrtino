@@ -17,12 +17,16 @@ def get_subreadset_info(xmlfile):
     """
     root = ET.parse(xmlfile).getroot()
 
-    rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')
-    cmd = root.find('.//pbmeta:CollectionMetadata', _ns)
+    try:
+        rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')
+        cmd = root.find('.//pbmeta:CollectionMetadata', _ns).attrib
+    except AttributeError:
+        rf = "/unknown/unknown"
+        cmd = {'Context': 'unknown'}
 
     info = { 'run_id': rf.split('/')[-2],
              'run_slot': rf.split('/')[-1], # Also could get this from TimeStampedName
-             'cell_id': cmd.attrib.get('Context') }
+             'cell_id': cmd.get('Context') }
 
     well_samples = root.findall('.//pbmeta:WellSample', _ns)
     # There should be 1!
