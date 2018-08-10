@@ -32,10 +32,14 @@ def main(args):
     subject_postfix = args.subject
     ticket_status = args.status
 
+    # Load the messages
     reply_message = resolve_msg(args.reply)
     comment_message = resolve_msg(args.comment)
 
-    #Determine subject for new ticket or else change of subject.
+    # If there is no action, we just want to check the ticket (never create it)
+    check_only = not any([reply_message, comment_message, ticket_status, subject_postfix])
+
+    # Determine subject for new ticket or else change of subject.
     if subject_postfix:
         subject = "Run %s : %s" % (run_id, subject_postfix)
     else:
@@ -44,6 +48,13 @@ def main(args):
     rt_config_name = 'test-rt' if args.test else os.environ.get('RT_SYSTEM', 'production-rt')
     with RTManager( config_name = rt_config_name,
                     queue_setting = args.queue ) as rtm:
+
+        if check_only:
+            ticket_id, ticket_dict = rtm.search_run_ticket(run_id)
+            if ticket_id:
+                exit("Ticket #{} for '{}' has subject: {}".format(ticket_id, run_id, ticket_dict.get('Subject')))
+            else:
+                exit("No open ticket found for '{}'".format(run_id))
 
         # if the ticket does not exist, create it with the supplied message, be
         # that a commet or a reply
@@ -85,7 +96,7 @@ class RTManager():
            to connect implicitly.
         """
         self._config_name = config_name
-        self._queue_setting = queue_setting # eg. pbrun_queue, run_queue
+        self._queue_setting = queue_setting + '_queue' # eg. pbrun_queue, run_queue
         if config_name.lower() == 'none':
             # Special case for short-circuiting RT entirely, whatever the .ini
             # file says.
@@ -167,7 +178,7 @@ class RTManager():
            Returns a pair (ticket_id, created?).
         """
         c = self._config
-        ticket_id = self.search_run_ticket(run_id)
+        ticket_id, _ = self.search_run_ticket(run_id)
 
         if ticket_id:
             return ticket_id, False
@@ -192,7 +203,8 @@ class RTManager():
 
     def search_run_ticket(self, run_id):
         """Search for a ticket referencing this run, and return the ticket number,
-           as an integer, or return None if there is no such ticket.
+           as an integer, along with the ticket metadata as a dict,
+           or return (None, None) if there is no such ticket.
         """
         c = self._config
         if not c:
@@ -201,15 +213,18 @@ class RTManager():
 
         # Note - if the tickets aren't opened then 'new' tickets will just pile up in RT,
         # but I don't think that should happen.
-        tickets = self.tracker.search( Queue = self._queue,
-                                       Subject__like = '%{}%'.format(run_id),
-                                       Status = 'open'
-                                     )
+        tickets = list(self.tracker.search( Queue = self._queue,
+                                            Subject__like = '%{}%'.format(run_id),
+                                            Status = 'open'
+                                          ))
 
-        if not list(tickets):
-            return None
+        if not tickets:
+            return (None, None)
 
-        tid = max([ int(t.get('id').strip('ticket/')) for t in tickets ])
+        # Order the tickets by tid and get the highest one
+        get_id = lambda t: int(t.get('id').strip('ticket/'))
+        tickets.sort(key=get_id, reverse=True)
+        tid = get_id(tickets[0])
 
         if len(tickets) > 1:
             # Should use really use proper logging here
@@ -217,7 +232,7 @@ class RTManager():
                                     len(tickets),           run_id,               tid), file=sys.stderr)
 
         #Failing that...
-        return tid if tid > 0 else None
+        return (tid, tickets[0]) if tid > 0 else (None, None)
 
     def reply_to_ticket(self, ticket_id, message, subject=None):
         """Sends a reply to the ticket.
@@ -263,7 +278,7 @@ class RTManager():
         # Dummy connection mode...
         if not self._config: return
 
-        #why the extra space?? I'm not sure but it looks to have been added deliberately.
+        # why the extra space?? I'm not sure but it looks to have been added deliberately.
         kwargs = dict( Subject = "{} ".format(subject) )
         try:
             return self.tracker.edit_ticket(ticket_id, **kwargs)
@@ -279,7 +294,8 @@ def parse_args(*args):
     argparser.add_argument("-r", "--run_id", required=True,
                             help="The run id of the ticket.")
     argparser.add_argument("-Q", "--queue", required=True,
-                            help="The queue to use. A name defined in rt_settings.ini not a literal queue name.")
+                            help="The queue to use. A name defined in rt_settings.ini as FOO_queue"
+                                 " not a literal queue name.")
     argparser.add_argument("--reply",
                             help="Post reply message to the ticket. " +
                                  "Use @foo.txt to read the message from file foo.txt.")

@@ -298,7 +298,7 @@ save_start_time(){
 }
 
 rt_runticket_manager(){
-    rt_runticket_manager.py -r "$RUNID" -Q pbrun_queue "$@"
+    rt_runticket_manager.py -r "$RUNID" -Q pbrun "$@"
 }
 
 notify_run_complete(){
@@ -362,6 +362,7 @@ run_report() {
     # If this fails, the pipeline will continue, since only the final message to RT
     # is seen as critical.
     if [ $? != 0 ] ; then
+        log "Failed to send summary to RT. See $per_run_log"
         _retval=$(( $_retval + 1 ))
     fi
 
@@ -389,7 +390,7 @@ send_summary_to_rt() {
     fi
 
     echo "Sending new summary of PacBio run to RT."
-    # Subshell needed to capture STDERR from summarize_lane_contents.py
+    # Subshell needed to capture STDERR from make_summary.py
     last_upload_report="`cat pbpipeline/report_upload_url.txt 2>/dev/null || echo "Report was not generated or upload failed"`"
     ( set +u ; rt_runticket_manager "${_run_status[@]}" --"${_reply_or_comment}" \
         @<(echo "$_preamble "$'\n'"$last_upload_report" ;
