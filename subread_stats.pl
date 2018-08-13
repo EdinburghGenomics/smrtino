@@ -69,7 +69,7 @@ my $toprint = "";
 # print header of table
 $toprint .= "Filename${delim}Max subread length";
 foreach (@thresholds) {
-    $toprint .= "${delim}Num subreads >=$_${delim}Total bases in subreads >=$_${delim}N50 for subreads >=$_${delim}Subreads >=${_} in N50${delim}GC subreads >=$_${delim}nonATGC in subreads >=$_${delim}Mean length for subreads >=$_";
+    $toprint .= "${delim}Num subreads >=$_${delim}Total bases in subreads >=$_${delim}N50 for subreads >=$_${delim}GC subreads >=$_${delim}Mean length for subreads >=$_";
 }
 $toprint .= "\n";
 
@@ -124,12 +124,12 @@ for my $fastafile (@fastafiles) {
         }
 
         if ($total_bases > 0) {
-            $toprint .= "${delim}$num_subreads${delim}$total_bases${delim}$N50${delim}$subreads_in_N50${delim}" .
+            $toprint .= "${delim}$num_subreads${delim}$total_bases${delim}$N50${delim}" .
                         sprintf("%.1f",$gc_count*100/($total_bases - $total_nonatgc + 1)) .
-                        ${delim} . $total_nonatgc . $delim . sprintf("%.1f",$mean_subread_length);
+                        ${delim} . sprintf("%.1f",$mean_subread_length);
         }
         else {
-            $toprint .= "${delim}0${delim}0${delim}NA${delim}NA${delim}NA${delim}NA";
+            $toprint .= "${delim}0${delim}0${delim}NA${delim}NA${delim}NA";
         }
     }
     # new line at end of subread stats row for each fasta file
@@ -149,34 +149,6 @@ if ($humanread) {
   }
 }
 
-if ($graphs) {
-open  TMP,">$output_dir/subread_stats.R" or die $!;
-print TMP <<R;
-png("$output_dir/subread_lengths_gc.png",1600,1200)
-subreads=read.delim("$output_dir/subread_lengths_gc.txt",header=FALSE,col.names=c('file','id','length','gc','n','cov'))
-files <- as.vector(unique(subreads\$file))
-maxX = maxY = 0;
-for (i in files) {
-    s<-subset(subreads,file==i & length>=$graphs);
-    l<-dim(s)[[1]];
-    if (l > maxX) maxX = l;
-    c<-sum(s\$length);
-    if (c > maxY) maxY = c;
-}
-plot(0,xlim=c(0,maxX),ylim=c(0,maxY),cex=0.0001,xlab="Subreads ranked by size",ylab="Cumulative subread length")
-j <- 0;
-for (i in as.vector(unique(subreads\$file))) {
-    j <- j+1;
-    s <- subset(subreads,file==i & length>=$graphs)
-    points(cumsum(sort(s\$length,decreasing=TRUE)),pch=".",col=j,cex=1)
-}
-legend(0.5 * maxX, 0.5 * maxY, files, col=1:j,lty=c(1),lwd=3)
-dev.off()
-R
-close TMP;
-# run R script
-system("R -f $output_dir/subread_stats.R >/dev/null 2>&1");
-}
 
 #############################################################################
 
