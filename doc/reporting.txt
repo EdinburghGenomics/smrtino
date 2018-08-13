@@ -1,4 +1,4 @@
-Urmi has given some guadance on what she wants to see in the reports regarding stats,
+Urmi has given some guidance on what she wants to see in the reports regarding stats,
 so I can make a start.
 
 Also there is my initial work scraping info out of the XML files.
@@ -32,3 +32,12 @@ Also see the notes in sequelstats.txt
 
 Initially I'll make this super super simple. Just cat everything into a big report.
 In fact, it will never be particularly complex.
+
+How frequently to e-mail?
+
+At the moment I'm making a new report every time anything happens, which is essentially
+C+2 - once at the start and once for each cell that finishes and finally for the final
+report. This is leading to a lot of redundant comments on the ticket, but maybe that's OK.
+
+And I'm still not sure if I want to split the cell_ready state into idle/processing and
+prevent multiple snakefiles working at once but that can be added in later.

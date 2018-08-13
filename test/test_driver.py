@@ -186,7 +186,7 @@ class T(unittest.TestCase):
 
         #Initial report should be made
         expected_calls = self.bm.empty_calls()
-        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun_queue --subject new --comment @???']
+        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun --subject new --comment @???']
         expected_calls['Snakefile.report'] = ['-F --config pstatus=Waiting for cells -- report_main']
         expected_calls['upload_report.sh'] = [self.temp_dir + '/pacbio_data/r54041_20180613_132039']
 
@@ -234,9 +234,9 @@ class T(unittest.TestCase):
 
         # Message should be sent
         expected_calls = self.bm.empty_calls()
-        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun_queue '
-                                                     '--subject processing --comment All SMRT cells '
-                                                     'have run on the instrument.']
+        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun '
+                                                     '--subject processing --reply All SMRT cells '
+                                                     'have run on the instrument. Final report will follow soon.']
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         self.assertTrue(os.path.exists(test_data + "/pbpipeline/notify_run_complete.done"))

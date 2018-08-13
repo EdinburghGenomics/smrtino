@@ -30,10 +30,7 @@ def main(args):
 
         # Add in the cstats. This requires some custom parsing of the CSV
         y_base = re.sub(r'\.info\.yml$', '', y)
-        if yaml_info.get('filter_added'):
-            y_base += "." + yaml_info['filter_added']
-
-        yaml_info['_cstats'] = find_cstats(y_base)
+        yaml_info['_cstats'] = find_cstats(y_base, yaml_info.get('filter_added'))
 
         all_info[yaml_info['cell_id']] = yaml_info
 
@@ -51,7 +48,7 @@ def main(args):
         with open(args.out, "w") as ofh:
             print(*rep, sep="\n", file=ofh)
 
-def find_cstats(filebase):
+def find_cstats(filebase, filt=None):
     """ Given the base name of an .info.yml file, find the related .scraps.cstats.csv
         and .subreads.cstats.csv and load the contents.
         I could give the names of these explicitly in the YAML but it seems over-fiddly.
@@ -59,10 +56,13 @@ def find_cstats(filebase):
     res = dict( headers = None,
                 data = [] )
 
+    if filt:
+        filebase += "." + filt
+
     # Let's have those stats. I'm only expecting one line in this file, aside from
     # the header.
     try:
-        with open(filebase + '.nocontrol.subreads.cstats.csv') as cfh:
+        with open(filebase + '.subreads.cstats.csv') as cfh:
             res['headers'] = next(cfh).rstrip().split(',')
             res['data'].append(next(cfh).rstrip().split(','))
             res['data'][-1][0] = "Subreads"
@@ -71,7 +71,7 @@ def find_cstats(filebase):
 
     # And the second one. I could do this with a loop if there were several files.
     try:
-        with open(filebase + '.nocontrol.scraps.cstats.csv') as cfh:
+        with open(filebase + '.scraps.cstats.csv') as cfh:
             h = next(cfh).rstrip().split(',')
             if res['headers']:
                 assert res['headers'] == h

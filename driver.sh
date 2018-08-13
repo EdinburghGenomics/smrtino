@@ -189,7 +189,7 @@ action_cell_ready(){
     set +e ; ( set -e
       log "  Starting Snakefile.process_cells on $RUNID."
       ( cd pbpipeline/output
-        Snakefile.process_cells --config cells="$CELLSREADY" rundir="pbpipe_from"
+        Snakefile.process_cells --config cells="$CELLSREADY"
       ) |& plog
 
       # Now we can have an interim report.
@@ -310,11 +310,11 @@ notify_run_complete(){
 
         _ca=`wc -w <<<"$CELLSABORTED"`
         if [ $_ca -gt 0 ] ; then
-            _comment="All SMRT cells have run. $_ca were aborted."
+            _comment="All SMRT cells have run. $_ca were aborted. Final report will follow soon."
         else
-            _comment="All SMRT cells have run on the instrument."
+            _comment="All SMRT cells have run on the instrument. Final report will follow soon."
         fi
-        if rt_runticket_manager --subject processing --comment "$_comment" ; then
+        if rt_runticket_manager --subject processing --reply "$_comment" ; then
             touch pbpipeline/notify_run_complete.done
         fi
     fi
