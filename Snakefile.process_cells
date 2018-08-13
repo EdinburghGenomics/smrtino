@@ -165,16 +165,16 @@ rule filter_control:
         "{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol"
 
 # Note that our contig stats script outputs
-#  pc/contig_stats.txt
-#  pc/contig_lengths_gc.txt
+#  pc/subread_stats.txt
+#  pc/subread_lengths_gc.txt
 # I think we just need the former. In any case we definitely need this to be a shadow rule.
 rule get_contig_stats_csv:
     output: "{bam}.cstats.csv"
     input:  "{bam}.bam"
     shadow: 'shallow'
     shell:
-        '''{TOOLBOX} contig_stats -t 10 -f <({TOOLBOX} samtools fasta {input})
-           mv pc/contig_stats.txt {output}
+        '''subread_stats.pl -t 10 -f <({TOOLBOX} samtools fasta {input})
+           mv pc/subread_stats.txt {output}
         '''
 
 # md5summer that keeps the file path out of the .md5 file
