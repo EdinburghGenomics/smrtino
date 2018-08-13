@@ -49,7 +49,7 @@ RUN_NAME_REGEX="${RUN_NAME_REGEX:-r.*_[0-9]{8\}_.*}"
 
 BIN_LOCATION="${BIN_LOCATION:-$(dirname $0)}"
 PATH="$(readlink -m $BIN_LOCATION):$PATH"
-MAINLOG="${MAINLOG:-${LOG_DIR}/bcl2fastq_driver.`date +%Y%m%d`.log}"
+MAINLOG="${MAINLOG:-${LOG_DIR}/pbpipeline_driver.`date +%Y%m%d`.log}"
 
 # 1) Sanity check these directories exist and complain to STDERR (triggering CRON
 #    warning mail) if not.

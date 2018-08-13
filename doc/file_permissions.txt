@@ -1,0 +1,15 @@
+On trying to run SMRTino for the first time on live data I hit a problem. The pipeline user cannot
+write to any of the run directories in /ifs/sequel and therefore cannot create a pbpipeline directory.
+
+Hmmm. I could just write the directory one level up, but I don't want to do this. It makes sense (to me)
+that the processing status is stored in with the run.
+
+So - can I do something with sudo?
+
+Nope. The entire file system is mounted read-only.  So, I guess unless we want to change that I need a
+re-think about where the pipeline directory goes. Just shift it to the output dir, I guess.
+And replace the output symlink with an input symlink and remove pbpipe_from entirely.
+And we need a way to check that the output directory is really available, so let's have a file called
+.smrtino that sits in the output directory and must be non-empty.
+
+Ick.
