@@ -3,7 +3,12 @@ import os, sys, re
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pprint import pformat
-from glob import glob
+def glob():
+    """Regular glob() is useful but it can be improved like so.
+    """
+    from glob import glob
+    return lambda p: sorted( (f.rstrip('/') for f in glob(os.path.expanduser(p))) )
+glob = glob()
 
 from smrtino.ParseXML import get_subreadset_info
 
@@ -27,7 +32,6 @@ def main(args):
 
     # Look for a subdirs that look like slot names (eg. 1_A01)
     for slot_dir in glob(scanpattern):
-        slot_dir = slot_dir.rstrip('/')
         mo = re.search(r'/(\d_[A-Z]\d\d)$', slot_dir)
         if mo:
             slot = mo.group(1)

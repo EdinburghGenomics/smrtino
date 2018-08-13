@@ -28,13 +28,22 @@ snakerun_single "$0" "$@"
 #!/usr/bin/env snakemake
 import yaml
 from snakemake.utils import format
-from glob import glob
+def glob():
+    """Regular glob() is useful but it can be improved like so.
+    """
+    from glob import glob
+    return lambda p: sorted( (f.rstrip('/') for f in glob(os.path.expanduser(p))) )
+glob = glob()
 
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
 """ Report will be made based upon all the .info.yml files found. There may be none.
 """
 INFO_YML = glob("*.info.yml")
+
+# For now, just quickly get a list of aborted stuff. See doc/reporting_aborted.txt for
+# better ideas.
+ABORTED_LIST = " ".join([ os.path.basename(s)[:-len('.aborted')] for s in glob("pbpipe_from/pbpipeline/*.aborted") ])
 
 # We shall make a single report for the whole run. This is supposed to be fairly simple.
 # If it gets complex we might need a more sophisticated report making strategy.
@@ -58,4 +67,4 @@ rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
     input:  INFO_YML
     shell:
-        "make_report.py -o {output} {input}"
+        "make_report.py -o {output} -A '{ABORTED_LIST}' {input}"

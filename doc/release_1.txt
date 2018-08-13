@@ -2,7 +2,7 @@ Since I now have all the basics coded, how about going for a first release?
 
 Things that need testing:
 
-1) A run where adapter removal is needed - r54041_20180525_175829
+1) A run where adapter removal is needed - r54041_20180525_175829, even though it's broken.
 2) Messages going to RT (using the 'testing' queue)
 3) Show reports to Urmi
 
@@ -18,6 +18,10 @@ $ ( cd /lustre/home/tbooth2/test_sequel/r54041_20180525_175829/4_D01 ;
 
 And I set RT messages to go to test-rt and reports to go to web1. Now run the driver.
 
+OK, all looks good. Are the .nocontrol files identical to the ones we obtained before?
+Yes, aside from the @PG line in the header which has changed since we used the copy of
+the adapter files on /lustre not /fluidfs.
+
 ---
 
 Then release 0.0.1 as pipeline user.
@@ -26,12 +30,15 @@ Current target is /lustre/pacbio/pacbio_data/. I'd like to re-run all the 2018 r
 so the new target will be /lustre/pacbio/pacbio_data_new. Then once we're all happy I'll
 switch and rename pacbio_data->pacbio_data_old and pacbio_data_new->pacbio_data.
 
-It's fine that my pipeline is writing back pbpipe directories as there is nothing like this in
-the old scripts.
+I'll do that initial testing on test-rt so as not to spam the real RT, but I will run it off
+the pipeline account.
+
+It's fine that my pipeline is writing back pbpipe directories to the original locations as
+there is nothing like this in the old scripts.
 
 Once the pipeline is working, including RT mails:
 
 0) Move all the 2017 runs to a 2017 subdirectory (2016 also) and think about deletion
 1) Switch off the old cron task
-2) Switch on the new one
+2) Switch [back] on the new one
 

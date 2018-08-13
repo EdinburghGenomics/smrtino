@@ -39,7 +39,7 @@ def main(args):
     else:
         pipedata = dict()
 
-    rep = format_report(all_info, pipedata)
+    rep = format_report(all_info, pipedata, aborted_list=args.aborted)
 
     if (not args.out) or (args.out == '-'):
         print(*rep, sep="\n")
@@ -115,7 +115,7 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_info, pipedata):
+def format_report(all_info, pipedata, aborted_list=''):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
     """
@@ -134,6 +134,14 @@ def format_report(all_info, pipedata):
 
         replines.extend(format_cell(v))
 
+    if aborted_list.split():
+        # Note incomplete cells
+        replines.append("\n# Aborted cells\n")
+        replines.append(("{} SMRT cells on this run did not run to completion and will" +
+                         " not be processed further.").format(len(aborted_list.split())))
+        replines.append("")
+        replines.append("    Slots: {}".format(aborted_list))
+
     return replines
 
 def format_cell(cdict):
@@ -144,8 +152,8 @@ def format_cell(cdict):
     res.append('<dl class="dl-horizontal">')
     for k, v in sorted(cdict.items()):
         if not(k.startswith('_')):
-            res.append("<dt>" + k + "</dt>")
-            res.append("<dd>" + v + "</dd>")
+            res.append("<dt>{}</dt>".format(k))
+            res.append("<dd>{}</dd>".format(v))
     res.append('</dl>')
 
     # Now add the stats table
@@ -176,6 +184,8 @@ def parse_args(*args):
                             help="Supply a list of info.yml files to compile into a report.")
     argparser.add_argument("-p", "--pbpipeline", default="pbpipe_from/pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
+    argparser.add_argument("-A", "--aborted", default="",
+                            help="List of aborted lanes, if any.")
     argparser.add_argument("-o", "--out",
                             help="Where to save the report. Defaults to stdout.")
     argparser.add_argument("-d", "--debug", action="store_true",

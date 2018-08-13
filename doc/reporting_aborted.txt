@@ -1,0 +1,13 @@
+In my original cut of things, all the cells show up in the summary (as this is made from the
+original dir and captures all XML) but the aborted cells are entirely absent from the report
+(as this runs off the info.yml files and only shows processed cells).
+
+I think we need some mention of the aborted cells in the final report. We could make stub
+info.yml files for them but that breaks the idea that an info.yml file implies a properly
+processed cell.
+
+We could make an .aborted.yml file instead, that just copies the info from the XML such that
+the report maker can scoop it up.
+
+Or, for now, I'm just going to poke a list of the aborted cells into the report. We'll worry about
+doing a better job in v1.0!
