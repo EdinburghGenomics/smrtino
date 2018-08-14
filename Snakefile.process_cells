@@ -137,6 +137,8 @@ rule copy_reads:
         bam    = find_source_file(".subreads.bam"),
         pbi    = find_source_file(".subreads.bam.pbi"),
         scraps = find_source_file(".scraps.bam"),
+    resources:
+        nfscopy=1
     run:
         copy_all_files(input, output)
 
@@ -146,6 +148,8 @@ rule copy_xml:
         xml    = "{cell,[^./]+}.subreadset.xml"
     input:
         xml    = find_source_file(".subreadset.xml")
+    resources:
+        nfscopy=1
     run:
         copy_all_files(input, output)
 
@@ -160,6 +164,8 @@ rule filter_control:
     input:
         bam    = find_source_file(".subreads.bam"),
         scraps = find_source_file(".scraps.bam"),
+    resources:
+        nfscopy=1
     shell:
         # Filter with standard sequences (would we ever use anything else??)
         "{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol"
