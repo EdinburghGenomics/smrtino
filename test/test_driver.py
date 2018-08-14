@@ -155,6 +155,7 @@ class T(unittest.TestCase):
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
         self.assertTrue('does not contain a .smrtino file' in self.bm.last_stderr)
+        self.assertTrue('does not contain a .smrtino file' in self.bm.last_stdout)
 
     def test_no_venv(self):
         """With a missing virtualenv the script should fail and not even scan.

@@ -60,13 +60,7 @@ for d in "${BIN_LOCATION%%:*}" "$FROM_LOCATION" "$TO_LOCATION" ; do
     fi
 done
 
-# Furthermore $TO_LOCATION must have a .smrtino file in there. I added this as a sanity
-# check when moving the pbpipeline dir to the destination, since accidentally pointing
-# the pipeline to an empty (or unmounted) directory will cause everything to re-run.
-if ! [ -e "$TO_LOCATION"/.smrtino ] ; then
-    echo "The directory $TO_LOCATION does not contain a .smrtino file." >&2
-    exit 1
-fi
+# See also the check for a .smrtino marker file below, after logging setup.
 
 ###--->>> LOGGING SETUP <<<---###
 
@@ -85,6 +79,15 @@ log(){ [ $# = 0 ] && cat >&5 || echo "$@" >&5 ; }
 
 # Debug means log only if VERBOSE is set
 debug(){ if [ "${VERBOSE:-0}" != 0 ] ; then log "$@" ; else [ $# = 0 ] && cat >/dev/null || true ; fi ; }
+
+# Furthermore $TO_LOCATION must have a .smrtino file in there. I added this as a sanity
+# check when moving the pbpipeline dir to the destination, since accidentally pointing
+# the pipeline to an empty (or unmounted) directory will cause everything to re-run.
+if ! [ -e "$TO_LOCATION"/.smrtino ] ; then
+    log "The directory $TO_LOCATION does not contain a .smrtino file."
+    echo "The directory $TO_LOCATION does not contain a .smrtino file." >&2
+    exit 1
+fi
 
 # Per-project log for project progress messages, goes into the output
 # directory.
