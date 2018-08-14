@@ -144,6 +144,18 @@ class T(unittest.TestCase):
 
         self.assertTrue('no match' in self.bm.last_stderr)
 
+    def test_no_smrtino_file(self):
+        """When the .smrtino file is missing the driver should refuse to proceed.
+           Message going to STDERR would trigger an alert from CRON if this happened in production.
+        """
+        self.shell("rm " + os.path.join(self.temp_dir, 'pacbio_data', '.smrtino'))
+
+        self.bm_rundriver(expected_retval=1)
+
+        self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
+
+        self.assertTrue('does not contain a .smrtino file' in self.bm.last_stderr)
+
     def test_no_venv(self):
         """With a missing virtualenv the script should fail and not even scan.
            Normally there will be an active virtualenv in the test directory so

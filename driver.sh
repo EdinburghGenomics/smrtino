@@ -64,7 +64,8 @@ done
 # check when moving the pbpipeline dir to the destination, since accidentally pointing
 # the pipeline to an empty (or unmounted) directory will cause everything to re-run.
 if ! [ -e "$TO_LOCATION"/.smrtino ] ; then
-    echo "The directory $TO_LOCATION must contain a .smrtino file." >&2
+    echo "The directory $TO_LOCATION does not contain a .smrtino file." >&2
+    exit 1
 fi
 
 ###--->>> LOGGING SETUP <<<---###
@@ -104,9 +105,9 @@ plog_start() {
 
 # Print a message at the top of the log, and trigger one to print at the end.
 intro="`date`. Running $(readlink -f "$0"); PID=$$"
-log "====`tr -c '' = <<<$intro`===="
+log "====`tr -c '' = <<<$intro`==="
 log "=== $intro ==="
-log "====`tr -c '' = <<<$intro`===="
+log "====`tr -c '' = <<<$intro`==="
 trap 'log "=== `date`. Finished run; PID=$$ ==="' EXIT
 
 ###--->>> PYTHON ENVIRONMENT <<<---###
@@ -155,6 +156,7 @@ action_new(){
     # Create an output folder with a pbpipe subdir and send an initial notification to RT
     # If this fails we should assume that something is wrong  with the FS and not try to
     # process more runs.
+    BREAK=1
 
     # The symlink ./pbpipeline/from will point back to the data folder
     # There's no symlink back in the other direction to the input folder as we can't write to that FS

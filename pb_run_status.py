@@ -26,6 +26,7 @@ class RunStatus:
 
         # We need this so we can meaningfully inspect basename(pbrun_dir)
         pbrun_dir = os.path.abspath(pbrun_dir)
+        self._assertion_error = False
 
         if os.path.exists(os.path.join(pbrun_dir, 'pbpipeline', 'from')):
             # ok, pbrun_dir was an existing output directory
@@ -37,19 +38,21 @@ class RunStatus:
                                           'pbpipeline', 'from')):
 
                 # The link we just found should be pointing back to us!
-                assert os.path.realpath(
+                if not os.path.realpath(
                             os.path.join(to_location,
                                          os.path.basename(pbrun_dir),
-                                         'pbpipeline', 'from') )      == os.path.realpath( pbrun_dir )
+                                         'pbpipeline', 'from') )      == os.path.realpath( pbrun_dir ):
+                    self._assertion_error = True
 
-                # OK I definitely found the output directory for this run
+                # If the above check works I definitely found the output directory for this run
                 self.to_path = os.path.join(to_location, os.path.basename(pbrun_dir))
                 self.from_path = pbrun_dir
             else:
                 # In that case there should be no directory at all
-                assert not os.path.exists(os.path.join(to_location, os.path.basename(pbrun_dir)))
+                if os.path.exists(os.path.join(to_location, os.path.basename(pbrun_dir))):
+                    self._assertion_error = True
 
-                # We conclude the run is new
+                # Or else conclude the run is new
                 self.to_path = os.path.join(to_location, os.path.basename(pbrun_dir))
                 self.from_path = pbrun_dir
         else:
@@ -142,7 +145,12 @@ class RunStatus:
                the change you want to see, then after making the change always run the tests.
                Otherwise you will get bitten in the ass!
         """
-        # 'new' takes precedence
+        # If one of the sanity checks failed the status must be unknown - any action would
+        # be dangerous.
+        if self._assertion_error:
+            return "unknown"
+
+        # Otherwise, 'new' takes precedence
         if not self._exists_to( 'pbpipeline' ):
             return "new"
 
