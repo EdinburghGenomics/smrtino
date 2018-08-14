@@ -56,6 +56,7 @@
             var dtable = $(this).dataTable({
                 dom:      'Bfrtip',
                 paging:   false,
+                info:     false,
                 buttons:  (div_id != 'no_buttons' ? [ 'copy', 'csv', 'excel' ] : []),
                 searching: div_id != 'no_buttons',
                 columnDefs: [ { width: "100pt", targets: 0 } ],
