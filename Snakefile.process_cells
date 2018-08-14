@@ -45,7 +45,7 @@ from glob import glob
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
 # If not supplied, just assume the usual symlink will work...
-RUNDIR = config.get('rundir', 'pbpipe_from')
+RUNDIR = config.get('rundir', 'pbpipeline/from')
 
 def scan_cells():
     """ Work out all the cells to process based on config['cells'] and config['rundir']

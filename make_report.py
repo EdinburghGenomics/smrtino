@@ -182,7 +182,7 @@ def parse_args(*args):
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("yamls", nargs='*',
                             help="Supply a list of info.yml files to compile into a report.")
-    argparser.add_argument("-p", "--pbpipeline", default="pbpipe_from/pbpipeline",
+    argparser.add_argument("-p", "--pbpipeline", default="pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
     argparser.add_argument("-A", "--aborted", default="",
                             help="List of aborted lanes, if any.")

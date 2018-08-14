@@ -43,7 +43,7 @@ INFO_YML = glob("*.info.yml")
 
 # For now, just quickly get a list of aborted stuff. See doc/reporting_aborted.txt for
 # better ideas.
-ABORTED_LIST = " ".join([ os.path.basename(s)[:-len('.aborted')] for s in glob("pbpipe_from/pbpipeline/*.aborted") ])
+ABORTED_LIST = " ".join([ os.path.basename(s)[:-len('.aborted')] for s in glob("pbpipeline/*.aborted") ])
 
 # We shall make a single report for the whole run. This is supposed to be fairly simple.
 # If it gets complex we might need a more sophisticated report making strategy.

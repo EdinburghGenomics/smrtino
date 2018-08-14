@@ -10,6 +10,12 @@ Nope. The entire file system is mounted read-only.  So, I guess unless we want t
 re-think about where the pipeline directory goes. Just shift it to the output dir, I guess.
 And replace the output symlink with an input symlink and remove pbpipe_from entirely.
 And we need a way to check that the output directory is really available, so let's have a file called
-.smrtino that sits in the output directory and must be non-empty.
+.smrtino that sits in the output directory and must be present, as a sanity check. If the driver can't
+see the file it will refuse to run.
 
-Ick.
+Ick. It does mean a fairly arbitrary difference compared to Illuminatus, and a fair amount of re-coding
+the tests, but I do think it is the best way to go. So I have done this - SMRTino now has no call to write
+anything to the source file system.
+
+(This would never quite work for Illuminatus as it does have to manipulate sample sheets plus bcl2fastq expects to
+be able to write back.)

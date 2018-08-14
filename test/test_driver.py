@@ -35,6 +35,10 @@ class T(unittest.TestCase):
         for d in ['sequel', 'pacbio_data', 'log']:
             os.mkdir(os.path.join(self.temp_dir, d))
 
+        # Touch .smrtino in the output dir
+        with open(os.path.join(self.temp_dir, 'pacbio_data', '.smrtino'), 'x') as xfh:
+            pass
+
         self.bm = BinMocker()
         for p in PROGS_TO_MOCK: self.bm.add_mock(p)
 
@@ -98,6 +102,9 @@ class T(unittest.TestCase):
            Returns the path to the run copied.
         """
         run_dir = os.path.join(os.path.dirname(__file__), 'mock_examples', run)
+
+        # We want to know the expected output location
+        self.to_path = os.path.join(self.temp_dir, 'pacbio_data', run)
 
         return copytree(run_dir,
                         os.path.join(self.temp_dir, 'sequel', run),
@@ -166,39 +173,39 @@ class T(unittest.TestCase):
         self.assertTrue('FROM_LOCATION: unbound variable' in self.bm.last_stderr)
 
     def test_new(self, test_data=None):
-        """A completely new run.  This should gain a ./pbpipeline folder
+        """A completely new run.  The output location should gain a ./pbpipeline folder
            which puts it into status idle_awaiting_cells.
 
            The rt_runticket_manager.py sould be called.
 
-           And there should be a pipeline.log in the ./pbpipeline/output folder.
+           And there should be a pipeline.log in the output folder.
         """
         if not test_data:
             test_data = self.copy_run("r54041_20180613_132039")
 
         self.bm_rundriver()
 
-        #Run should be seen
+        # Run should be seen
         self.assertInStdout("r54041_20180613_132039", "NEW")
 
-        #Pipeline folder should appear
-        self.assertTrue(os.path.isdir(test_data + '/pbpipeline'))
+        # Pipeline folder should appear
+        self.assertTrue(os.path.isdir(self.to_path + '/pbpipeline'))
 
-        #Initial report should be made
+        # Initial report should be made
         expected_calls = self.bm.empty_calls()
         expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun --subject new --comment @???']
         expected_calls['Snakefile.report'] = ['-F --config pstatus=Waiting for cells -- report_main']
-        expected_calls['upload_report.sh'] = [self.temp_dir + '/pacbio_data/r54041_20180613_132039']
+        expected_calls['upload_report.sh'] = [self.to_path]
 
-        #The call to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
+        # The call to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
         self.bm.last_calls['rt_runticket_manager.py'][0] = re.sub(
                                     r'@\S+$', '@???', self.bm.last_calls['rt_runticket_manager.py'][0] )
 
-        #But nothing else should happen
+        # But nothing else should happen
         self.assertEqual(self.bm.last_calls, expected_calls)
 
-        #Log file should appear (here accessed via the output symlink)
-        self.assertTrue(os.path.isfile(test_data + '/pbpipeline/output/pipeline.log') )
+        # Log file should appear (here accessed via the output symlink)
+        self.assertTrue(os.path.isfile(self.to_path + '/pipeline.log') )
 
 
     def test_in_pipeline(self):
@@ -207,9 +214,10 @@ class T(unittest.TestCase):
         test_data = self.copy_run("r54041_20180613_132039")
 
         # Mark the run as started, and let's say we're processing read1
-        self.shell("mkdir -p " + test_data + "/pbpipeline")
-        self.shell("touch " + test_data + "/pbpipeline/1_A01.started")
-        self.shell("touch " + test_data + "/pbpipeline/notify_run_complete.done")
+        self.shell("mkdir -p " + self.to_path + "/pbpipeline")
+        self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
+        self.shell("touch " + self.to_path + "/pbpipeline/1_A01.started")
+        self.shell("touch " + self.to_path + "/pbpipeline/notify_run_complete.done")
 
         self.bm_rundriver()
         self.assertInStdout("r54041_20180613_132039", "PROCESSING")
@@ -226,8 +234,9 @@ class T(unittest.TestCase):
         test_data = self.copy_run("r54041_20180613_132039")
 
         # Mark the run as started, and let's say we're processing read1
-        self.shell("mkdir -p " + test_data + "/pbpipeline")
-        self.shell("touch " + test_data + "/pbpipeline/1_A01.started")
+        self.shell("mkdir -p " + self.to_path + "/pbpipeline")
+        self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
+        self.shell("touch " + self.to_path + "/pbpipeline/1_A01.started")
 
         self.bm_rundriver()
         self.assertInStdout("r54041_20180613_132039", "PROCESSING")
@@ -239,7 +248,7 @@ class T(unittest.TestCase):
                                                      'have run on the instrument. Final report will follow soon.']
         self.assertEqual(self.bm.last_calls, expected_calls)
 
-        self.assertTrue(os.path.exists(test_data + "/pbpipeline/notify_run_complete.done"))
+        self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
 
 if __name__ == '__main__':
     unittest.main()

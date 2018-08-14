@@ -30,25 +30,29 @@ class T(unittest.TestCase):
         """
         self.cleanup_run()
 
+        # Make a temp dir each time
+        self.tmp_dir = mkdtemp()
+        os.mkdir(self.tmp_dir + '/to')
         if copy:
-            #Make a temp dir
-            self.run_dir = self.tmp_dir = mkdtemp()
+            self.run_dir = self.tmp_dir + '/from'
+            os.mkdir(self.run_dir)
 
-            #Clone the run folder into it
+            # Clone the run folder into it
             copytree( os.path.join(DATA_DIR, run_id),
                       os.path.join(self.run_dir, run_id),
                       symlinks=True )
         else:
             self.run_dir = DATA_DIR
 
-        #Set the current_run variable
+        # Set the current_run variable
         self.current_run = run_id
 
-        #Presumably we want to inspect the new run, so do that too.
-        #If you want to change files around, do that then make a new RunStatus
-        #by copying the line below.
+        # Presumably we want to inspect the new run, so do that too.
+        # If you want to change files around, do that then make a new RunStatus
+        # by copying the line below.
         if make_run_info:
-            return RunStatus(os.path.join(self.run_dir, self.current_run))
+            return RunStatus(os.path.join(self.run_dir, self.current_run),
+                             to_location = self.tmp_dir + '/to')
 
     def cleanup_run(self):
         """If self.tmp_dir has been set, delete the temporary
@@ -66,18 +70,27 @@ class T(unittest.TestCase):
         self.cleanup_run()
 
     def md(self, fp):
-        os.makedirs(os.path.join(self.run_dir, self.current_run, fp))
+        """ Make a directory in the right location
+        """
+        if fp.startswith('pbpipeline'):
+            os.makedirs(os.path.join(self.tmp_dir, 'to', self.current_run, fp))
+        else:
+            os.makedirs(os.path.join(self.run_dir, self.current_run, fp))
 
     def touch(self, fp, content="meh"):
-        with open(os.path.join(self.run_dir, self.current_run, fp), 'w') as fh:
-            print(content, file=fh)
+        if fp.startswith('pbpipeline'):
+            with open(os.path.join(self.tmp_dir, 'to', self.current_run, fp), 'w') as fh:
+                print(content, file=fh)
+        else:
+            with open(os.path.join(self.run_dir, self.current_run, fp), 'w') as fh:
+                print(content, file=fh)
 
     def rm(self, dp):
         # Careful with this one, it's basically rm -rf
         try:
-            rmtree(os.path.join(self.run_dir, self.current_run, dp))
+            rmtree(os.path.join(self.tmp_dir, 'to', self.current_run, dp))
         except NotADirectoryError:
-            os.remove(os.path.join(self.run_dir, self.current_run, dp))
+            os.remove(os.path.join(self.tmp_dir, 'to', self.current_run, dp))
     # And the tests...
 
     def test_onecell_run( self ):

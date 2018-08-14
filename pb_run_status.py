@@ -4,9 +4,6 @@ from glob import glob
 import sys
 import logging as L
 
-# Do I actually need this?
-#from smrtino.XMLParser import XMLParser
-
 class RunStatus:
     """This Class provides information about a PacBio sequel run, given a run folder.
        It will parse information from the following sources:
@@ -21,39 +18,74 @@ class RunStatus:
     CELL_FAILED     = 4   # the pipeline failed to process this cell
     CELL_ABORTED    = 5   # cell aborted - disregard it
 
-    def __init__( self , pbrun_dir, opts = '' ):
+    def __init__( self, pbrun_dir, opts = '', to_location=None ):
 
-        # here the RunInfo.xml is parsed into an object
-        self.run_path = pbrun_dir
+        # Now that all the touch files are living in the output location, we need to work
+        # out both the output location and the input location for this run. The former may
+        # not yet exist.
 
-        # In the case where we're looking at an output directory, examine the
-        # pbpipe_from link (the link in the other direction will be 'pbpipeline/output'
-        # as with Illuminatus
-        if os.path.isdir(os.path.join(self.run_path, 'pbpipe_from', 'pbpipeline')):
-            self.run_path = os.path.join(self.run_path, 'pbpipe_from')
+        # We need this so we can meaningfully inspect basename(pbrun_dir)
+        pbrun_dir = os.path.abspath(pbrun_dir)
 
+        if os.path.exists(os.path.join(pbrun_dir, 'pbpipeline', 'from')):
+            # ok, pbrun_dir was an existing output directory
+            self.to_path = pbrun_dir
+            self.from_path = os.path.join(pbrun_dir, 'pbpipeline', 'from')
+        elif to_location:
+            if os.path.isdir(os.path.join(to_location,
+                                          os.path.basename(pbrun_dir),
+                                          'pbpipeline', 'from')):
+
+                # The link we just found should be pointing back to us!
+                assert os.path.realpath(
+                            os.path.join(to_location,
+                                         os.path.basename(pbrun_dir),
+                                         'pbpipeline', 'from') )      == os.path.realpath( pbrun_dir )
+
+                # OK I definitely found the output directory for this run
+                self.to_path = os.path.join(to_location, os.path.basename(pbrun_dir))
+                self.from_path = pbrun_dir
+            else:
+                # In that case there should be no directory at all
+                assert not os.path.exists(os.path.join(to_location, os.path.basename(pbrun_dir)))
+
+                # We conclude the run is new
+                self.to_path = os.path.join(to_location, os.path.basename(pbrun_dir))
+                self.from_path = pbrun_dir
+        else:
+            # We dunno
+            raise Exception("This does not look like an output directory and no TO_LOCATION is set.")
+
+        # This is redundant as we never parse the XML anyway.
         self.quick_mode = 'q' in opts
 
         self._clear_cache()
-
-        if self.quick_mode:
-            # We only need this if XML has to be parsed.
-            pass
 
     def _clear_cache( self ):
         self._exists_cache = dict()
         self._cells_cache = None
 
-    def _exists( self, glob_pattern ):
-        """ Returns if a file exists and caches the result.
+    def _exists_from( self, glob_pattern ):
+        """ Returns if a file exists in from_path and caches the result.
+        """
+        return self._exists(glob_pattern, self.from_path)
+
+    def _exists_to( self, glob_pattern ):
+        """ Returns if a file exists in to_path and caches the result.
+        """
+        return self._exists(glob_pattern, self.to_path)
+
+    def _exists( self, glob_pattern, root_path ):
+        """ Returns if a file exists in root_path and caches the result.
             The check will be done with glob() so wildcards can be used, and
             the result will be the number of matches.
         """
-        if glob_pattern not in self._exists_cache:
-            self._exists_cache[glob_pattern] = glob( os.path.join(self.run_path, glob_pattern) )
-            L.debug("_exists {} => {}".format(glob_pattern, self._exists_cache[glob_pattern]))
+        full_pattern = os.path.join(root_path, glob_pattern)
+        if full_pattern not in self._exists_cache:
+            self._exists_cache[full_pattern] = glob(full_pattern)
+            L.debug("_exists {} => {}".format(full_pattern, self._exists_cache[full_pattern]))
 
-        return len( self._exists_cache[glob_pattern] )
+        return len( self._exists_cache[full_pattern] )
 
     def get_cells( self ):
         """ Returns a dict of { cellname: status } where status is one of the constants
@@ -66,21 +98,21 @@ class RunStatus:
 
         # OK, we need to work it out...
         res = dict()
-        cells = glob( os.path.join(self.run_path, '[0-9]_???/') )
+        cells = glob( os.path.join(self.from_path, '[0-9]_???/') )
 
         for cell in cells:
             cellname = cell.rstrip('/').split('/')[-1]
 
-            if self._exists( 'pbpipeline/' + cellname + '.aborted' ):
+            if self._exists_to( 'pbpipeline/' + cellname + '.aborted' ):
                 res[cellname] = self.CELL_ABORTED
-            elif self._exists( 'pbpipeline/' + cellname + '.failed' ):
+            elif self._exists_to( 'pbpipeline/' + cellname + '.failed' ):
                 # Not sure if we need this?
                 res[cellname] = self.CELL_FAILED
-            elif self._exists( 'pbpipeline/' + cellname + '.done' ):
+            elif self._exists_to( 'pbpipeline/' + cellname + '.done' ):
                 res[cellname] = self.CELL_PROCESSED
-            elif self._exists( 'pbpipeline/' + cellname + '.started' ):
+            elif self._exists_to( 'pbpipeline/' + cellname + '.started' ):
                 res[cellname] = self.CELL_PROCESSING
-            elif self._exists( cellname + '/*.transferdone' ):
+            elif self._exists_from( cellname + '/*.transferdone' ):
                 res[cellname] = self.CELL_READY
             else:
                 res[cellname] = self.CELL_PENDING
@@ -89,7 +121,7 @@ class RunStatus:
         return res
 
     def _was_aborted(self):
-        if self._exists( 'pbpipeline/aborted' ):
+        if self._exists_to( 'pbpipeline/aborted' ):
             return True
 
         # Or if all idividual cells were aborted...
@@ -110,9 +142,8 @@ class RunStatus:
                the change you want to see, then after making the change always run the tests.
                Otherwise you will get bitten in the ass!
         """
-
         # 'new' takes precedence
-        if not self._exists( 'pbpipeline' ):
+        if not self._exists_to( 'pbpipeline' ):
             return "new"
 
         # Run in aborted state should not be subject to any further processing
@@ -122,17 +153,17 @@ class RunStatus:
         # No provision for 'redo' state just now, but if there was this would need to
         # go in here to override the failed and complete statuses.
 
-        if self._exists( 'pbpipeline/report.done' ):
-            if self._exists( 'pbpipeline/failed' ):
+        if self._exists_to( 'pbpipeline/report.done' ):
+            if self._exists_to( 'pbpipeline/failed' ):
                 return "failed"
             else:
                 return "complete"
 
-        if self._exists( 'pbpipeline/report.started' ):
+        if self._exists_to( 'pbpipeline/report.started' ):
             # Even if reporting is very quick, we need a state for the run to be in while
             # it is happening. Alternative would be that driver triggers report after processing
             # the last SMRT cell, before marking the cell done, but this seems a bit flakey.
-            if self._exists( 'pbpipeline/failed' ):
+            if self._exists_to( 'pbpipeline/failed' ):
                 return "failed"
             else:
                 return "reporting"
@@ -191,7 +222,7 @@ class RunStatus:
             easier to just assume the directory name is the run name. Allow a .xxx extension
             since there are no '.'s is PacBio run names.
         """
-        realdir = os.path.basename(os.path.realpath(self.run_path))
+        realdir = os.path.basename(os.path.realpath(self.from_path))
         return realdir.split('.')[0]
 
     def get_instrument(self):
@@ -235,5 +266,5 @@ if __name__ == '__main__':
     #If no run specified, examine the CWD.
     runs = sys.argv[optind:] or ['.']
     for run in runs:
-        run_info = RunStatus(run, opts)
+        run_info = RunStatus(run, opts, to_location=os.environ.get('TO_LOCATION'))
         print ( run_info.get_yaml( debug=os.environ.get('DEBUG', '0') != '0' ) )

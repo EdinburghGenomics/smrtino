@@ -60,6 +60,13 @@ for d in "${BIN_LOCATION%%:*}" "$FROM_LOCATION" "$TO_LOCATION" ; do
     fi
 done
 
+# Furthermore $TO_LOCATION must have a .smrtino file in there. I added this as a sanity
+# check when moving the pbpipeline dir to the destination, since accidentally pointing
+# the pipeline to an empty (or unmounted) directory will cause everything to re-run.
+if ! [ -e "$TO_LOCATION"/.smrtino ] ; then
+    echo "The directory $TO_LOCATION must contain a .smrtino file." >&2
+fi
+
 ###--->>> LOGGING SETUP <<<---###
 
 # 2) Ensure that the directory is there for the main log file and set up logging
@@ -145,18 +152,17 @@ fi
 # The cell_ready action can read the CELLSREADY array which is guaranteed to be non-empty
 
 action_new(){
-    # Create a pbpipeline folder and an output folder and send an initial notification to RT
-    # If this works we can BREAK, but if not go on to process more runs
+    # Create an output folder with a pbpipe subdir and send an initial notification to RT
+    # If this fails we should assume that something is wrong  with the FS and not try to
+    # process more runs.
 
-    # The symlink ./pbpipeline/output will point to the new output folder
-    # The symlink pbpipe_from will point back in the other direction to the input folder
+    # The symlink ./pbpipeline/from will point back to the data folder
+    # There's no symlink back in the other direction to the input folder as we can't write to that FS
     # The logs will be created in the output folder, after which we may use 'plog'
-    log "\_NEW $RUNID. Creating ./pbpipeline folder and making initial report."
+    log "\_NEW $RUNID. Creating $RUN_OUTPUT/pbpipeline folder and making initial report."
     set +e ; ( set -e
-      mkdir -v ./pbpipeline |& debug
-      mkdir -vp "$RUN_OUTPUT" |&debug
-      ln -nsv "$RUN_OUTPUT" ./pbpipeline/output |& debug
-      ln -nsv "`pwd -P`" ./pbpipeline/output/pbpipe_from |& debug
+      mkdir -vp "$RUN_OUTPUT"/pbpipeline |&debug
+      ln -nsv "`pwd -P`" "$RUN_OUTPUT"/pbpipeline/from |& debug
 
       plog_start
     ) ; [ $? = 0 ] && BREAK=1 || { pipeline_fail New_Run_Setup ; return ; }
@@ -173,7 +179,8 @@ action_new(){
 # in the state diagram and then only trigger on "idle_cell_ready".
 action_cell_ready(){
     # It's time for Snakefile.process_cells to process one or more cells.
-    touch $(awk '{ for(i=1; i<=NF; i++) print "pbpipeline/"$i".started" }' <<<"$CELLSREADY")
+    ( cd "$RUN_OUTPUT" &&
+      touch $(awk '{ for(i=1; i<=NF; i++) print "pbpipeline/"$i".started" }' <<<"$CELLSREADY") )
 
     log "\_CELL_READY $RUNID ($CELLSREADY). Kicking off processing."
     plog_start
@@ -188,7 +195,8 @@ action_cell_ready(){
     plog "Preparing to process cell(s) $CELLSREADY into $RUN_OUTPUT"
     set +e ; ( set -e
       log "  Starting Snakefile.process_cells on $RUNID."
-      ( cd pbpipeline/output
+      # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
+      ( cd "$RUN_OUTPUT"
         Snakefile.process_cells --config cells="$CELLSREADY"
       ) |& plog
 
@@ -196,7 +204,7 @@ action_cell_ready(){
       run_report "Partially processed" "awaiting_cells" | plog && log DONE
 
       for c in $CELLSREADY ; do
-          mv pbpipeline/${c}.started pbpipeline/${c}.done
+          ( cd "$RUN_OUTPUT" && mv pbpipeline/${c}.started pbpipeline/${c}.done )
       done
       #' I'm pretty sure RT errors need to be non-fatal here.
       rt_runticket_manager --subject demultiplexed \
@@ -215,7 +223,7 @@ action_processed() {
     # This touch file puts the run into status reporting.
     # Upload of report is regarded as the final QC step, so if this fails we need to
     # log a failure even if everythign else was OK.
-    touch pbpipeline/report.started
+    touch "$RUN_OUTPUT"/pbpipeline/report.started
 
     # In case we didn't already...
     notify_run_complete
@@ -227,11 +235,11 @@ action_processed() {
         run_report "Complete"
         log "  Completed processing on $RUNID [$CELLS]."
 
-        if [ -s pbpipeline/report_upload_url.txt ] ; then
+        if [ -s "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt ] ; then
             send_summary_to_rt reply "Finished pipeline" \
                 "PacBio pipeline completed on $RUNID and QC report is available at"
             # Final success is contingent on the report upload AND that message going to RT.
-            mv pbpipeline/report.started pbpipeline/report.done
+            (cd "$RUN_OUTPUT" && mv pbpipeline/report.started pbpipeline/report.done )
         else
             # ||true here avoids calling the error handler twice
             pipeline_fail Report_final_upload || true
@@ -268,10 +276,10 @@ action_reporting() {
 action_failed() {
     # failed runs need attention, but for now just log the situatuion
     set +e
-    _reason=`cat pbpipeline/failed`
+    _reason=`cat "$RUN_OUTPUT"/pbpipeline/failed`
     if [ -z "$_reason" ] ; then
         # Get the last lane failure message
-        _lastfail=`echo pbpipeline/*.failed`
+        _lastfail=`echo "$RUN_OUTPUT"/pbpipeline/*.failed`
         _reason=`cat ${lastfail##* }`
     fi
 
@@ -296,7 +304,8 @@ action_unknown() {
 ###--->>> UTILITY FUNCTIONS <<<---###
 
 save_start_time(){
-    ( echo -n "$SMRTINO_VERSION@" ; date +'%a %b %_d %H:%M:%S %Y' ) >>pbpipeline/start_times
+    ( echo -n "$SMRTINO_VERSION@" ; date +'%a %b %_d %H:%M:%S %Y' ) \
+        >>"$RUN_OUTPUT"/pbpipeline/start_times
 }
 
 rt_runticket_manager(){
@@ -306,7 +315,7 @@ rt_runticket_manager(){
 notify_run_complete(){
     # Tell RT that the run finished. This may happen if the last SMRT cell finishes
     # or if remaining cells are aborted. The notification should only happen once.
-    if ! [ -e pbpipeline/notify_run_complete.done ] ; then
+    if ! [ -e "$RUN_OUTPUT"/pbpipeline/notify_run_complete.done ] ; then
 
         _ca=`wc -w <<<"$CELLSABORTED"`
         if [ $_ca -gt 0 ] ; then
@@ -315,7 +324,7 @@ notify_run_complete(){
             _comment="All SMRT cells have run on the instrument. Final report will follow soon."
         fi
         if rt_runticket_manager --subject processing --reply "$_comment" ; then
-            touch pbpipeline/notify_run_complete.done
+            touch "$RUN_OUTPUT"/pbpipeline/notify_run_complete.done
         fi
     fi
 }
@@ -352,11 +361,11 @@ run_report() {
     # We want stderr from upload_report.sh to go to stdout, so it gets plogged.
     # Note that the code relies on checking the existence of this file to see if the upload worked,
     # so if the upload fails it needs to be removed.
-    rm -f pbpipeline/report_upload_url.txt
+    rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt
     if [ $_retval = 0 ] ; then
-        upload_report.sh "$RUN_OUTPUT" 2>&1 >pbpipeline/report_upload_url.txt || \
+        upload_report.sh "$RUN_OUTPUT" 2>&1 >"$RUN_OUTPUT"/pbpipeline/report_upload_url.txt || \
             { log "Upload error. See $_plog" ;
-              rm -f pbpipeline/report_upload_url.txt ; }
+              rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt ; }
     fi
 
     send_summary_to_rt comment "$_rt_run_status"
@@ -375,7 +384,7 @@ run_report() {
 }
 
 send_summary_to_rt() {
-    # Sends a summary to RT. It is assumed that pbpipeline/report_upload_url.txt is
+    # Sends a summary to RT. It is assumed that "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt is
     # in place and can be read. In the initial cut, we'll simply list the
     # SMRT cells on the run, as I'm not sure how soon I get to see the XML meta-data?
     # Other than that, supply run_status and premble if you want this.
@@ -393,7 +402,7 @@ send_summary_to_rt() {
 
     echo "Sending new summary of PacBio run to RT."
     # Subshell needed to capture STDERR from make_summary.py
-    last_upload_report="`cat pbpipeline/report_upload_url.txt 2>/dev/null || echo "Report was not generated or upload failed"`"
+    last_upload_report="`cat "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt 2>/dev/null || echo "Report was not generated or upload failed"`"
     ( set +u ; rt_runticket_manager "${_run_status[@]}" --"${_reply_or_comment}" \
         @<(echo "$_preamble "$'\n'"$last_upload_report" ;
            echo ;
@@ -411,13 +420,13 @@ pipeline_fail() {
         # General failure
 
         # Mark the failure status
-        echo "$stage on `date`" > pbpipeline/failed
+        echo "$stage on `date`" > "$RUN_OUTPUT"/pbpipeline/failed
 
         _failure="$stage failed"
     else
         # Failure of a cell or cells
         for c in $2 ; do
-            echo "$stage on `date`" > pbpipeline/$c.failed
+            echo "$stage on `date`" > "$RUN_OUTPUT"/pbpipeline/$c.failed
         done
 
         _failure="$stage failed for cells [$2]"
