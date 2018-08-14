@@ -57,7 +57,8 @@ class RunStatus:
                 self.from_path = pbrun_dir
         else:
             # We dunno
-            raise Exception("This does not look like an output directory and no TO_LOCATION is set.")
+            raise Exception("Location {} does not look like an output directory and no TO_LOCATION is set.".format(
+                                      pbrun_dir) )
 
         # This is redundant as we never parse the XML anyway.
         self.quick_mode = 'q' in opts
