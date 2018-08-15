@@ -59,7 +59,7 @@ def main(args):
 def escape(in_txt, backwhack=re.compile(r'([][\`*_{}()#+-.!])')):
     """ HTML escaping is not the same as markdown escaping
     """
-    return re.sub(backwhack, r'\\\1', in_txt)
+    return re.sub(backwhack, r'\\\1', str(in_txt))
 
 
 def load_status_info(sfile):
@@ -71,7 +71,7 @@ def load_status_info(sfile):
     res = OrderedDict()
     if sfile:
         with open(sfile) as fh:
-            for line in sfile:
+            for line in fh:
                 k, v = line.split(':', 1)
                 res[k.strip()] = v.strip()
     return res
@@ -155,21 +155,22 @@ def format_report(all_info, pipedata, run_status, aborted_list=None):
 
     # Add the meta-data
     if run_status:
-        res.append('<dl class="dl-horizontal">')
-        replines.append("** About this run ***")
+        replines.append("\n# About this run\n")
+        replines.append('\n<dl class="dl-horizontal">')
         for k, v in run_status.items():
             if not(k.startswith('_')):
-                res.append("<dt>{}</dt>".format(k))
-                res.append("<dd>{}</dd>".format(escape(v)))
-        res.append('</dl>')
+                replines.append("<dt>{}</dt>".format(k))
+                replines.append("<dd>{}</dd>".format(escape(v)))
+        replines.append('</dl>')
 
     if not all_info:
         replines.append("**No SMRT Cells have been processed for this run yet.**")
 
+    # All the cells.
+    if all_info:
+        replines.append("\n# SMRT Cells\n".format(k))
     for k, v in sorted(all_info.items()):
-
-        replines.append("\n# SMRT Cell {}\n".format(k))
-
+        replines.append("\n## {}\n".format(k))
         replines.extend(format_cell(v))
 
     if aborted_list and aborted_list.split():
