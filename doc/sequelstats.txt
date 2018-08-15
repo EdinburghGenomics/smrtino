@@ -5,3 +5,62 @@ to the above formed webpage.  This will allow generation of some pretty plots an
 regarding the quality of the run.
 
 I've not looked at this. When I do, notes will go here.
+
+---
+
+It looks a bit crufty, but given what it does this shouldn't be a problem. Let's check it out and
+give it a go.
+
+Awww - isn't it cute when biologists try to write code. Most of the shell scripts are just tail-chasing
+and repeating things already done. So it looks like we can skip SEQUELstats entirely as that is trying
+to drive pbrun.
+
+Possibly it makes some directories we need but it looks like SEQUEL_pipe makes these anyway. OK, so
+then it runs a loop of:
+
+for each line in the input
+  for each of the internal steps
+    run the step
+
+And I can safely run all the lines in parallel (but the steps need to run in series). So it looks
+like I'm best to just supply a one-line file each time?! We'll see.
+
+Directory structure pre-made:
+
+$ tree stats_726/
+stats_726/
+├── err
+├── out
+└── stats
+    ├── Hn
+    ├── HpSn
+    └── HpSp
+
+The SEQUEL_pipe doesn't make the stats subdirs but that's really no problem if I have to add a line.
+
+After the loop of steps it moves some files around and then it runs SEQUEL_plot.R on all the results.
+This is the only point where it actually uses the sample name parameter.
+
+So, to snake-make-ify I'll have one rule that runs all the steps and moves the files at the end.
+    This will run on a single BAM pair and I'll just feed singleton lines to it, like:
+
+    for step in 01 02 03 04 ; do
+        SEQUEL_pipe.sh <(echo foo.subreads.bam) <(echo foo.scraps.bam) ./sequel_pipe 1 STEP_$step
+    done
+
+    I don't want to try deconstructing SEQUEL_pipe.sh to run the steps directly, since there is a bunch
+    of environmental set-up as well as making the directories.
+
+    Actually the pipe trick doesn't work as the script reads the files repeatedly (of course!) and also
+    inspects them to ensure they are regular files (why not!).
+
+Then I'll have a second rule that runs once per run and does all the plots.
+
+So I tested it and I get the error:
+
+"./stats_726_2/m54041_180323_022007/processed/PRO.m54041_180323_022007.txt.HpSp.aCnt" is empty, check input file!
+
+Well the directory HpSp got created, but there's nothing in it. Are there any logs? No - they seem to have gone for
+the diaper pattern of hiding all the errors until it's too late.
+
+Ah. Hang on. I put the files in the wrong way around. Maybe try again...

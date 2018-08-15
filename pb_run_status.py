@@ -3,6 +3,7 @@ import os.path
 from glob import glob
 import sys
 import logging as L
+import datetime
 
 class RunStatus:
     """This Class provides information about a PacBio sequel run, given a run folder.
@@ -135,6 +136,25 @@ class RunStatus:
 
         return False
 
+    def _is_stalled(self):
+        if 'STALL_TIME' not in os.environ:
+            # Nothing is ever stalled then.
+            return False
+
+        # Now some datetime tinkering...
+        # If I find something dated later than stall_time then this run is not stalled.
+        # It's simpler to just get this as a Unix time that I can compare with stat() output.
+        stall_time = ( datetime.datetime.utcnow()
+                       - datetime.timedelta(hours=int(os.environ['STALL_TIME']))
+                     ).timestamp()
+
+        for cell in glob( os.path.join(self.from_path, '[0-9]_???') ):
+            if os.stat(cell).st_mtime > stall_time:
+                # I only need to see one thing
+                return False
+
+        # I found no evidence.
+        return True
 
     def get_status( self ):
         """ Work out the status of a run by checking the existence of various touchfiles
@@ -206,8 +226,12 @@ class RunStatus:
 
         # If none are processing we're in state 'idle_awaiting_cells'. This also applies if,
         # for some reason, the list of cells is empty.
+        # At this point, we should also check if the run might be stalled.
         if all( v not in [self.CELL_PROCESSING] for v in all_cell_statuses ):
-            return "idle_awaiting_cells"
+            if self._is_stalled():
+                return "stalled"
+            else:
+                return "idle_awaiting_cells"
 
         # If any are pending we're in state 'processing_awaiting_cells'
         if any( v == self.CELL_PENDING for v in all_cell_statuses ):

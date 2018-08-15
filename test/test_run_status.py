@@ -65,9 +65,17 @@ class T(unittest.TestCase):
         self.current_run = None
 
     def tearDown(self):
-        """Avoid leaving temp files around.
+        """ Avoid leaving temp files around.
         """
         self.cleanup_run()
+
+    def setUp(self):
+        """ Sanitize environment
+        """
+        try:
+            del os.environ['STALL_TIME']
+        except KeyError:
+            pass
 
     def md(self, fp):
         """ Make a directory in the right location
@@ -119,6 +127,26 @@ class T(unittest.TestCase):
 
         # None are ready
         self.assertCountEqual( run_info.get_cells_ready(), [] )
+
+    def test_stalled( self ):
+        """ Test that I can detect a stalled run.
+        """
+        run_info = self.use_run('r54041_20180518_131155', copy=True)
+        self.md('pbpipeline')
+
+        def gs():
+            """ Clear the cache and re-read the status. Same as for the
+                other tests I really should just make this part of the class.
+            """
+            run_info._clear_cache()
+            return run_info.get_status()
+
+        # With the pipeline dir it's no longer new
+        self.assertEqual(gs(), 'idle_awaiting_cells')
+
+        os.environ['STALL_TIME'] = '0' # this is valid if silly
+
+        self.assertEqual(gs(), 'stalled')
 
     def test_various_states( self ):
         """ Simulate some pipeline activity on that run.

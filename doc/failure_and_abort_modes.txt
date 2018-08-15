@@ -25,3 +25,32 @@ and process data. However, once all the cells are done (complete or aborted or f
 then if any are failed the status of the run is failed (again pb_run_status will
 enforce this). So the driver needs to be able to flag failures of cells as well as the
 entire run (see pipeline_fail() in the driver).
+
+
+========
+
+Ghost runs!  Wooooooooooooooooo!!!!!!!!!!!!
+
+Watching Marian today, she tried to put on the run four times but it failed the pre-flight
+checks. Every time, however, a new run dir appeared, so we end up with a bunch of ghost
+runs.
+
+We can't just ignore these and wait for more data, as the next file is not written for hours.
+
+There's nothing that appears to explicitly indicate the run is aborted.
+
+But we don't want to have them sitting round as something that we need to dwal with (more menial
+jobs for us).
+
+Therefore I suggest adding a new state - 'stalled'. When pb_run_status.py decides the run is in
+the state idle_awaiting_cells it then checks the timestamps on the output files. Actually it only
+needs to look at the slot directories, not the files inside. If the latest change is more than X
+hours ago (I could set a STALL_TIME setting) it gives the state as stalled.
+
+Then if the driver sees this state, it can decide if:
+1) The run was partially stopped, in which case it will create X.aborted files for
+all flowcells without data. This will trigger a final report.
+2) The whole thing is aborted. It will make a single aborted file (noting why) and
+furthermore it will close the run ticket, tidying up the queue.
+
+I shall discuss this with Urmi tomorrow, but I can implement the stalled state in any case.

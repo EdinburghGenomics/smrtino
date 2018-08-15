@@ -12,6 +12,9 @@ export RT_SYSTEM=none CLUSTER_QUEUE=global
 # Process all runs on our instrument
 export RUN_NAME_REGEX='r54041_.*'
 
+# Runs are declared dead after 24 hours of inactivity
+export STALL_TIME=24
+
 # Allow caller to set VERBOSE=0 but otherwise force it to 1
 export VERBOSE=${VERBOSE:-1}
 
