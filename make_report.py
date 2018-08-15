@@ -4,6 +4,7 @@ import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pprint import pformat
 from datetime import datetime
+from collections import OrderedDict
 import yaml
 
 """ Makes a report (in PanDoc format) for a run. We will only report on
@@ -34,12 +35,19 @@ def main(args):
 
         all_info[yaml_info['cell_id']] = yaml_info
 
+    # Glean some pipleine metadata
     if args.pbpipeline:
         pipedata = get_pipeline_metadata(args.pbpipeline)
     else:
         pipedata = dict()
 
-    rep = format_report(all_info, pipedata, aborted_list=args.aborted)
+    # And some more of that
+    status_info = load_status_info(args.status)
+
+    rep = format_report(all_info,
+                        pipedata = pipedata,
+                        run_status = status_info,
+                        aborted_list = status_info.get('CellsAborted'))
 
     if (not args.out) or (args.out == '-'):
         print(*rep, sep="\n")
@@ -47,6 +55,26 @@ def main(args):
         L.info("Writing to {}.".format(args.out))
         with open(args.out, "w") as ofh:
             print(*rep, sep="\n", file=ofh)
+
+def escape(in_txt, backwhack=re.compile(r'([][\`*_{}()#+-.!])')):
+    """ HTML escaping is not the same as markdown escaping
+    """
+    return re.sub(backwhack, r'\\\1', in_txt)
+
+
+def load_status_info(sfile):
+    """ Parse the output of pb_run_status.py, either from a file or more likely
+        from a BASH <() construct - we don't care.
+        It's quasi-YAML format but I'll not use the YAML parser. Also I want to
+        preserve the order.
+    """
+    res = OrderedDict()
+    if sfile:
+        with open(sfile) as fh:
+            for line in sfile:
+                k, v = line.split(':', 1)
+                res[k.strip()] = v.strip()
+    return res
 
 def find_cstats(filebase, filt=None):
     """ Given the base name of an .info.yml file, find the related .scraps.cstats.csv
@@ -90,7 +118,7 @@ def find_cstats(filebase, filt=None):
 
 def get_pipeline_metadata(pipe_dir):
     """ Read the files in the pbpipeline directory to find out some stuff about the
-        pipleine.
+        pipeline. This is in addition to what we get from pb_run_status.
     """
     # The start_times file reveals the versions applied
     versions = set()
@@ -115,7 +143,7 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_info, pipedata, aborted_list=''):
+def format_report(all_info, pipedata, run_status, aborted_list=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
     """
@@ -124,6 +152,16 @@ def format_report(all_info, pipedata, aborted_list=''):
     replines.append( "% PacBio run {}".format(pipedata.get('rundir')) )
     replines.append( "% SMRTino version {}".format(pipedata.get('version')) )
     replines.append( "% {}".format(datetime.now().strftime("%A, %d %b %Y %H:%M")) )
+
+    # Add the meta-data
+    if run_status:
+        res.append('<dl class="dl-horizontal">')
+        replines.append("** About this run ***")
+        for k, v in run_status.items():
+            if not(k.startswith('_')):
+                res.append("<dt>{}</dt>".format(k))
+                res.append("<dd>{}</dd>".format(escape(v)))
+        res.append('</dl>')
 
     if not all_info:
         replines.append("**No SMRT Cells have been processed for this run yet.**")
@@ -134,8 +172,8 @@ def format_report(all_info, pipedata, aborted_list=''):
 
         replines.extend(format_cell(v))
 
-    if aborted_list.split():
-        # Note incomplete cells
+    if aborted_list and aborted_list.split():
+        # Specifically note incomplete cells
         replines.append("\n# Aborted cells\n")
         replines.append(("{} SMRT cells on this run did not run to completion and will" +
                          " not be processed further.").format(len(aborted_list.split())))
@@ -153,7 +191,7 @@ def format_cell(cdict):
     for k, v in sorted(cdict.items()):
         if not(k.startswith('_')):
             res.append("<dt>{}</dt>".format(k))
-            res.append("<dd>{}</dd>".format(v))
+            res.append("<dd>{}</dd>".format(escape(v)))
     res.append('</dl>')
 
     # Now add the stats table
@@ -184,8 +222,8 @@ def parse_args(*args):
                             help="Supply a list of info.yml files to compile into a report.")
     argparser.add_argument("-p", "--pbpipeline", default="pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
-    argparser.add_argument("-A", "--aborted", default="",
-                            help="List of aborted lanes, if any.")
+    argparser.add_argument("-s", "--status", default=None,
+                            help="File containing status info on this run.")
     argparser.add_argument("-o", "--out",
                             help="Where to save the report. Defaults to stdout.")
     argparser.add_argument("-d", "--debug", action="store_true",

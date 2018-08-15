@@ -11,3 +11,6 @@ the report maker can scoop it up.
 
 Or, for now, I'm just going to poke a list of the aborted cells into the report. We'll worry about
 doing a better job in v1.0!
+
+Slightly better than this - simply feed the output of pb_run_status.py into the report. Then
+we get all the infos.

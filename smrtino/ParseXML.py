@@ -3,7 +3,7 @@ import re
 import logging as L
 import xml.etree.ElementTree as ET
 
-""" Parses the subreadset.xml files based upon out interpretation.
+""" Parses the subreadset.xml files based upon our interpretation.
     To use:
         from smrtino.ParseXML import get_subreadset_info
         info = get_subreadset_info(filename)
