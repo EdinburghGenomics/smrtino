@@ -279,13 +279,13 @@ action_reporting() {
 }
 
 action_failed() {
-    # failed runs need attention, but for now just log the situatuion
+    # failed runs need attention from an operator, so log the situatuion
     set +e
     _reason=`cat "$RUN_OUTPUT"/pbpipeline/failed`
     if [ -z "$_reason" ] ; then
         # Get the last lane failure message
         _lastfail=`echo "$RUN_OUTPUT"/pbpipeline/*.failed`
-        _reason=`cat ${lastfail##* }`
+        _reason=`cat ${_lastfail##* }`
     fi
 
     log "\_FAILED $RUNID ($_reason)"
