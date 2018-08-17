@@ -59,6 +59,7 @@ def main(args):
 
     print("Looking for run directories matching regex {}/{}".format(
                 environ['TO_LOCATION'], environ['RUN_NAME_REGEX'] ))
+    print("Runs considered stalled after {} hours.".format(environ.get('STALL_TIME')))
 
     rnr = environ['RUN_NAME_REGEX']
     if not rnr.endswith('$'):
@@ -84,7 +85,7 @@ def main(args):
         # We just need to know about the instrument and status, which
         # can be done quickly.
         # You can ask the same by running RunStatus.py -q ...
-        rs = RunStatus(run, 'q')
+        rs = RunStatus(run, 'q', stall_time=environ.get('STALL_TIME'))
 
         # Note I'm overwriting runid - this will prune any .extension
         runid = rs.get_run_id()

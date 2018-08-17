@@ -19,11 +19,12 @@ class RunStatus:
     CELL_FAILED     = 4   # the pipeline failed to process this cell
     CELL_ABORTED    = 5   # cell aborted - disregard it
 
-    def __init__( self, pbrun_dir, opts = '', to_location=None ):
+    def __init__( self, pbrun_dir, opts = '', to_location=None, stall_time=None ):
 
         # Now that all the touch files are living in the output location, we need to work
         # out both the output location and the input location for this run. The former may
         # not yet exist.
+        self.stall_time = int(stall_time) if stall_time is not None else None
 
         # We need this so we can meaningfully inspect basename(pbrun_dir)
         pbrun_dir = os.path.abspath(pbrun_dir)
@@ -137,7 +138,7 @@ class RunStatus:
         return False
 
     def _is_stalled(self):
-        if 'STALL_TIME' not in os.environ:
+        if self.stall_time is None:
             # Nothing is ever stalled then.
             return False
 
@@ -145,7 +146,7 @@ class RunStatus:
         # If I find something dated later than stall_time then this run is not stalled.
         # It's simpler to just get this as a Unix time that I can compare with stat() output.
         stall_time = ( datetime.datetime.utcnow()
-                       - datetime.timedelta(hours=int(os.environ['STALL_TIME']))
+                       - datetime.timedelta(hours=self.stall_time)
                      ).timestamp()
 
         for cell in glob( os.path.join(self.from_path, '[0-9]_???') ):
@@ -299,5 +300,5 @@ if __name__ == '__main__':
     #If no run specified, examine the CWD.
     runs = sys.argv[optind:] or ['.']
     for run in runs:
-        run_info = RunStatus(run, opts, to_location=os.environ.get('TO_LOCATION'))
+        run_info = RunStatus(run, opts, to_location=os.environ.get('TO_LOCATION'), stall_time=os.environ.get('STALL_TIME'))
         print ( run_info.get_yaml( debug=os.environ.get('DEBUG', '0') != '0' ) )

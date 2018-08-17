@@ -69,14 +69,6 @@ class T(unittest.TestCase):
         """
         self.cleanup_run()
 
-    def setUp(self):
-        """ Sanitize environment
-        """
-        try:
-            del os.environ['STALL_TIME']
-        except KeyError:
-            pass
-
     def md(self, fp):
         """ Make a directory in the right location
         """
@@ -144,7 +136,8 @@ class T(unittest.TestCase):
         # With the pipeline dir it's no longer new
         self.assertEqual(gs(), 'idle_awaiting_cells')
 
-        os.environ['STALL_TIME'] = '0' # this is valid if silly
+        # Now if I set stall_time to 0 (silly but valid) it should be stalled.
+        run_info.stall_time = 0
 
         self.assertEqual(gs(), 'stalled')
 
