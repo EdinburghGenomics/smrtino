@@ -274,6 +274,37 @@ action_processing() {
     notify_run_complete
 }
 
+action_stalled() {
+    # Stalled runs have no activity for $STALL_TIME hours. See doc/failure_and_abort_modes.txt
+    # Have ANY cells on this run done anything?
+    log "\_STALLED $RUNID"
+
+    BREAK=1 # Maybe not necessary? But we do try to contact RT.
+    _matches=''
+    for c in $CELLS ; do
+        _matches="$_matches`( shopt -s nullglob ; cd "$RUN_OUTPUT"/pbpipeline && echo ${c}.* )`"
+    done
+
+    if [ -z "$_matches" ] ; then
+        # Nope - abort the entire run and close the ticket
+        echo "no activity for $STALL_TIME hours" > "$RUN_OUTPUT"/pbpipeline/aborted
+
+        # If notifying RT fails don't attempt to do anything else. We can close the ticket manually.
+        rt_runticket_manager --subject aborted --status resolved \
+            --comment "no activity for $STALL_TIME hours" |& plog
+    else
+        # So a partial run, we assume. Abort any remaining SMRT cells so the report (or whatever)
+        # will be triggered on the next driver cycle
+        for c in $CELLS ; do
+            _matches=`( shopt -s nullglob ; cd "$RUN_OUTPUT"/pbpipeline && echo ${c}.* )`
+
+            if [ -z "$_matches" ] ; then
+                echo "no activity for $STALL_TIME hours" > "$RUN_OUTPUT"/pbpipeline/${c}.aborted
+            fi
+        done
+    fi
+}
+
 action_reporting() {
     debug "\_REPORTING $RUNID"
 }
