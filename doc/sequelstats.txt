@@ -64,3 +64,12 @@ Well the directory HpSp got created, but there's nothing in it. Are there any lo
 the diaper pattern of hiding all the errors until it's too late.
 
 Ah. Hang on. I put the files in the wrong way around. Maybe try again...
+Yeah, that works. Then I tried linking (not moving) the files into the combined dir and then:
+
+$ Rscript /lustre/home/tbooth2/workspace/SEQUELstats/SEQUEL_plot.R `pwd`/stats_726_3/stats stats_726
+
+I get an error. Boo. Maybe with a different RScript? Oh no - just needed to give an absolute PATH to the data dir.
+Of course!
+
+OK so we can deffo use this, if the plots are any good. Can embed them into the report like we do with other thumbnails
+in the QC reports.
