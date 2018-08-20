@@ -56,9 +56,17 @@ def main(args):
             else:
                 exit("No open ticket found for '{}'".format(run_id))
 
-        # if the ticket does not exist, create it with the supplied message, be
-        # that a commet or a reply
-        ticket_id, created = rtm.find_or_create_run_ticket( run_id , subject, (reply_message or comment_message) )
+        # Or we can explicitly ask never to open a new ticket
+        if args.no_create:
+            ticket_id, ticket_dict = rtm.search_run_ticket(run_id)
+            if ticket_id:
+                created = False
+            else:
+                exit("No open ticket found for '{}'".format(run_id))
+        else:
+            # if the ticket does not exist, create it with the supplied message, be
+            # that a commet or a reply, else if it does exits just get the ID
+            ticket_id, created = rtm.find_or_create_run_ticket( run_id , subject, (reply_message or comment_message) )
 
         print("{} ticket_id is {}".format('New' if created else 'Existing', ticket_id))
 
@@ -306,6 +314,8 @@ def parse_args(*args):
                             help="Change the ticket subject (postfix)")
     argparser.add_argument("--status",
                             help="Change status of the ticket")
+    argparser.add_argument("--no_create",
+                            help="Avoid creating new tickets.")
     argparser.add_argument("--test", action="store_true",
                             help="Set the script to connect to test-rt (as defined in rt_settings.ini)")
 

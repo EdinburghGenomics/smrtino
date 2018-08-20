@@ -145,11 +145,12 @@ class RunStatus:
         # Now some datetime tinkering...
         # If I find something dated later than stall_time then this run is not stalled.
         # It's simpler to just get this as a Unix time that I can compare with stat() output.
-        stall_time = ( datetime.datetime.utcnow()
+        stall_time = ( datetime.datetime.now(datetime.timezone.utc)
                        - datetime.timedelta(hours=self.stall_time)
                      ).timestamp()
 
         for cell in glob( os.path.join(self.from_path, '[0-9]_???') ):
+
             if os.stat(cell).st_mtime > stall_time:
                 # I only need to see one thing
                 return False
@@ -295,10 +296,12 @@ if __name__ == '__main__':
         optind += 1
         opts = sys.argv[optind][1:]
 
-    L.basicConfig(level=L.WARNING)
+    L.basicConfig(level=L.WARNING, stream=sys.stderr)
 
     #If no run specified, examine the CWD.
     runs = sys.argv[optind:] or ['.']
     for run in runs:
-        run_info = RunStatus(run, opts, to_location=os.environ.get('TO_LOCATION'), stall_time=os.environ.get('STALL_TIME'))
+        run_info = RunStatus(run, opts,
+                             to_location = os.environ.get('TO_LOCATION'),
+                             stall_time  = os.environ.get('STALL_TIME') or None)
         print ( run_info.get_yaml( debug=os.environ.get('DEBUG', '0') != '0' ) )

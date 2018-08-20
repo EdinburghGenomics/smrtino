@@ -2,6 +2,7 @@
 
 import unittest
 import sys, os, re
+from unittest.mock import patch
 
 import subprocess
 from tempfile import mkdtemp
@@ -53,7 +54,8 @@ class T(unittest.TestCase):
                 MAINLOG = "/dev/stdout",
                 ENVIRON_SH = '/dev/null',
                 VERBOSE = 'yes',
-                PY3_VENV = 'none'
+                PY3_VENV = 'none',
+                STALL_TIME = '',
             )
 
         # Now clear any of these environment variables that might have been set outside
@@ -106,9 +108,12 @@ class T(unittest.TestCase):
         # We want to know the expected output location
         self.to_path = os.path.join(self.temp_dir, 'pacbio_data', run)
 
-        return copytree(run_dir,
-                        os.path.join(self.temp_dir, 'sequel', run),
-                        symlinks = True )
+        # Annoyingly, copytree gives me no way to avoid running copystat on the files.
+        # But that doesn't mean it's impossible...
+        with patch('shutil.copystat', lambda *a, **kw: True):
+            return copytree(run_dir,
+                            os.path.join(self.temp_dir, 'sequel', run),
+                            symlinks = True )
 
     def assertInStdout(self, *words):
         """Assert that there is at least one line in stdout containing all these strings
@@ -121,6 +126,18 @@ class T(unittest.TestCase):
             o_split = [ l for l in o_split if w in l ]
 
         self.assertTrue(o_split)
+
+    def assertNotInStdout(self, *words):
+        """Assert that no lines in STDOUT contain all of these strings
+        """
+        o_split = self.bm.last_stdout.split("\n")
+
+        #This loop progressively prunes down the lines, until anything left
+        #must have contained each word in the list.
+        for w in words:
+            o_split = [ l for l in o_split if w in l ]
+
+        self.assertFalse(o_split)
 
     def shell(self, cmd):
         """Call to os.system in 'safe mode'
@@ -246,7 +263,7 @@ class T(unittest.TestCase):
         """
         test_data = self.copy_run("r54041_20180613_132039")
 
-        # Mark the run as started, and let's say we're processing read1
+        # Mark the run as started, and let's say we're processing cell 1
         self.shell("mkdir -p " + self.to_path + "/pbpipeline")
         self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
         self.shell("touch " + self.to_path + "/pbpipeline/1_A01.started")
@@ -262,6 +279,74 @@ class T(unittest.TestCase):
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
+
+    def test_run_was_stalled_1(self):
+        """ Simulate a stalled run, which needs to be aborted.
+        """
+        test_data = self.copy_run("r54041_20180613_132039")
+
+        self.environment['STALL_TIME'] = '0'
+        self.bm_rundriver()
+        self.assertInStdout("r54041_20180613_132039", "NEW")
+        self.assertTrue(os.path.exists(self.to_path + "/pbpipeline"))
+
+        self.bm_rundriver()
+        self.assertInStdout("r54041_20180613_132039", "STALLED")
+
+        expected_calls = self.bm.empty_calls()
+        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun '
+                                                     '--no_create --subject aborted --status resolved --comment No activity '
+                                                     'in the last 0 hours.']
+        self.assertEqual(self.bm.last_calls, expected_calls)
+
+        # Now it should be aborted - since we're in verbose mode we do see this,
+        self.bm_rundriver()
+        self.assertInStdout("r54041_20180613_132039", 'status=aborted')
+
+    def test_run_was_stalled_2(self):
+        """ Simulate a stalled run, which has partially worked.
+        """
+        # Copy run and simulate 2 cells done.
+        test_data = self.copy_run("r54041_20180518_131155")
+        self.shell("mkdir -p " + self.to_path + "/pbpipeline")
+        self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
+        self.shell("touch " + self.to_path + "/pbpipeline/1_B01.done")
+        self.shell("touch " + self.to_path + "/pbpipeline/2_C01.done")
+
+        self.environment['STALL_TIME'] = '1'
+        self.bm_rundriver()
+        self.assertInStdout("r54041_20180518_131155", "IDLE_AWAITING_CELLS")
+
+        self.environment['STALL_TIME'] = '0'
+        self.bm_rundriver()
+        self.assertInStdout("r54041_20180518_131155", "STALLED")
+
+        # A this point, nothing should happen
+        expected_calls = self.bm.empty_calls()
+        self.assertEqual(self.bm.last_calls, expected_calls)
+
+        # But on the next round, it should complete
+        # Except that 'upload_report.sh' will appear to fail, so there will be an error.
+        # I could add a side effect to the call, maybe.
+        self.bm_rundriver()
+        self.assertInStdout("r54041_20180518_131155", "PROCESSED")
+
+        expected_calls['Snakefile.report'] = ['-F --config pstatus=Complete -- report_main']
+        expected_calls['upload_report.sh'] = [self.to_path]
+        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180518_131155 -Q pbrun '
+                                                     '--subject processing --reply All SMRT cells '
+                                                     'have run. 5 were aborted. Final report will follow soon.',
+                                                     self.bm.last_calls['rt_runticket_manager.py'][1],
+                                                     '-r r54041_20180518_131155 -Q pbrun --subject '
+                                                     'failed --reply Report_final_upload failed. See '
+                                                     'log in ' + self.to_path + '/pipeline.log']
+        self.assertEqual(self.bm.last_calls, expected_calls)
+        self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
+
+        # Now it should be in status FAILED (would be 'COMPLETE' if the upload_report.sh was rigged to succeed.)
+        self.bm_rundriver()
+        expected_calls = self.bm.empty_calls()
+        self.assertInStdout("r54041_20180518_131155", "FAILED")
 
 if __name__ == '__main__':
     unittest.main()
