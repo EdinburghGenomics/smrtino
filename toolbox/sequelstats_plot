@@ -1,0 +1,3 @@
+#!/bin/bash
+
+exec /lustre/software/R/R-3.3.2/bin/Rscript /lustre/software/SEQUELstats/SEQUELstats_20171017/SEQUEL_plot.R "$@"
