@@ -245,7 +245,7 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None)
         replines.append("    Slots: {}".format(aborted_list))
 
     # Footer??
-    replines.append("*...*")
+    replines.append("\n*~~~*")
 
     return replines
 
