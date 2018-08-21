@@ -354,11 +354,12 @@ notify_run_complete(){
     # or if remaining cells are aborted. The notification should only happen once.
     if ! [ -e "$RUN_OUTPUT"/pbpipeline/notify_run_complete.done ] ; then
 
+        _cc=`wc -w <<<"$CELLS"`
         _ca=`wc -w <<<"$CELLSABORTED"`
         if [ $_ca -gt 0 ] ; then
-            _comment="All SMRT cells have run. $_ca were aborted. Final report will follow soon."
+            _comment=$(( $_cc - $_ca))" SMRT cells have run. $_ca were aborted. Final report will follow soon."
         else
-            _comment="All SMRT cells have run on the instrument. Final report will follow soon."
+            _comment="All $_cc SMRT cells have run on the instrument. Final report will follow soon."
         fi
         if rt_runticket_manager --subject processing --reply "$_comment" ; then
             touch "$RUN_OUTPUT"/pbpipeline/notify_run_complete.done

@@ -274,7 +274,7 @@ class T(unittest.TestCase):
         # Message should be sent
         expected_calls = self.bm.empty_calls()
         expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun '
-                                                     '--subject processing --reply All SMRT cells '
+                                                     '--subject processing --reply All 1 SMRT cells '
                                                      'have run on the instrument. Final report will follow soon.']
         self.assertEqual(self.bm.last_calls, expected_calls)
 
@@ -334,7 +334,7 @@ class T(unittest.TestCase):
         expected_calls['Snakefile.report'] = ['-F --config pstatus=Complete -- report_main']
         expected_calls['upload_report.sh'] = [self.to_path]
         expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180518_131155 -Q pbrun '
-                                                     '--subject processing --reply All SMRT cells '
+                                                     '--subject processing --reply 2 SMRT cells '
                                                      'have run. 5 were aborted. Final report will follow soon.',
                                                      self.bm.last_calls['rt_runticket_manager.py'][1],
                                                      '-r r54041_20180518_131155 -Q pbrun --subject '

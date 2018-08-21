@@ -89,7 +89,8 @@ def determine_filter(cellpath):
 
 # And run the scan just once
 SC = scan_cells()
-print("SC = {!r}".format(SC), file=sys.stderr)
+if 'logging' in globals():
+    logging.info("SC = {!r}".format(SC))
 
 def find_source_file(extn):
     """ Shim to get me the source file by adding in the cell slot directory as discovered
