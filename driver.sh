@@ -206,6 +206,7 @@ action_cell_ready(){
       ) |& plog
 
       # Now we can have an interim report.
+      # FIXME - this may not be safe - two reports running at once!
       run_report "Partially processed" "awaiting_cells" | plog && log DONE
 
       for c in $CELLSREADY ; do
@@ -312,11 +313,11 @@ action_reporting() {
 action_failed() {
     # failed runs need attention from an operator, so log the situatuion
     set +e
-    _reason=`cat "$RUN_OUTPUT"/pbpipeline/failed`
+    _reason=`cat "$RUN_OUTPUT"/pbpipeline/failed 2>/dev/null`
     if [ -z "$_reason" ] ; then
         # Get the last lane failure message
         _lastfail=`echo "$RUN_OUTPUT"/pbpipeline/*.failed`
-        _reason=`cat ${_lastfail##* }`
+        _reason=`cat ${_lastfail##* } 2>/dev/null`
     fi
 
     log "\_FAILED $RUNID ($_reason)"

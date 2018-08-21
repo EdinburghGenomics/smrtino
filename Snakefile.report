@@ -40,13 +40,18 @@ TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 """ Report will be made based upon all the .info.yml files found. There may be none.
 """
 INFO_YML = glob("*.info.yml")
+STATS_PLOTS = glob("sequelstats_plots/*/.done")
+
+# This may well be a temporary problem, but we shouldn't ignore it.
+assert len(INFO_YML) == len(STATS_PLOTS), \
+    "Number of plots does not match number of .yml files. Report would be inconsistent."
 
 # We shall make a single report for the whole run. This is supposed to be fairly simple.
 # If it gets complex we might need a more sophisticated report making strategy.
 rule report_main:
     output: "all_reports/run_report.html"
     input:
-        pan = "all_reports/run_report.{cc}cells.pan".format(cc=len(INFO_YML))
+        pan   = "all_reports/run_report.{cc}cells.pan".format(cc=len(INFO_YML))
     params:
         templates = os.environ.get('TEMPLATES', '.')
     shell:
@@ -61,6 +66,32 @@ rule report_main:
 
 rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
-    input:  INFO_YML
+    input:
+        yaml = INFO_YML,
+        plots = "sequelstats_plots/.done"
     shell:
-        "make_report.py -o {output} -s <(pb_run_status.py) {input}"
+        "make_report.py -o {output} -s <(pb_run_status.py) {input.yaml}"
+
+# Makes some nice plots using the sequelstats package. See doc/sequelstats.txt
+# Due to flakiness, this needs to tolerate missing input data, indicated by a
+# non-zero value in an {input} file.
+rule sequelstats_plots:
+    output: "sequelstats_plots/.done"
+    input: STATS_PLOTS
+    shell:
+        '''outdir="sequelstats_plots"
+           rm -rf $outdir/stats
+           for f in {input} ; do
+             if [[ "`cat $f`" -eq 0 ]] ; then
+                for _set in Hn HpSn HpSp ; do
+                    mkdir -p $outdir/stats/$_set
+                    ln -srn "`dirname $f`"/stats/$_set/* $outdir/stats/$_set
+                done
+             fi
+           done
+           if [ -e $outdir/stats ] ; then
+             {TOOLBOX} sequelstats_plot "`readlink -f $outdir`"/stats "$(basename $(pwd))"
+             mv "$outdir"/stats/*.png "$outdir"
+           fi
+           touch {output}
+        '''

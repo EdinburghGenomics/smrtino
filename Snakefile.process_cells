@@ -112,8 +112,8 @@ def copy_all_files(i, o):
 localrules: main, one_cell_info, link_file
 rule main:
     input:
-        yaml   = [ c + '.info.yml' for c in SC ],
-        plots  = "sequelstats_plots/.done",
+        yaml     = [ c + '.info.yml' for c in SC ],
+        seqstats = [ 'sequelstats_plots/' + c + '/.done' for c in SC ]
 
 # This rule connects the .info.yml to all the bits of data we need and also generates
 # the .info.yml contents. The inputs get complex since we need to account for whether
@@ -192,34 +192,10 @@ rule get_contig_stats_csv:
            mv pc/subread_stats.txt {output}
         '''
 
-# Makes some nice plots using the sequelstats package. See doc/sequelstats.txt
-# Due to flakiness, this needs to tolerate missing input data, indicated by a
-# non-zero value in an {input} file.
-localrules: sequelstats_plots, sequelstats_make_fn
-rule sequelstats_plots:
-    output: "sequelstats_plots/.done"
-    input: [ 'sequelstats_plots/' + c + '/.done' for c in SC ]
-    shell:
-        '''outdir="sequelstats_plots"
-           rm -rf $outdir/stats
-           for f in {input} ; do
-             if [[ "`cat $f`" -eq 0 ]] ; then
-                for _set in Hn HpSn HpSp ; do
-                    mkdir -p $outdir/stats/$_set
-                    ln -srn "`dirname $f`"/stats/$_set/* $outdir/stats/$_set
-                done
-             fi
-           done
-           if [ -e $outdir/stats ] ; then
-             {TOOLBOX} sequelstats_plot "`readlink -f $outdir`"/stats "$(basename $(pwd))"
-             mv "$outdir"/stats/*.png "$outdir"
-           fi
-           touch {output}
-        '''
-
 # A shim rule to write the absolute paths of the .bam files to matching .fn
 # files. As long as this runs on the login node sequelstats_stats can run on
 # a compute node.
+localrules: sequelstats_make_fn
 rule sequelstats_make_fn:
     output: temp("{cell}.{part}.bam.fn")
     input:  lambda wc: wc.cell + SC[wc.cell]['filter'] + "." + wc.part + ".bam"
