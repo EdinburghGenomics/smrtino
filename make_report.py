@@ -111,7 +111,8 @@ def find_sequalstats_plots(graph_dir, run_name=None):
 
     # Remove missing
     for pn in list(res):
-        if not res[pn].get('img'): del res[pn]
+        if not pn.startswith('__') and not res[pn].get('img'):
+            del res[pn]
 
     return res
 
@@ -234,14 +235,17 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None)
         if not plots:
             replines.append("**No plots were produced for this run.**")
         else:
+            if plots.get('__ALL__'):
+                replines.extend(blockquote(plots['__ALL__']['msg']))
+
             for p, pdict in plots.items():
-                if pdict.get('hide'):
+                if p.startswith('__') or pdict.get('hide'):
                     continue
 
                 replines.append("\n## {}\n".format(p))
                 replines.append("")
                 if pdict.get('msg'):
-                    replines.append("> " + pdict['msg'] + "\n")
+                    replines.extend(blockquote(pdict['msg']))
                 replines.append(embed_image(pdict['img']))
 
     if aborted_list and aborted_list.split():
@@ -256,6 +260,11 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None)
     replines.append("\n*~~~*")
 
     return replines
+
+def blockquote(txt):
+    """ Block quote some pandoc text. Returns a list of strings
+    """
+    return [''] + [ "> " + t for t in txt.split('\n') ] + ['']
 
 def embed_image(filename):
     """ Convert an image into base64 suitable for embedding in HTML (and/or PanDoc).

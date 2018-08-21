@@ -1,14 +1,45 @@
-- plot: Seq run yield and efficiency
-  msg: ''
-- plot: Estimated lib size distribution
-  msg: ''
+# The 'msg' entries are MarkDown strings that need to be quoted in YAML, and furthermore will be transformed
+# to blockquotes beofre being added to the report doc. In other words, test any changes to this file!
+- plot: __ALL__
+  msg: >
+         **ZR:** ZMW read
+
+
+         **PR:** Polymerase read
+
+
+         **SR/LSR:** "Subread"/"Longest subread"
+
+
+         **ZOR:** ZMW occupancy ratio (i.e. how many of the ZMWs in the SMRTcell contained at least one DNA fragment for
+         sequencing. Values >0.5 usually indicate overloading)
+
+
+         **PSR:** Polymerase read to Subread ratio (for assebmly a PSR=1 would be ideal as in that case the fragment would
+         have been read only once without reaching the end)
+
+
+         **Hn** ("High quality region: negative"): Basecaller couldn't find a region in the ZMW read it would consider
+         "proper" sequence. This data is stored in "scraps"
+
+
+         **HpSn** ("High quality region: positive; Subread: negative"):  A good ZMW read interval was found but for some
+         reason the sequence is considered 'bad'. This data is stored in "scraps"
+
+
+         **HpSp** ("High quality region: positive; Subread: positive"): Fully useful data. This data is stored in subreads file.
+
 - plot: Estimated lib size distribution full data
-  msg: ''
+  msg: 'Fragment length distribution in library estimated from LSR flanked by adapters on one side'
+- plot: Estimated lib size distribution
+  msg: 'Fragment length distribution in library estimated from LSR flanked by adapters on both sides'
 - plot: Polymerase and subread length profiles
-  msg: ''
+  msg: 'Histogram of subread length'
+- plot: Seq run yield and efficiency
+  msg: 'Amount of sequence per SMRTcell in Hn ("LQ"), HpSn ("MQ"), and HpSp ("HQ") sets. "HQS" = sum of PR in HQ, "LSR" = sum of LSR in HQ'
 - plot: SMRT cell efficiency
-  msg: ''
-- plot: SMRT cell processed output
-  msg: ''
+  msg: 'PSR vs. ZOR plot (one dot/SMRTcell). All dots on the right border just underneath the 0.5 line would be optimal.'
 - plot: SMRT cell raw output
-  msg: ''
+  msg: 'Read length stats ("Median"=red/white, "Mean"=black, "N50"=black/white) vs. SMRTcell yield (based on polymerase reads, one line per SMRTcell). PacBio advertises SEQUEL SMRTcells with 5-8Gb of data with polymerase read N50 of >20kb'
+- plot: SMRT cell processed output
+  msg: 'Read length stats vs. SMRTcell yield (same as above but this time using only the LSR)'
