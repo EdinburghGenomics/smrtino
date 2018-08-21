@@ -6,6 +6,14 @@ from pprint import pformat
 from datetime import datetime
 from collections import OrderedDict
 import yaml
+import base64
+
+def glob():
+    """Regular glob() is useful but it can be improved like so.
+    """
+    from glob import glob
+    return lambda p: sorted( (f.rstrip('/') for f in glob(os.path.expanduser(p))) )
+glob = glob()
 
 """ Makes a report (in PanDoc format) for a run. We will only report on
     processed SMRT cells where the info.yml has been generated - so no
@@ -41,13 +49,17 @@ def main(args):
     else:
         pipedata = dict()
 
+    # See if there are any plots to include
+    plots = find_sequalstats_plots(args.plots, pipedata.get('rundir'))
+
     # And some more of that
     status_info = load_status_info(args.status)
 
     rep = format_report(all_info,
                         pipedata = pipedata,
                         run_status = status_info,
-                        aborted_list = status_info.get('CellsAborted'))
+                        aborted_list = status_info.get('CellsAborted'),
+                        plots = plots)
 
     if (not args.out) or (args.out == '-'):
         print(*rep, sep="\n")
@@ -61,6 +73,45 @@ def escape(in_txt, backwhack=re.compile(r'([][\`*_{}()#+-.!])')):
     """
     return re.sub(backwhack, r'\\\1', str(in_txt))
 
+def find_sequalstats_plots(graph_dir, run_name=None):
+    """ Look for all the PNG images. These are drawn per-run so don't apply to
+        a specific SMRT cell.
+        If run_name is supplied the script will sanity-check all images belong to the run.
+    """
+    plots_order = """
+        Seq run yield and efficiency
+        Estimated lib size distribution
+        Estimated lib size distribution full data
+        Polymerase and subread length profiles
+    """
+
+    # Pre-load the dict to get the order I want
+    res = OrderedDict( (pn.strip(), None) for pn in plots_order.split("\n") if pn.strip() )
+
+    plots_seen = glob(graph_dir + '/*.*.png')
+
+    for p in plots_seen:
+        # Chop off run name and .png extension
+        rname = p.split('.')[0]
+        fn_bits = p.split('.')[1:-1]
+
+        # These should match
+        if run_name and (run_name == rname):
+            L.warning("Unexpected PNG file with run_name {} instead of {}.".format(
+                                                rname,              run_name))
+            continue
+
+        # Now munge the name
+        munged_name = re.sub('_', ' ', '_'.join(fn_bits))
+        munged_name = munged_name[0].upper() + munged_name[1:]
+
+        res[munged_name] = p
+
+    # Remove missing
+    for pn in list(res):
+        if not res[pn]: del res[pn]
+
+    return res
 
 def load_status_info(sfile):
     """ Parse the output of pb_run_status.py, either from a file or more likely
@@ -143,7 +194,7 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_info, pipedata, run_status, aborted_list=None):
+def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
     """
@@ -173,6 +224,18 @@ def format_report(all_info, pipedata, run_status, aborted_list=None):
         replines.append("\n## {}\n".format(k))
         replines.extend(format_cell(v))
 
+    # And the plots
+    if plots is not None:
+        replines.append("\n# SEQUELstats plots\n")
+
+        if not plots:
+            replines.append("**No plots were produced for this run.**")
+        else:
+            for p, img in plots.items():
+                replines.append("\n## {}\n".format(p))
+                replines.append("")
+                replines.append(embed_image(img))
+
     if aborted_list and aborted_list.split():
         # Specifically note incomplete cells
         replines.append("\n# Aborted cells\n")
@@ -181,7 +244,19 @@ def format_report(all_info, pipedata, run_status, aborted_list=None):
         replines.append("")
         replines.append("    Slots: {}".format(aborted_list))
 
+    # Footer??
+    replines.append("*...*")
+
     return replines
+
+def embed_image(filename):
+    """ Convert an image into base64 suitable for embedding in HTML (and/or PanDoc).
+        I could mess around with thumbnails and lightboxes here but I think showing all
+        graphs full size is fine.
+    """
+    with open(filename, 'rb') as fh:
+        img_as_b64 = base64.b64encode(fh.read()).decode()
+    return "<img src='data:image/png;base64,{}'>".format(img_as_b64)
 
 def format_cell(cdict):
     """ Format the cell infos as some sort of PanDoc output
@@ -223,6 +298,8 @@ def parse_args(*args):
                             help="Supply a list of info.yml files to compile into a report.")
     argparser.add_argument("-p", "--pbpipeline", default="pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
+    argparser.add_argument("--plots", default="sequelstats_plots",
+                            help="Directory to scan for PNG plots.")
     argparser.add_argument("-s", "--status", default=None,
                             help="File containing status info on this run.")
     argparser.add_argument("-o", "--out",
