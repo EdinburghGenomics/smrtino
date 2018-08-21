@@ -77,16 +77,18 @@ def find_sequalstats_plots(graph_dir, run_name=None):
     """ Look for all the PNG images. These are drawn per-run so don't apply to
         a specific SMRT cell.
         If run_name is supplied the script will sanity-check all images belong to the run.
+        It will try to order the plots by looking in the sequelstats_infos.yml file, and
+        capture any meta-data therein.
     """
-    plots_order = """
-        Seq run yield and efficiency
-        Estimated lib size distribution
-        Estimated lib size distribution full data
-        Polymerase and subread length profiles
-    """
+    res = OrderedDict()
 
-    # Pre-load the dict to get the order I want
-    res = OrderedDict( (pn.strip(), None) for pn in plots_order.split("\n") if pn.strip() )
+    # Try to get the info on plot annotation and ordering.
+    try:
+        with open(os.path.dirname(__file__) + '/templates/sequelstats_infos.yml') as yfh:
+            res.update( [ ( i['plot'], dict(msg=i['msg'], hide=bool(i.get('hide'))) )
+                          for i in yaml.safe_load(yfh) ] )
+    except Exception:
+        L.exception("Failed to load any annotations for the plots.")
 
     plots_seen = glob(graph_dir + '/*.*.png')
 
@@ -105,28 +107,14 @@ def find_sequalstats_plots(graph_dir, run_name=None):
         munged_name = re.sub('_', ' ', '_'.join(fn_bits))
         munged_name = munged_name[0].upper() + munged_name[1:]
 
-        res[munged_name] = p
+        res.setdefault(munged_name, dict())['img'] = p
 
     # Remove missing
     for pn in list(res):
-        if not res[pn]: del res[pn]
+        if not res[pn].get('img'): del res[pn]
 
     return res
 
-def get_plot_annotations():
-    """ Returns a dict of information blurbs to be added per plot.
-        Or rather, a defaultdict that makes empty dicts.
-    """
-    res = defaultdict(dict)
-    try:
-        with open(os.path.dirname(__file__) + '/templates/sequelstats_infos.yml') as yfh:
-            res.update( { i['plot'] : dict(msg=i['msg'], hide=bool(i.get('hide')))
-                          for i in yaml.safe_load(yfh) } )
-
-    except Exception:
-        L.exception("Failed to load the annotations for the plots.")
-
-    return res
 
 def load_status_info(sfile):
     """ Parse the output of pb_run_status.py, either from a file or more likely
@@ -243,21 +231,18 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None)
     if plots is not None:
         replines.append("\n# SEQUELstats plots\n")
 
-        # Try to load the descriptions of the plots
-        plot_notes = get_plot_annotations()
-
         if not plots:
             replines.append("**No plots were produced for this run.**")
         else:
-            for p, img in plots.items():
-                if plot_notes[p].get('hide'):
+            for p, pdict in plots.items():
+                if pdict.get('hide'):
                     continue
 
                 replines.append("\n## {}\n".format(p))
                 replines.append("")
-                if plot_notes[p].get('msg'):
-                    replines.append("> " + plot_notes[p]['msg'] + "\n")
-                replines.append(embed_image(img))
+                if pdict.get('msg'):
+                    replines.append("> " + pdict['msg'] + "\n")
+                replines.append(embed_image(pdict['img']))
 
     if aborted_list and aborted_list.split():
         # Specifically note incomplete cells
