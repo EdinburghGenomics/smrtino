@@ -4,7 +4,7 @@ import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pprint import pformat
 from datetime import datetime
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import yaml
 import base64
 
@@ -110,6 +110,21 @@ def find_sequalstats_plots(graph_dir, run_name=None):
     # Remove missing
     for pn in list(res):
         if not res[pn]: del res[pn]
+
+    return res
+
+def get_plot_annotations():
+    """ Returns a dict of information blurbs to be added per plot.
+        Or rather, a defaultdict that makes empty dicts.
+    """
+    res = defaultdict(dict)
+    try:
+        with open(os.path.dirname(__file__) + '/sequelstats_infos.yml') as yfh:
+            res.update( { i['plot'] : dict(msg=i['msg'], hide=bool(i.get('hide')))
+                          for i in yaml.safe_load(yfh) } )
+
+    except Exception:
+        L.exception("Failed to load the annotations for the plots.")
 
     return res
 
@@ -228,12 +243,20 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None)
     if plots is not None:
         replines.append("\n# SEQUELstats plots\n")
 
+        # Try to load the descriptions of the plots
+        plot_notes = get_plot_annotations()
+
         if not plots:
             replines.append("**No plots were produced for this run.**")
         else:
             for p, img in plots.items():
+                if plot_notes[p].get('hide'):
+                    continue
+
                 replines.append("\n## {}\n".format(p))
                 replines.append("")
+                if plot_notes[p].get('msg'):
+                    replines.append("  " + plot_notes[p]['msg'] + "\n")
                 replines.append(embed_image(img))
 
     if aborted_list and aborted_list.split():
