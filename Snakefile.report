@@ -38,13 +38,14 @@ glob = glob()
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
 """ Report will be made based upon all the .info.yml files found. There may be none.
+    Also we may or may not have some plots to add.
 """
 INFO_YML = glob("*.info.yml")
 STATS_PLOTS = glob("sequelstats_plots/*/.done")
 
 # This may well be a temporary problem, but we shouldn't ignore it.
-assert len(INFO_YML) == len(STATS_PLOTS), \
-    "Number of plots does not match number of .yml files. Report would be inconsistent."
+assert len(INFO_YML) >= len(STATS_PLOTS), \
+    "Number of plots is greater than the number of .yml files. Report would be inconsistent."
 
 # We shall make a single report for the whole run. This is supposed to be fairly simple.
 # If it gets complex we might need a more sophisticated report making strategy.

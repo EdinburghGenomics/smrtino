@@ -314,7 +314,7 @@ def parse_args(*args):
                             help="Change the ticket subject (postfix)")
     argparser.add_argument("--status",
                             help="Change status of the ticket")
-    argparser.add_argument("--no_create",
+    argparser.add_argument("--no_create", action="store_true",
                             help="Avoid creating new tickets.")
     argparser.add_argument("--test", action="store_true",
                             help="Set the script to connect to test-rt (as defined in rt_settings.ini)")
