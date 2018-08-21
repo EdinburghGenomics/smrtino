@@ -213,7 +213,7 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None)
         replines.append("\n# About this run\n")
         replines.append('\n<dl class="dl-horizontal">')
         for k, v in run_status.items():
-            if not(k.startswith('_')):
+            if not(k.startswith('_')) and (k != 'CellsReady'):
                 replines.append("<dt>{}</dt>".format(k))
                 replines.append("<dd>{}</dd>".format(escape(v)))
         replines.append('</dl>')
