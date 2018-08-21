@@ -119,7 +119,7 @@ def get_plot_annotations():
     """
     res = defaultdict(dict)
     try:
-        with open(os.path.dirname(__file__) + '/sequelstats_infos.yml') as yfh:
+        with open(os.path.dirname(__file__) + '/templates/sequelstats_infos.yml') as yfh:
             res.update( { i['plot'] : dict(msg=i['msg'], hide=bool(i.get('hide')))
                           for i in yaml.safe_load(yfh) } )
 
@@ -256,7 +256,7 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None)
                 replines.append("\n## {}\n".format(p))
                 replines.append("")
                 if plot_notes[p].get('msg'):
-                    replines.append("  " + plot_notes[p]['msg'] + "\n")
+                    replines.append("> " + plot_notes[p]['msg'] + "\n")
                 replines.append(embed_image(img))
 
     if aborted_list and aborted_list.split():

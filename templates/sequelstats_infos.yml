@@ -1,0 +1,14 @@
+- plot: Seq run yield and efficiency
+  msg: ''
+- plot: Estimated lib size distribution
+  msg: ''
+- plot: Estimated lib size distribution full data
+  msg: ''
+- plot: Polymerase and subread length profiles
+  msg: ''
+- plot: SMRT cell efficiency
+  msg: ''
+- plot: SMRT cell processed output
+  msg: ''
+- plot: SMRT cell raw output
+  msg: ''

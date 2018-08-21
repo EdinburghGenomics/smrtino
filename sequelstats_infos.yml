@@ -1,7 +1,0 @@
-- msg: This is a really nice plot you should look at it.
-  plot: Seq run yield and efficiency
-- msg: Ignore this plot we don't care about it at all.
-  plot: Estimated lib size distribution full data
-- msg: Hide it!
-  plot: Polymerase and subread length profiles
-  hide: true
