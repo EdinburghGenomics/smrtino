@@ -106,7 +106,7 @@ def copy_all_files(i, o):
     """ For rules that like to copy stuff
     """
     for (infile, outfile) in ( (i[k], o[k]) for k in o.keys() ):
-        shell("cp -Lv {infile} {outfile}")
+        shell("cp --no-preserve=all -Lv {infile} {outfile}")
 
 # Main target is one yml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
