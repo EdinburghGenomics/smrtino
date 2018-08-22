@@ -39,11 +39,13 @@ there is nothing like this in the old scripts.
 
 Once the pipeline is working, including RT mails:
 
--1) Release new pacbio_scripts
-0) Move all the 2017 runs to a 2017 subdirectory (2016 also) and think about deletion
-1) Switch off the old cron task and the test cron
-2) Rename the directories as above
-3) Reconfigure environ.sh and also rt_settings (if need be - test the script can modify a real ticket)
-4) Switch [back] on the new CRON job
-5) Reprocess a recent run to test it
-6) Fetch data and do a dummy delivery to test pacbio_scripts
+-1) Release new pacbio_scripts - DONE
+0) Move all the 2017 runs to a 2017 subdirectory (2016 also) and think about deletion - no this upsets SMRT link!
+1) Switch off the old cron task and the test cron - DONE
+2) Rename the directories as above - DONE
+3) Reconfigure environ.sh and also rt_settings (if need be - test the script can modify a real ticket) - DONE
+4) Switch [back] on the new CRON job - DONE
+5) Reprocess a recent run to test it - r54041_20180815_160248
+6) Fetch data and do a dummy delivery to test pacbio_scripts - Urmi is delivering data anyway
+
+I'm sure there will be glitches, but that's SMRTino release 1 out of the door.
