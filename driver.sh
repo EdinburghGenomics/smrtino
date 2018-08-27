@@ -176,7 +176,7 @@ action_new(){
     # will be noted by the main loop.
     # Note this triggers a summary to be sent to RT as a comment, which should create
     # the new RT ticket.
-    run_report "Waiting for cells" "new" | plog && log DONE
+    run_report "Waiting for cells." "new" | plog && log DONE
 }
 
 # TODO - it might be that we don't want to run multiple processings in parallel after all
@@ -207,15 +207,11 @@ action_cell_ready(){
 
       # Now we can have an interim report.
       # FIXME - this may not be safe - two reports running at once!
-      run_report "Partially processed" "awaiting_cells" | plog && log DONE
+      run_report "Processing completed for cells $CELLSREADY." "awaiting_cells" | plog && log DONE
 
       for c in $CELLSREADY ; do
           ( cd "$RUN_OUTPUT" && mv pbpipeline/${c}.started pbpipeline/${c}.done )
       done
-      #' I'm pretty sure RT errors need to be non-fatal here.
-      rt_runticket_manager --subject demultiplexed \
-        --comment "Processing completed for cells $CELLSREADY." || true
-      log "  Completed Snakefile.process_cells on $RUNID [$CELLSREADY]."
 
     ) |& plog ; [ $? = 0 ] || pipeline_fail Processing_Cells "$CELLSREADY"
 }
@@ -238,7 +234,7 @@ action_processed() {
 
     BREAK=1
     set +e ; ( set -e
-        run_report "Complete"
+        run_report "All processing complete."
         log "  Completed processing on $RUNID [$CELLS]."
 
         if [ -s "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt ] ; then
@@ -371,7 +367,7 @@ run_report() {
     # Makes a report. Will not exit on error. I'm assuming all substantial processing
     # will have been done by Snakefile.process_cells
 
-    # usage: run_report [report_status] [rt_run_status] [plog_dest]
+    # usage: run_report [rt_prefix] [rt_run_status] [plog_dest]
     # A blank rt_run_status will leave the status unchanged. A value of "NONE" will
     # suppress reporting to RT entirely.
     # Caller is responsible for log redirection, so this function just prints any
@@ -380,6 +376,7 @@ run_report() {
     set +o | grep '+o errexit' && _ereset='set +e' || _ereset='set -e'
     set +e
 
+    _rprefix="${1:-}"
     _pstatus="${1:-}"
     _rt_run_status="${2:-}"
 
@@ -406,7 +403,7 @@ run_report() {
               rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt ; }
     fi
 
-    send_summary_to_rt comment "$_rt_run_status"
+    send_summary_to_rt comment "$_rt_run_status" "$_rprefix Run report is at"
 
     # If this fails, the pipeline will continue, since only the final message to RT
     # is seen as critical.
