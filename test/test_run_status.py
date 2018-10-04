@@ -104,6 +104,9 @@ class T(unittest.TestCase):
         run_info._clear_cache()
         self.assertEqual(run_info.get_cells(), {'1_A01': run_info.CELL_READY})
 
+        # Start time should be something (we're not sure what)
+        self.assertEqual(len(run_info.get_start_time()), len('Thu Jan  1 01:00:00 1970'))
+
     def test_run_new( self ):
         """ A totally new run.
         """

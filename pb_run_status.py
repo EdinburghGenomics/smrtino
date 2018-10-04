@@ -269,6 +269,19 @@ class RunStatus:
         else:
             return 'unknown'
 
+    def get_start_time(self):
+        """ Look for the oldest *.txt file in any subdirectory.
+        """
+        txtfiles = glob( os.path.join(self.from_path, '[0-9]_???/*.txt') )
+
+        try:
+            oldest_time = min( os.stat(t).st_mtime for t in txtfiles )
+
+            return datetime.datetime.fromtimestamp(oldest_time).ctime()
+
+        except Exception:
+            return 'unknown'
+
     def get_yaml(self, debug=True):
         try:
             return '\n'.join([ 'RunID: '        + self.get_run_id(),
@@ -276,6 +289,7 @@ class RunStatus:
                                'Cells: '        + ' '.join(sorted(self.get_cells())),
                                'CellsReady: '   + ' '.join(sorted(self.get_cells_ready())),
                                'CellsAborted: ' + ' '.join(sorted(self.get_cells_aborted())),
+                               'StartTime: '    + self.get_start_time(),
                                'PipelineStatus: ' + self.get_status() ])
 
         except Exception: # if we can't read something just produce a blank reply.
@@ -287,6 +301,7 @@ class RunStatus:
                                'Cells: ',
                                'CellsReady: ',
                                'CellsAborted: ',
+                               'StartTime: unknown',
                                'PipelineStatus: ' + pstatus ])
 
 if __name__ == '__main__':
