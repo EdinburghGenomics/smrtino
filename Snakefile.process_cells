@@ -128,6 +128,7 @@ rule one_cell_info:
         xml2       = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreadset.xml",
         stats      = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreads.cstats.csv",
         scrapstats = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".scraps.cstats.csv",
+        screenpng  = lambda wc: "fqscreen/" + wc.cell + SC[wc.cell]['filter'] + "_screen.png",
     shell:
         # What needs to go into the YML? Stuff from the XML and also some stuff from the
         # stats, maybe? At present the script will discover extra files automagically.
@@ -152,7 +153,7 @@ rule copy_reads:
     run:
         copy_all_files(input, output)
 
-# This has to be separate since it happens regardless of the filter applied
+# This has to be separate from copy_reads since it happens regardless of the filter applied
 rule copy_xml:
     output:
         xml    = "{cell,[^./]+}.subreadset.xml"
@@ -221,6 +222,58 @@ rule sequelstats_stats:
            done
            echo $_retval > {output}
         '''
+
+# Generates a fastqscreen plot. Somewhat different to Illuminatus as the reads are
+# different lengths. I'm going to generate and trim and filter the CCS
+# outside of this rule. But I'll still let fastq_screen do the subsetting.
+rule fqscreen:
+    output:
+        txt  = "fqscreen/{cell}_screen.txt",
+        html = "fqscreen/{cell}_screen.html",
+        png  = "fqscreen/{cell}_screen.png"
+    input: "{cell}.ccs+trim50.fastq.gz"
+    shadow: 'shallow'
+    threads: 2
+    params:
+        subset = 1000000
+    shell:
+        """{TOOLBOX} fastq_screen --threads {threads} --bowtie {input} --subset {params.subset}
+           for f in {output} ; do
+                mv -t `dirname $f` `basename $f`
+           done
+        """
+
+# Generates the CCS for a raw BAM file.
+rule smrt_ccs:
+    output:
+        bam = "{cell}.ccs.bam",
+        pbi = "{cell}.ccs.bam.pbi",
+        rep = "{cell}_ccs_report.txt",
+    input:  "{cell}.subreads.bam"
+    shadow: 'shallow'
+    params:
+        minlen = 50,
+        minpass = 2
+    shell:
+        """{TOOLBOX} smrt ccs --minLength={params.minlen} --minPasses={params.minpass} \
+           --reportFile={output.rep} {input} {output.bam}
+        """
+
+
+# Trim reads in a FASTQ file to length N (borrowed from qc_tools_python) and also discards
+# any reads shorter than N.
+# For the purposes of this pipeline I'm working directly from the BAM, but we may want to make
+# the full CCS FASTQ at some point too?
+rule trim_to_n:
+    output:
+        fastq = "{cell}.ccs+trim{trim,\d+}.fastq.gz"
+    input:
+        bam   = "{cell}.ccs.bam"
+    threads: 2
+    shell:
+        """{TOOLBOX} samtools fastq {input.bam} | {TOOLBOX} fastx_trimmer -l {wildcards.trim} -m {wildcards.trim} | \
+           pigz -p {threads} -6c >{output.fastq}
+        """
 
 # md5summer that keeps the file path out of the .md5 file
 rule md5sum_file:

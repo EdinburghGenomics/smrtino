@@ -1,13 +1,23 @@
 #!/bin/sh
 
 # Run a SMRTLink tool (specific version)
-smrt_bin=/lustre/software/pacbio_smrttools/smrttools_5.0.1.9585/smrtcmds/bin
+# Note that for now we need the special CCS 3.1 so bung that in too.
+
+smrt_bin=/lustre/software/pacbio_smrttools/smrttools_6.0.0.47841/smrtcmds/bin
+ccs_bin=/lustre/software/pacbio_smrttools/ccs_3.1.0
+
 if [ -z "$*" ] ; then
     echo
     echo "usage: smrt <program> [args]"
     echo
     echo "Tools available in $smrt_bin:"
     ls "$smrt_bin"
+    echo
+    echo "Also $ccs_bin will be prepended to the path, overriding:"
+    ls "$ccs_bin"
 else
-    exec env PATH="$smrt_bin:$PATH" "$@"
+    # Disable core dumps
+    ulimit -c 0
+
+    exec env PATH="$ccs_bin:$smrt_bin:$PATH" "$@"
 fi
