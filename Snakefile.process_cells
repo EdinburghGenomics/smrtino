@@ -239,18 +239,18 @@ rule fqscreen:
         subset = 1000000
     shell:
         """if [ -s {input} ] ; then
-             touch {output.txt} {output.html}
-             {TOOLBOX} gm_label.sh 1400x200 'Unable to run fastq_screen for {input}' {output.png}
-           else
              {TOOLBOX} fastq_screen --threads {threads} --bowtie '' --subset {params.subset} {input}
              for f in {output} ; do
                   extn="${{f##*{wildcards.cell}}}"
                   mv {wildcards.cell}.ccs+trim*"$extn" "$f"
              done
+           else
+             touch {output.txt} {output.html}
+             {TOOLBOX} gm_label.sh 1400x200 'Unable to run fastq_screen for {input}' {output.png}
            fi
         """
 
-# Generates the CCS for a raw BAM file. Using minpass 2 seems to make sense to get as many
+# Generates the CCS for a raw BAM file. Using minpass 1 seems to make sense to get as many
 # reads as possible for fastq_screen.
 rule smrt_ccs:
     output:
@@ -261,7 +261,7 @@ rule smrt_ccs:
     shadow: 'shallow'
     params:
         minlen = 50,
-        minpass = 2
+        minpass = 1,
     shell:
         """{TOOLBOX} smrt ccs --minLength={params.minlen} --minPasses={params.minpass} \
            --reportFile={output.rep} {input} {output.bam}
