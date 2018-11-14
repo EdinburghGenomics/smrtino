@@ -42,6 +42,7 @@ TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 """
 INFO_YML = glob("*.info.yml")
 STATS_PLOTS = glob("sequelstats_plots/*/.done")
+FS_PLOTS = glob("fqscreen/*.png")
 
 # This may well be a temporary problem, but we shouldn't ignore it.
 assert len(INFO_YML) >= len(STATS_PLOTS), \
@@ -69,7 +70,8 @@ rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
     input:
         yaml = INFO_YML,
-        plots = "sequelstats_plots/.done"
+        plots = "sequelstats_plots/.done",
+        fs_plots = FS_PLOTS,
     shell:
         "make_report.py -o {output} -s <(pb_run_status.py) {input.yaml}"
 

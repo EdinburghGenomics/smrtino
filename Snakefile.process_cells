@@ -226,6 +226,7 @@ rule sequelstats_stats:
 # Generates a fastqscreen plot. Somewhat different to Illuminatus as the reads are
 # different lengths. I'm going to generate and trim and filter the CCS
 # outside of this rule. But I'll still let fastq_screen do the subsetting.
+# Renaming the outputs of fastq_screen is a tiny bit tricky.
 rule fqscreen:
     output:
         txt  = "fqscreen/{cell}_screen.txt",
@@ -237,13 +238,20 @@ rule fqscreen:
     params:
         subset = 1000000
     shell:
-        """{TOOLBOX} fastq_screen --threads {threads} --bowtie {input} --subset {params.subset}
-           for f in {output} ; do
-                mv -t `dirname $f` `basename $f`
-           done
+        """if [ -s {input} ] ; then
+             touch {output.txt} {output.html}
+             {TOOLBOX} gm_label.sh 1400x200 'Unable to run fastq_screen for {input}' {output.png}
+           else
+             {TOOLBOX} fastq_screen --threads {threads} --bowtie '' --subset {params.subset} {input}
+             for f in {output} ; do
+                  extn="${{f##*{wildcards.cell}}}"
+                  mv {wildcards.cell}.ccs+trim*"$extn" "$f"
+             done
+           fi
         """
 
-# Generates the CCS for a raw BAM file.
+# Generates the CCS for a raw BAM file. Using minpass 2 seems to make sense to get as many
+# reads as possible for fastq_screen.
 rule smrt_ccs:
     output:
         bam = "{cell}.ccs.bam",
@@ -262,8 +270,11 @@ rule smrt_ccs:
 
 # Trim reads in a FASTQ file to length N (borrowed from qc_tools_python) and also discards
 # any reads shorter than N.
+# If there is an error, make an empty file so the pipeline can continue.
 # For the purposes of this pipeline I'm working directly from the BAM, but we may want to make
 # the full CCS FASTQ at some point too?
+# Also is there any reason to take the read from a point other than the first base? Any quality
+# issues at the beginning of the read?
 rule trim_to_n:
     output:
         fastq = "{cell}.ccs+trim{trim,\d+}.fastq.gz"
@@ -272,7 +283,8 @@ rule trim_to_n:
     threads: 2
     shell:
         """{TOOLBOX} samtools fastq {input.bam} | {TOOLBOX} fastx_trimmer -l {wildcards.trim} -m {wildcards.trim} | \
-           pigz -p {threads} -6c >{output.fastq}
+           pigz -p {threads} -6c >{output.fastq} \
+            || touch {output.fastq}
         """
 
 # md5summer that keeps the file path out of the .md5 file

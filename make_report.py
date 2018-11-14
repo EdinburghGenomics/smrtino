@@ -4,7 +4,7 @@ import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pprint import pformat
 from datetime import datetime
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, namedtuple
 import yaml
 import base64
 
@@ -43,14 +43,17 @@ def main(args):
 
         all_info[yaml_info['cell_id']] = yaml_info
 
-    # Glean some pipleine metadata
+    # Glean some pipeline metadata
     if args.pbpipeline:
         pipedata = get_pipeline_metadata(args.pbpipeline)
     else:
         pipedata = dict()
 
     # See if there are any plots to include
-    plots = find_sequalstats_plots(args.plots, pipedata.get('rundir'))
+    plots = find_sequelstats_plots(args.plots, pipedata.get('rundir'))
+
+    # See if there are any fastq_screen plots to include (one per cell)
+    fs_plots = find_fqscreen_plots(args.fqscreen_plots)
 
     # And some more of that
     status_info = load_status_info(args.status)
@@ -59,7 +62,8 @@ def main(args):
                         pipedata = pipedata,
                         run_status = status_info,
                         aborted_list = status_info.get('CellsAborted'),
-                        plots = plots)
+                        plots = plots,
+                        fs_plots = fs_plots)
 
     if (not args.out) or (args.out == '-'):
         print(*rep, sep="\n")
@@ -73,7 +77,7 @@ def escape(in_txt, backwhack=re.compile(r'([][\`*_{}()#+-.!])')):
     """
     return re.sub(backwhack, r'\\\1', str(in_txt))
 
-def find_sequalstats_plots(graph_dir, run_name=None):
+def find_sequelstats_plots(graph_dir, run_name=None):
     """ Look for all the PNG images. These are drawn per-run so don't apply to
         a specific SMRT cell.
         If run_name is supplied the script will sanity-check all images belong to the run.
@@ -109,13 +113,45 @@ def find_sequalstats_plots(graph_dir, run_name=None):
 
         res.setdefault(munged_name, dict())['img'] = p
 
-    # Remove missing
+    # Remove junk form the dict
     for pn in list(res):
         if not pn.startswith('__') and not res[pn].get('img'):
             del res[pn]
 
     return res
 
+def find_fqscreen_plots(plot_dir):
+    """ Return a dict of {cell: (file, seqcount)} as there should be one plot per cell
+        If there are multiple I'll end up returning an arbitrary one.
+    """
+    res = dict()
+    fs_plot = namedtuple('fs_plot', "file seqcount".split())
+    plots_seen = glob(plot_dir + '/*_screen.png')
+
+    for p in plots_seen:
+        # The regex match is purely becasue we may have .nocontrol in the name.
+        # Any junk with _screen.png is going to match.
+        mo = re.match(r"([^.]*).*_screen\.png", os.path.basename(p))
+        cell = mo.group(1)
+
+        if cell in res:
+            L.warning("Multiple fqscreen plots for cell {}".format(cell))
+        else:
+            # Try to get the count of sequences scanned from the corresponding txt file
+            # If we can't read the file it's most likely 0 reads.
+            seqcount = '0'
+            try:
+                with open(p[:-4] + '.txt') as fh:
+                    for l in fh:
+                        if not '#' in l:
+                            seqcount = l.split()[1]
+                            break
+            except:
+                pass
+
+            res[cell] = fs_plot(file=p, seqcount=seqcount)
+
+    return res
 
 def load_status_info(sfile):
     """ Parse the output of pb_run_status.py, either from a file or more likely
@@ -198,7 +234,7 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None):
+def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None, fs_plots=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
     """
@@ -223,16 +259,16 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None)
 
     # All the cells.
     if all_info:
-        replines.append("\n# SMRT Cells\n".format(k))
+        replines.append("\n# SMRT Cells\n")
     for k, v in sorted(all_info.items()):
         replines.append("\n## {}\n".format(k))
-        replines.extend(format_cell(v))
+        replines.extend(format_cell(v, fs_plots=fs_plots))
 
     # And the plots
     if plots is not None:
         replines.append("\n# SEQUELstats plots\n")
 
-        if not plots:
+        if not [ k for k in plots if not k.startswith("__") ]:
             replines.append("**No plots were produced for this run.**")
         else:
             if plots.get('__ALL__'):
@@ -275,7 +311,7 @@ def embed_image(filename):
         img_as_b64 = base64.b64encode(fh.read()).decode()
     return "<img src='data:image/png;base64,{}'>".format(img_as_b64)
 
-def format_cell(cdict):
+def format_cell(cdict, fs_plots=None):
     """ Format the cell infos as some sort of PanDoc output
     """
     res = [':::::: {.bs-callout}']
@@ -291,6 +327,14 @@ def format_cell(cdict):
     if cdict.get('_cstats'):
         res.append('')
         res.extend(make_table(cdict['_cstats']))
+
+    # Now add the FASTQ_screen plot
+    if fs_plots and fs_plots.get(cdict.get('cell_id')):
+        plot = fs_plots[cdict['cell_id']]
+        res.append('\n### FastQ Screen\n')
+        res.append('Screen of {} CCS sequences extracted from subreads\n'.format(
+                              escape(plot.seqcount) ))
+        res.append(embed_image(plot.file))
 
     return res + ['::::::\n']
 
@@ -317,6 +361,8 @@ def parse_args(*args):
                             help="Directory to scan for pipeline meta-data.")
     argparser.add_argument("--plots", default="sequelstats_plots",
                             help="Directory to scan for PNG plots.")
+    argparser.add_argument("--fqscreen_plots", default="fqscreen",
+                            help="Directory to scan for fastq_screen PNG plots.")
     argparser.add_argument("-s", "--status", default=None,
                             help="File containing status info on this run.")
     argparser.add_argument("-o", "--out",
