@@ -3,3 +3,4 @@
 __default__              : {slurm_opts: '--mincpus=1'}
 get_contig_stats_csv     : {slurm_opts: '--mem=28000 --mincpus=2'}
 trim_to_n                : {slurm_opts: '--mem=4000  --mincpus=2'}
+smrt_ccs                 : {slurm_opts: '--mem=30000 --mincpus=6'}

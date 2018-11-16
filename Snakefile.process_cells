@@ -250,8 +250,8 @@ rule fqscreen:
            fi
         """
 
-# Generates the CCS for a raw BAM file. Using minpass 1 seems to make sense to get as many
-# reads as possible for fastq_screen.
+# Generates the CCS for a raw BAM file. Using minpass 2 seems to make sense to get as many
+# reads as possible for fastq_screen. Maybe even minpass=1 would work here??
 rule smrt_ccs:
     output:
         bam = "{cell}.ccs.bam",
@@ -261,10 +261,11 @@ rule smrt_ccs:
     shadow: 'shallow'
     params:
         minlen = 50,
-        minpass = 1,
+        minpass = 2,
+    threads: 6
     shell:
         """{TOOLBOX} smrt ccs --minLength={params.minlen} --minPasses={params.minpass} \
-           --reportFile={output.rep} {input} {output.bam}
+           --reportFile={output.rep} --numThreads={threads} {input} {output.bam}
         """
 
 
@@ -283,8 +284,11 @@ rule trim_to_n:
     threads: 2
     shell:
         """{TOOLBOX} samtools fastq {input.bam} | {TOOLBOX} fastx_trimmer -l {wildcards.trim} -m {wildcards.trim} | \
-           pigz -p {threads} -6c >{output.fastq} \
-            || touch {output.fastq}
+           pigz -p {threads} -6c >{output.fastq} || true
+           # If the file is missing or empty (20-byte .gz file), substitute a zero-byte file
+           if [ ! -e {output.fastq} ] || [ "`stat -c %s {output.fastq}`" -le 20 ] ; then
+             true > {output.fastq}
+           fi
         """
 
 # md5summer that keeps the file path out of the .md5 file
