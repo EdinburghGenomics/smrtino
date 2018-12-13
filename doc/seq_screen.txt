@@ -1,0 +1,47 @@
+I tried using fastq screen as part of the reporting. It does work but it requires CSS calculation (at
+least the way I did it) and CCS is slooow.
+
+So.
+
+Let's take a different approach...
+
+1) Convert the subreads and scraps to fasta
+2) BLAST em all
+3) Make a .cov file
+4) Display in blobtools
+
+So how many reads in subreads? We do have the number up front:
+
+m54041_180926_125231.subreadset.xml:        <pbds:NumRecords>6233192</pbds:NumRecords>
+
+We have that for subreads but not for scraps. Given the large number of reads, what to
+do? Really blobtools wants you to blast the contigs and then see how many reads
+map to them. So can we meaningfully cluster these sequences.
+
+I can try.
+
+With cd-hit. But that wants to cluster at 0.8 or above. I suspect it will
+be slow and useless.
+(Yes, it is)
+
+Well what could I use as the COV parameter? We have the length. We have
+the GC. Some measure of repetitiveness or complexity?
+
+I could use dustmasker and ask 'what proportion masks'?
+I could use something from here:
+https://www.biostars.org/p/44545/
+
+So, first let's subsample to 10k sequences. Done.
+
+Now what about using the dust masker then reporting %dust?
+It seems I have to use the FASTQ output and then count the number of upper/lowercase
+chars in each seq. Do-able.
+
+$ ./dustmasker_static -level 8 -in m54041_180926_125231.subreads_10000.fasta -outfmt fasta 2>/dev/null | ./count_dust.py
+
+Yes, that makes some nice numbers. Let's try that.
+
+So, I need to break the FASTA into 100 chunks, blast it, and blob it. I'll copy the logic from
+qc_denovodna.
+
+
