@@ -124,11 +124,6 @@ snakerun_touch() {
 
 # All the Snakefiles have bootstrapping scripts on them, but this script
 # will run snakemake directly via the shell helper functions.
-if is_new_cluster ; then
-    export SNAKE_THREADS=${SNAKE_THREADS:-200}
-else
-    export SNAKE_THREADS=${SNAKE_THREADS:-25}
-fi
 export DRY_RUN=${DRY_RUN:-0}
 
 
