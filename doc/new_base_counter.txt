@@ -1,0 +1,45 @@
+The old Perl-based subread_stats.pl is not good for our usage.
+
+It's been hacked from it's previous job, which it did well, and the fact it loads
+all reads into memory at once (or at least all headers) is problematic in large
+FASTA files.
+
+We'd also like to get a histogram in addition to the headline table.
+
+Having it run on multiple inputs is not necessary.
+
+So we need to get:
+
+Max length - easy
+Num >= 10 - easy if we have a histo
+Total bases in subreads >= 10 - ditto
+N50 for subreads >= 10 - ditto
+Man length for subreads >= 10 - ditto
+GC subreads >= 10 - slightly harder
+
+For the GC, we could calculate a running total of GC >= 10.
+Or we could store this:
+
+histo = [ NamedTuple( tally, gc_bases ),
+          ...
+        ]
+
+Now the calculation becomes easy. Oh, not quite. Because we can have N's in the middle.
+So the gc_bases must be supplemented with atgc_bases to make the full calculation.
+
+For N50, the simplest way to think of it is if all the sequences were put end-to-end what would
+be the length of the sequence at the mid point. If the mid point falls exactly between two we should
+average them but really it matters not much.
+
+It seems people have come up with some really dumb-ass ways to calculate this, involving building
+massive data structures just to measure how long they are.
+
+http://www.metagenomics.wiki/pdf/definition/assembly/n50
+http://seqanswers.com/forums/showthread.php?t=2857
+
+And I can do a histo plot. Maybe Nathan can do a histo plot? My notes say "see Urmi's isoseq_process.txt".
+Is this a thing I have? No - I asked Urmi. I think we want mubers and a graph.
+
+So, we can output a YAML file with meta-data and a histogram.
+
+Let's make a skeleton script then add some test.
