@@ -38,6 +38,7 @@ def main(args):
             assert yaml_info.get('cell_id'), "All yamls must have a cell ID"
 
         # Add in the cstats. This requires some custom parsing of the CSV
+        # FIXME - replace with better CSTATS and explicit linking in the YAML
         y_base = re.sub(r'\.info\.yml$', '', y)
         yaml_info['_cstats'] = find_cstats(y_base, yaml_info.get('filter_added'))
 
@@ -50,10 +51,7 @@ def main(args):
         pipedata = dict()
 
     # See if there are any plots to include
-    plots = find_sequelstats_plots(args.plots, pipedata.get('rundir'))
-
-    # See if there are any fastq_screen plots to include (one per cell)
-    fs_plots = find_fqscreen_plots(args.fqscreen_plots)
+    sequelstats_plots = find_sequelstats_plots(args.plots, pipedata.get('rundir'))
 
     # And some more of that
     status_info = load_status_info(args.status)
@@ -62,8 +60,7 @@ def main(args):
                         pipedata = pipedata,
                         run_status = status_info,
                         aborted_list = status_info.get('CellsAborted'),
-                        plots = plots,
-                        fs_plots = fs_plots)
+                        sequelstats_plots = sequelstats_plots)
 
     if (not args.out) or (args.out == '-'):
         print(*rep, sep="\n")
@@ -117,39 +114,6 @@ def find_sequelstats_plots(graph_dir, run_name=None):
     for pn in list(res):
         if not pn.startswith('__') and not res[pn].get('img'):
             del res[pn]
-
-    return res
-
-def find_fqscreen_plots(plot_dir):
-    """ Return a dict of {cell: (file, seqcount)} as there should be one plot per cell
-        If there are multiple I'll end up returning an arbitrary one.
-    """
-    res = dict()
-    fs_plot = namedtuple('fs_plot', "file seqcount".split())
-    plots_seen = glob(plot_dir + '/*_screen.png')
-
-    for p in plots_seen:
-        # The regex match is purely becasue we may have .nocontrol in the name.
-        # Any junk with _screen.png is going to match.
-        mo = re.match(r"([^.]*).*_screen\.png", os.path.basename(p))
-        cell = mo.group(1)
-
-        if cell in res:
-            L.warning("Multiple fqscreen plots for cell {}".format(cell))
-        else:
-            # Try to get the count of sequences scanned from the corresponding txt file
-            # If we can't read the file it's most likely 0 reads.
-            seqcount = '0'
-            try:
-                with open(p[:-4] + '.txt') as fh:
-                    for l in fh:
-                        if not '#' in l:
-                            seqcount = l.split()[1]
-                            break
-            except:
-                pass
-
-            res[cell] = fs_plot(file=p, seqcount=seqcount)
 
     return res
 
@@ -234,7 +198,7 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None, fs_plots=None):
+def format_report(all_info, pipedata, run_status, aborted_list=None, sequalstats_plots=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
     """
@@ -262,7 +226,7 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, plots=None,
         replines.append("\n# SMRT Cells\n")
     for k, v in sorted(all_info.items()):
         replines.append("\n## {}\n".format(k))
-        replines.extend(format_cell(v, fs_plots=fs_plots))
+        replines.extend(format_cell(v))
 
     # And the plots
     if plots is not None:
@@ -311,7 +275,7 @@ def embed_image(filename):
         img_as_b64 = base64.b64encode(fh.read()).decode()
     return "<img src='data:image/png;base64,{}'>".format(img_as_b64)
 
-def format_cell(cdict, fs_plots=None):
+def format_cell(cdict):
     """ Format the cell infos as some sort of PanDoc output
     """
     res = [':::::: {.bs-callout}']
@@ -328,13 +292,17 @@ def format_cell(cdict, fs_plots=None):
         res.append('')
         res.extend(make_table(cdict['_cstats']))
 
-    # Now add the FASTQ_screen plot
-    if fs_plots and fs_plots.get(cdict.get('cell_id')):
-        plot = fs_plots[cdict['cell_id']]
-        res.append('\n### FastQ Screen\n')
-        res.append('Screen of {} CCS sequences extracted from subreads\n'.format(
-                              escape(plot.seqcount) ))
-        res.append(embed_image(plot.file))
+    # Now add the blob plots
+    if cdict.get('_plots'):
+        for plot_section in cdict['_plots']:
+            res.append('\n### {}\n'.format(plot_section['title']))
+            for f in plot_section['files']:
+
+                # TODO - convert to lightbox
+                # This involves adding lines like:
+                #  [plot](blob/foo.png){.thumbnail}
+                # And making thumbnails like blob/foo.__thumb.png
+                res.append(embed_image(f))
 
     return res + ['::::::\n']
 
@@ -360,9 +328,7 @@ def parse_args(*args):
     argparser.add_argument("-p", "--pbpipeline", default="pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
     argparser.add_argument("--plots", default="sequelstats_plots",
-                            help="Directory to scan for PNG plots.")
-    argparser.add_argument("--fqscreen_plots", default="fqscreen",
-                            help="Directory to scan for fastq_screen PNG plots.")
+                            help="Directory to scan for PNG plots relating to the whole run.")
     argparser.add_argument("-s", "--status", default=None,
                             help="File containing status info on this run.")
     argparser.add_argument("-o", "--out",
