@@ -250,11 +250,17 @@ localrules: list_blob_plots
 rule list_blob_plots:
     output: "blob/{cell}.plots.yml"
     input:
-        expand( "blob/{{cell}}.{s}.{taxlevel}.{extn}.png", s = "subreads scraps".split(),
-                                                           taxlevel = BLOB_LEVELS,
-                                                           extn = "cov0 read_cov.cov0".split() )
+        png = expand( "blob/{{cell}}.{s}.{taxlevel}.{extn}.png", s = "subreads scraps".split(),
+                                                                 taxlevel = BLOB_LEVELS,
+                                                                 extn = "cov0 read_cov.cov0".split() ),
+        sub_sample = "blob/{{cell}}.subreads+sub{}.fasta".format(BLOB_SUBSAMPLE),
+        scrap_sample = "blob/{{cell}}.scraps+sub{}.fasta".format(BLOB_SUBSAMPLE)
     run:
-        plots = [ dict(title = 'Taxonomy by {}'.format(taxlevel),
+        # We want to know how big the subsample actually was, so check the FASTQ
+        counts = [ l.split()[0] for l in
+                   shell("grep -o '^>' {input.sub_sample} {input.scrap_sample} | uniq -c", iterable=True) ]
+
+        plots = [ dict(title = 'Taxonomy by {} ({} sequences)'.format(taxlevel, '+'.join(counts)),
                        files  = expand( "blob/{cell}.{s}.{taxlevel}.{extn}.png",
                                                          cell = [wildcards.cell],
                                                          taxlevel = [taxlevel],
