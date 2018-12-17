@@ -37,6 +37,10 @@ def main(args):
     info['filter_added'] = filtername
     info['_filename'] = xmlfile
 
+    if args.plots:
+        with open(args.plots) as yfh:
+            info['_plots'] = yaml.safe_load(yfh)
+
     # Print the result
     print(yaml.safe_dump(info, default_flow_style=False))
 
@@ -48,6 +52,8 @@ def parse_args(*args):
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("xmlfile", nargs=1,
                             help="XML to be loaded")
+    argparser.add_argument("-p", "--plots",
+                            help="Plots generated for this cell (YAML file)")
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 
