@@ -234,49 +234,63 @@ rule sequelstats_stats:
 BAMTOFASTA    = "/lustre/software/bin/samtools fasta"
 SEQTK_SAMPLE  = "/lustre/software/bin/seqtk sample"
 BLOBTOOLS     = "/lustre/software/blobtools/current_patched/blobtools"
-DUSTMASKER    = "/lustre/home/tbooth2/bin/dustmasker_static"
+DUSTMASKER    = "/lustre/software/dustmasker/dustmasker_static_2008_04_24"
 BLASTN        = "/lustre/software/blast+/ncbi-blast-2.6.0+/bin/blastn"
 
+# Same DB we use for ref-free QC
 BLASTDB       = "/lustre/references/blastdb/nt-220217/nt"
 
+# BLAST S sequences in C chunks
+BLOB_SUBSAMPLE = 10000
+BLOB_CHUNKS = 100
+BLOB_LEVELS = "phylum order species".split()
+
+# This is how I want to pass my plots into compile_cell_info.py
+# Serves as the driver by depending on the 6 plots
+localrules: list_blob_plots
+rule list_blob_plots:
+    output: "blob/{cell}.plots.json"
+    input: expand( "blob/{{cell}}.{s}.{taxlevel}.{extn}.png", s = "subreads scraps".split(),
+                                                              taxlevel = BLOB_LEVELS,
+                                                              extn = "cov0 read_cov.cov0".split() )
+    run:
+        plots = [ dict(title = 'Taxonomy by {}'.format(taxlevel),
+                       files  = expand( "blob/{cell}.{s}.{taxlevel}.{extn}.png",
+                                                         cell = [wildcards.cell],
+                                                         s = "subreads scraps".split(),
+                                                         extn = "cov0 read_cov.cov0".split() )
+                      ) for taxlevel in BLOB_LEVELS ]
+        with open(output[0], 'w') as ofh:
+            print(json.dumps(plots), file=ofh)
+
+# Convert to FASTA and subsample and munge the headers
 rule bam_to_subsampled_fasta:
-    output: "{foo}+sub{n}.fasta"
+    output: "blob/{foo}+sub{n}.fasta"
     input: "{foo}.bam"
     shell:
         "{BAMTOFASTA} {input} | {SEQTK_SAMPLE} - {wildcards.n} | sed 's,/,_,g' > {output}"
 
-# This is how I want to pass my plots into compile_cell_info.py
-localrules: list_blob_plots
-rule list_blob_plots:
-    output: "blobplots/{cell}.plots.json"
-    input: [ all 6 of the plots ]
-    run:
-        plots = [ dict(title='...', file='...'),
-                ]
-        with open(output[0], 'w') as ofh:
-            print(json.dumps(plots), file=ofh)
-
 
 # Makes a .complexity file for our FASTA file
 rule fasta_to_complexity:
-    output: "{foo}.complexity"
-    input: "{foo}.fasta"
+    output: "blob/{foo}.complexity"
+    input: "blob/{foo}.fasta"
     params:
         level = 10
     shell:
-        "{DUSTMASKER} -level {params.level} -in {input} -outfmt fasta 2>/dev/null | ./count_dust.py > {output}"
+        "{DUSTMASKER} -level {params.level} -in {input} -outfmt fasta 2>/dev/null | count_dust.py > {output}"
 
 # Combine all the 100 blast reports into one
 rule merge_blast_reports:
-    output: "{foo}.blast"
-    input: [ "{{foo}}.blast_part_{:02d}".format(n) for n in range(100) ]
+    output: "blob/{foo}.blast"
+    input: [ "blob/{{foo}}.blast_part_{:04d}".format(n) for n in range(BLOB_CHUNKS) ]
     shell:
         "cat {input} > {output}"
 
 # BLAST a chunk
 rule blast_chunk:
-    output: "{foo}.blast_part_{chunk}"
-    input: "{foo}.fasta_part_{chunk}"
+    output: "blob/{foo}.blast_part_{chunk}"
+    input: "blob/{foo}.fasta_part_{chunk}"
     threads: 4
     params:
         db = BLASTDB,
@@ -291,15 +305,15 @@ rule blast_chunk:
 # Split the FASTA in a fixed number of chunks. All files must be made, even if empty
 rule split_fasta_in_chunks:
     output:
-        parts = [ "{{foo}}.fasta_part_{:02d}".format(n) for n in range(100) ],
-        list = "{foo}.fasta_parts"
-    input: "{foo}.fasta"
+        parts = [ "blob/{{foo}}.fasta_part_{:04d}".format(n) for n in range(BLOB_CHUNKS) ],
+        list = "blob/{foo}.fasta_parts"
+    input: "blob/{foo}.fasta"
     params:
-        chunksize = 100
+        chunksize = BLOB_SUBSAMPLE // BLOB_CHUNKS
     shell:
         """awk 'BEGIN {{n_seq=0;n_file=0;}} \
                   /^>/ {{if(n_seq%{params.chunksize}==0){{ \
-                         file=sprintf("{wildcards.foo}.fasta_part_%02d", n_file); n_file++; \
+                         file=sprintf("{wildcards.foo}.fasta_part_%04d", n_file); n_file++; \
                          print file >> "'`basename {output.list}`'"; \
                        }} \
                        print >> file; n_seq++; next; \
@@ -309,13 +323,14 @@ rule split_fasta_in_chunks:
         """
 
 # Makes a blob db per FASTA using the complexity file as a COV file.
+# {foo} is {cell}.subreads or {cell}.scraps
 rule blob_db:
     output:
-        json = "{foo}.blobDB.json",
+        json = "blob/{foo}.blobDB.json",
     input:
-        blast_results = "{foo}+sub10000.blast",
-        reads_sample = "{foo}+sub10000.fasta",
-        cov = "{foo}+sub10000.complexity"
+        blast_results = "blob/{{foo}}+sub{}.blast".format(BLOB_SUBSAMPLE),
+        reads_sample  = "blob/{{foo}}+sub{}.fasta".format(BLOB_SUBSAMPLE),
+        cov           = "blob/{{foo}}+sub{}.complexity".format(BLOB_SUBSAMPLE)
     shadow: 'shallow'
     shell:
         """mkdir blob_tmp
@@ -325,20 +340,22 @@ rule blob_db:
         """
 
 # Run the blob plotting command once per set per tax level. Produce a single
-# stats file and a tar archive of png files
-rule blob_plot_zip:
+# stats file and a pair of png files
+rule blob_plot_png:
     output:
-        plots = "{assem}.{taxlevel}.plots.tar.gz",
-        stats = "{assem}.{taxlevel}.blobplot.stats.txt"
+        plotc = "blob/{foo}.{taxlevel}.cov0.png",
+        plotr = "blob/{foo}.{taxlevel}.read_cov.cov0.png",
+        stats = "blob/{foo}.{taxlevel}.blobplot.stats.txt"
     input:
-        json = "{assem}.blobDB.json"
+        json = "blob/{foo}.blobDB.json"
+    shadow: 'shallow'
     shell:
-        """ tmp_dir=`mktemp -d ./blob_tmp_XXXXX`
+        """ mkdir ./blob_tmp
             export BLOB_COVERAGE_LABEL=Non-Dustiness
-            {BLOBTOOLS} blobplot -i {input.json} -o $tmp_dir/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
-            mv $tmp_dir/*.stats.txt {output.stats}
-            ( cd $tmp_dir && tar -cvz *.{wildcards.taxlevel}.*.png ) > {output.plots}
-            rm -r $tmp_dir
+            {BLOBTOOLS} blobplot -i {input.json} -o ./blob_tmp/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
+            mv ./blob_tmp/{wildcards.foo}.*.stats.txt {output.stats}
+            mv ./blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png {output.plotc}
+            mv ./blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png {output.plotr}
         """
 
 
