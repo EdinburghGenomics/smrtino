@@ -51,34 +51,51 @@ class T(unittest.TestCase):
 
         self.assertEqual(self.load_histo('empty'), [])
 
-        self.assertEqual(dict(histo_to_result([], cutoff=0)),
+        self.assertEqual(dict(histo_to_result([])),
                             { 'Max read length': -1,
                               'Reads' : 0,
                               'Total bases': 0,
                               'N50': -1,
-                              '_histo': [] } )
+                              'GC': 0.0,
+                              'Mean length': 0.0 } )
+
+    def test_simplestats(self):
+        """Test on the foo3.fasta sample file
+        """
+        res3 = histo_to_result(self.load_histo('foo3'), cutoffs=[0, 6])
+
+        self.assertEqual( res3['Reads'], 3 )
+        self.assertEqual( res3['Total bases'], 20 )
+
+        self.assertEqual( res3['Reads >=6'], 1 )
+        self.assertEqual( res3['Total bases for reads >=6'], 10 )
+
 
     def test_n50(self):
         """Look at some N50 values for simple files.
         """
         # Single sequence
-        self.assertEqual( histo_to_result(self.load_histo('foo1'), cutoff=0)['N50'], 1 )
-        self.assertEqual( histo_to_result(self.load_histo('foo1'), cutoff=1)['N50 for reads >=1'], 1 )
-        self.assertEqual( histo_to_result(self.load_histo('foo1'), cutoff=2)['N50 for reads >=2'], 1 )
+        res1 = histo_to_result(self.load_histo('foo1'), cutoffs=[0,1,2])
+        self.assertEqual( res1['N50'], 1 )
+        self.assertEqual( res1['N50 for reads >=1'], 1 )
+        self.assertEqual( res1['N50 for reads >=2'], 1 )
 
         # Two sequences of length 8 and 9
-        self.assertEqual( histo_to_result(self.load_histo('foo2'), cutoff=0)['N50'], 9 )
-        self.assertEqual( histo_to_result(self.load_histo('foo2'), cutoff=9)['N50 for reads >=9'], 9 )
+        res2 = histo_to_result(self.load_histo('foo2'), cutoffs=[0,9])
+        self.assertEqual( res2['N50'], 9 )
+        self.assertEqual( res2['N50 for reads >=9'], 9 )
 
         # Three sequences of lengths 5, 5 and 10
-        self.assertEqual( histo_to_result(self.load_histo('foo3'), cutoff=0)['N50'], 10 ) # I think??
-        self.assertEqual( histo_to_result(self.load_histo('foo3'), cutoff=6)['N50 for reads >=6'], 10 )
+        res3 = histo_to_result(self.load_histo('foo3'), cutoffs=[0, 6])
+        self.assertEqual( res3['N50'], 10 ) # I think??
+        self.assertEqual( res3['N50 for reads >=6'], 10 )
 
         # Or indeed 5, 5, 9 or 5, 5, 11
-        self.assertEqual( histo_to_result(self.load_histo('foo4'), cutoff=0)['N50'], 5 )
-        self.assertEqual( histo_to_result(self.load_histo('foo4'), cutoff=5)['N50 for reads >=5'], 5 )
-        self.assertEqual( histo_to_result(self.load_histo('foo4'), cutoff=6)['N50 for reads >=6'], 9 )
-        self.assertEqual( histo_to_result(self.load_histo('foo5'), cutoff=0)['N50'], 11 )
+        res4 = histo_to_result(self.load_histo('foo4'), cutoffs=[0,5,6])
+        self.assertEqual( res4['N50'], 5 )
+        self.assertEqual( res4['N50 for reads >=5'], 5 )
+        self.assertEqual( res4['N50 for reads >=6'], 9 )
+        self.assertEqual( histo_to_result(self.load_histo('foo5'))['N50'], 11 )
 
 if __name__ == '__main__':
     unittest.main()

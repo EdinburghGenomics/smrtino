@@ -52,42 +52,53 @@ def fasta_to_histo(fastalines):
 
     return res
 
-def histo_to_result(histo, cutoff):
+def histo_to_result(histo, cutoffs=(0,)):
     """ Do some calculations on the histogram.
     """
     res = OrderedDict([ ('Max read length', len(histo) - 1) ])
 
-    if cutoff:
-        def labelize(l):
-            if 'reads' in l.lower():
-                return "{} >={}".format(l, cutoff)
-            else:
-                return "{} for reads >={}".format(l, cutoff)
-    else:
-        labelize = str
+    def labelize(l, cutoff):
+        if not cutoff:
+            return str(l)
+        elif 'reads' in l.lower():
+            return "{} >={}".format(l, cutoff)
+        else:
+            return "{} for reads >={}".format(l, cutoff)
 
-    # Total reads and bases
-    total_reads = sum( h['tally'] for h in histo[cutoff:] )
-    total_length = sum( n * h['tally'] for n, h in islice(enumerate(histo), cutoff, None) )
+    for cutoff in cutoffs:
+        # Total reads and bases
+        total_reads = sum( h['tally'] for h in histo[cutoff:] )
+        total_length = sum( n * h['tally'] for n, h in islice(enumerate(histo), cutoff, None) )
 
-    res[labelize('Reads')] = total_reads
-    res[labelize('Total bases')] = total_reads
+        res[labelize('Reads', cutoff)] = total_reads
+        res[labelize('Total bases', cutoff)] = total_length
 
-    # N50 - see notes
-    # If the cutoff is larger than the longert sequence the N50 will be the length
-    # or the longest sequence(!?)
-    half_length = (total_length // 2) + (total_length % 2)
-    sum_length = 0
-    for i in reversed(range(len(histo))):
-        sum_length += (i * histo[i]['tally'])
-        if sum_length >= half_length:
-            res[labelize('N50')] = i
-            break
-    else:
-        res[labelize('N50')] = -1
+        # N50 - see notes
+        # If the cutoff is larger than the longest sequence the N50 will be the length
+        # or the longest sequence(!?)
+        half_length = (total_length // 2) + (total_length % 2)
+        sum_length = 0
+        for i in reversed(range(len(histo))):
+            sum_length += (i * histo[i]['tally'])
+            if sum_length >= half_length:
+                res[labelize('N50', cutoff)] = i
+                break
+        else:
+            res[labelize('N50', cutoff)] = -1
 
+        # GC
+        total_gc = sum( h['gc_bases'] for h in histo[cutoff:] )
+        total_atgc = sum( h['atgc_bases'] for h in histo[cutoff:] )
+        try:
+            res[labelize('GC', cutoff)] = total_gc / total_atgc * 100
+        except Exception:
+            res[labelize('GC', cutoff)] = 0.0
 
-    res['_histo'] = histo
+        # Mean length
+        try:
+            res[labelize('Mean length', cutoff)] = total_length / total_reads
+        except Exception:
+            res[labelize('Mean length', cutoff)] = 0.0
 
     return res
 
@@ -99,8 +110,15 @@ def main(args):
         with open(args.fastafile) as fh:
             histo = fasta_to_histo(read_fasta(fh, trim_n = args.trim_n))
 
-    print( yaml.safe_dump(histo_to_result(histo, args.cutoff or 0)) )
+    # Print the result to STDOUT
+    print( yaml.safe_dump( histo_to_result(histo, args.cutoff),
+                           default_flow_style=False ) )
 
+    # Save the histogram
+    if args.histogram:
+        with open(args.histogram, 'w') as hfh:
+            for n, v in enumerate(histo):
+                print('{}\t{}'.format(n, v['tally']), file=hfh)
 
 def parse_args(*args):
     description = """Reads a FASTA file and outputs some stats. Yes, it's yet another
@@ -110,8 +128,10 @@ def parse_args(*args):
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("fastafile", nargs='?',
                             help="File to read, or else will read from stdin.")
-    argparser.add_argument("-c", "--cutoff",
-                            help="Min length cutoff for the stats.")
+    argparser.add_argument("-c", "--cutoff", type=int, nargs='+', default=(0,),
+                            help="Min length cutoff (or multiple cutoffs) for the stats.")
+    argparser.add_argument("-H", "--histogram",
+                            help="Save histogram to the specified file.")
     argparser.add_argument("-t", "--trim_n", action="store_true",
                             help="Trim off N's from the start and end of reads.")
 
