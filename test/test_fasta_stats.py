@@ -52,12 +52,27 @@ class T(unittest.TestCase):
         self.assertEqual(self.load_histo('empty'), [])
 
         self.assertEqual(dict(histo_to_result([])),
+                            { '_headings': [ 'Max read length',
+                                             'Reads',
+                                             'Total bases',
+                                             'N50',
+                                             'GC',
+                                             'Mean length'],
+                              'Max read length': -1,
+                              'Reads' : 0,
+                              'Total bases': 0,
+                              'N50': -1,
+                              'GC': 0.0,
+                              'Mean length': 0.0 } )
+
+        self.assertEqual(dict(histo_to_result([], headings=False)),
                             { 'Max read length': -1,
                               'Reads' : 0,
                               'Total bases': 0,
                               'N50': -1,
                               'GC': 0.0,
                               'Mean length': 0.0 } )
+
 
     def test_simplestats(self):
         """Test on the foo3.fasta sample file

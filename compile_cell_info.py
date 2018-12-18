@@ -37,9 +37,22 @@ def main(args):
     info['filter_added'] = filtername
     info['_filename'] = xmlfile
 
+    # Add plots if we have them
     if args.plots:
         with open(args.plots) as yfh:
             info['_plots'] = yaml.safe_load(yfh)
+
+    # Add stats if we have them
+    for s in args.stats:
+        filename = '-'
+        if s.endswith(".cstats.yml"):
+            filename = s.split('.')[-3].capitalize()
+
+        with open(s) as sfh:
+            stats = yaml.safe_load(s)
+            stats['File'] = filename
+            stats['_headings'] = ['File'] + stats['_headings']
+            info.setdefault('_cstats', []).append(stats)
 
     # Print the result
     print(yaml.safe_dump(info, default_flow_style=False))
@@ -54,6 +67,8 @@ def parse_args(*args):
                             help="XML to be loaded")
     argparser.add_argument("-p", "--plots",
                             help="Plots generated for this cell (YAML file)")
+    argparser.add_argument("-s", "--stats", nargs="*",
+                            help="Stats generated for this cell (YAML file)")
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 

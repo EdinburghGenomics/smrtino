@@ -46,7 +46,7 @@ TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
 # Other than that, ensure that scripts in the directory with this Snakefile are
 # in the PATH (we have to do it here as $PATH does not get preserved on cluster jobs):
-#   subread_stats.pl
+#   fasta_stats.py
 if ( not os.path.dirname(workflow.snakefile) in os.environ['PATH'].split(':') and
      not os.path.dirname(os.path.abspath(workflow.snakefile)) in os.environ['PATH'].split(':') ):
      os.environ['PATH'] += ':' + os.path.dirname(workflow.snakefile)
@@ -126,13 +126,13 @@ rule one_cell_info:
         scraps_md5 = lambda wc: "md5sums/" + wc.cell + SC[wc.cell]['filter'] + ".scraps.bam.md5",
         xml1       = lambda wc: wc.cell + ".subreadset.xml" if SC[wc.cell]['filter'] else [],
         xml2       = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreadset.xml",
-        stats      = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreads.cstats.csv",
-        scrapstats = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".scraps.cstats.csv",
+        stats      = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreads.cstats.yml",
+        scrapstats = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".scraps.cstats.yml",
         blobs      = lambda wc: "blob/" + wc.cell + SC[wc.cell]['filter'] + ".plots.yml",
     shell:
         # What needs to go into the YML? Stuff from the XML and also some stuff from the
         # stats, maybe? At present the script will discover extra files automagically.
-        "compile_cell_info.py {input.xml2} -p {input.blobs} > {output}"
+        "compile_cell_info.py {input.xml2} -s {input.stats} {input.scrapstats} -p {input.blobs} > {output}"
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
 if os.environ.get('FILTER_LOCALLY', '0') != '0':
@@ -181,18 +181,14 @@ rule filter_control:
         # Filter with standard sequences (would we ever use anything else??)
         "{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol"
 
-# Note that our contig stats script outputs
-#  pc/subread_stats.txt
-#  pc/subread_lengths_gc.txt
-# I think we just need the former. In any case we definitely need this to be a shadow rule.
-rule get_contig_stats_csv:
-    output: "{bam}.cstats.csv"
+# This script produces some headline stats as well as a histogram we'll use later
+rule get_contig_stats_yaml:
+    output:
+        yaml = "{bam}.cstats.yml",
+        histo = "{bam}.length_histo.csv"
     input:  "{bam}.bam"
-    shadow: 'shallow'
     shell:
-        '''subread_stats.pl -t 10 -f <({TOOLBOX} samtools fasta {input})
-           mv pc/subread_stats.txt {output}
-        '''
+        "subread_stats.pl -h {output.histo} <({TOOLBOX} samtools fasta {input}) > {output.yaml}"
 
 # A shim rule to write the absolute paths of the .bam files to matching .fn
 # files. As long as this runs on the login node sequelstats_stats can run on

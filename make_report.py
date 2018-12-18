@@ -37,11 +37,6 @@ def main(args):
             # Sort by cell ID - all YAML must have this.
             assert yaml_info.get('cell_id'), "All yamls must have a cell ID"
 
-        # Add in the cstats. This requires some custom parsing of the CSV
-        # FIXME - replace with better CSTATS and explicit linking in the YAML
-        y_base = re.sub(r'\.info\.yml$', '', y)
-        yaml_info['_cstats'] = find_cstats(y_base, yaml_info.get('filter_added'))
-
         all_info[yaml_info['cell_id']] = yaml_info
 
     # Glean some pipeline metadata
@@ -131,46 +126,6 @@ def load_status_info(sfile):
                 res[k.strip()] = v.strip()
     return res
 
-def find_cstats(filebase, filt=None):
-    """ Given the base name of an .info.yml file, find the related .scraps.cstats.csv
-        and .subreads.cstats.csv and load the contents.
-        I could give the names of these explicitly in the YAML but it seems over-fiddly.
-    """
-    res = dict( headers = None,
-                data = [] )
-
-    if filt:
-        filebase += "." + filt
-
-    # Let's have those stats. I'm only expecting one line in this file, aside from
-    # the header.
-    try:
-        with open(filebase + '.subreads.cstats.csv') as cfh:
-            res['headers'] = next(cfh).rstrip().split(',')
-            res['data'].append(next(cfh).rstrip().split(','))
-            res['data'][-1][0] = "Subreads"
-    except FileNotFoundError:
-        pass
-
-    # And the second one. I could do this with a loop if there were several files.
-    try:
-        with open(filebase + '.scraps.cstats.csv') as cfh:
-            h = next(cfh).rstrip().split(',')
-            if res['headers']:
-                assert res['headers'] == h
-            else:
-                res['headers'] = h
-            res['data'].append(next(cfh).rstrip().split(','))
-            res['data'][-1][0] = "Scraps"
-    except FileNotFoundError:
-        pass
-
-    if res['headers']:
-        res['headers'][0] = "File"
-        return res
-    else:
-        return None
-
 def get_pipeline_metadata(pipe_dir):
     """ Read the files in the pbpipeline directory to find out some stuff about the
         pipeline. This is in addition to what we get from pb_run_status.
@@ -198,7 +153,7 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_info, pipedata, run_status, aborted_list=None, sequalstats_plots=None):
+def format_report(all_info, pipedata, run_status, aborted_list=None, sequelstats_plots=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
     """
@@ -221,24 +176,24 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, sequalstats
     if not all_info:
         replines.append("**No SMRT Cells have been processed for this run yet.**")
 
-    # All the cells.
+    # All the cells, including per-cell plots
     if all_info:
         replines.append("\n# SMRT Cells\n")
     for k, v in sorted(all_info.items()):
         replines.append("\n## {}\n".format(k))
         replines.extend(format_cell(v))
 
-    # And the plots
-    if plots is not None:
+    # And the SEQUELstats plots (that cover the whole run)
+    if sequelstats_plots is not None:
         replines.append("\n# SEQUELstats plots\n")
 
-        if not [ k for k in plots if not k.startswith("__") ]:
+        if not [ k for k in sequelstats_plots if not k.startswith("__") ]:
             replines.append("**No plots were produced for this run.**")
         else:
-            if plots.get('__ALL__'):
+            if sequelstats_plots.get('__ALL__'):
                 replines.extend(blockquote(plots['__ALL__']['msg']))
 
-            for p, pdict in plots.items():
+            for p, pdict in sequelstats_plots.items():
                 if p.startswith('__') or pdict.get('hide'):
                     continue
 
@@ -306,14 +261,22 @@ def format_cell(cdict):
 
     return res + ['::::::\n']
 
-def make_table(tdict):
+def make_table(rows):
     """ Yet another PanDoc table formatter oh yeah
     """
+    headers = rows[0]['_headers']
+
+    def fmt(v):
+        if type(v) == float:
+            return "{:.02f}".format(v)
+        else:
+            return "{}".format(v)
+
     res = []
-    res.append('|' + '|'.join(tdict['headers'])  + '|')
-    res.append('|' + '|'.join(('-' * len(h)) for h in tdict['headers'])  + '|')
-    for d in tdict['data']:
-        res.append('|' + '|'.join(d)  + '|')
+    res.append('|' + '|'.join([escape(h) for h in headers))  + '|')
+    res.append('|' + '|'.join(('-' * len(h)) for h in headers)  + '|')
+    for r in rows:
+        res.append('|' + '|'.join([fmt(r.get(h)) for h in headers])  + '|')
 
     return res
 

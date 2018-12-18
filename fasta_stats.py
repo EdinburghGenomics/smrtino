@@ -52,18 +52,26 @@ def fasta_to_histo(fastalines):
 
     return res
 
-def histo_to_result(histo, cutoffs=(0,)):
+def histo_to_result(histo, cutoffs=(0,), headings=True):
     """ Do some calculations on the histogram.
     """
-    res = OrderedDict([ ('Max read length', len(histo) - 1) ])
+    res = OrderedDict()
 
     def labelize(l, cutoff):
+        """Make a readable label and add it to the list of _headings
+        """
         if not cutoff:
-            return str(l)
+            newl = str(l)
         elif 'reads' in l.lower():
-            return "{} >={}".format(l, cutoff)
+            newl = "{} >={}".format(l, cutoff)
         else:
-            return "{} for reads >={}".format(l, cutoff)
+            newl = "{} for reads >={}".format(l, cutoff)
+
+        if headings:
+            res.setdefault('_headings', []).append(newl)
+        return newl
+
+    res[labelize('Max read length', None)] = len(histo) - 1
 
     for cutoff in cutoffs:
         # Total reads and bases
@@ -111,7 +119,7 @@ def main(args):
             histo = fasta_to_histo(read_fasta(fh, trim_n = args.trim_n))
 
     # Print the result to STDOUT
-    print( yaml.safe_dump( histo_to_result(histo, args.cutoff),
+    print( yaml.safe_dump( histo_to_result(histo, args.cutoff, headings=not(args.no_headings)),
                            default_flow_style=False ) )
 
     # Save the histogram
@@ -132,6 +140,8 @@ def parse_args(*args):
                             help="Min length cutoff (or multiple cutoffs) for the stats.")
     argparser.add_argument("-H", "--histogram",
                             help="Save histogram to the specified file.")
+    argparser.add_argument("-n", "--no_headings", action="store_true",
+                            help="Suppress listing out the _headings.")
     argparser.add_argument("-t", "--trim_n", action="store_true",
                             help="Trim off N's from the start and end of reads.")
 
