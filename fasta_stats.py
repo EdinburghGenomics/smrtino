@@ -9,45 +9,54 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino.YAMLOrdered import yaml
 
-fastaline = namedtuple('fastaline', 'length atgc_bases gc_bases'.split())
+fastaline = namedtuple('fastaline', 'length at_bases gc_bases'.split())
 
 def read_fasta(fh, trim_n=False):
     """Reads lines from a FASTA file, and for each returns the total length and the
        GC content. You can opt to trim N's from the end.
     """
-    # Length and GC for the current read. We also need atgc count so N's don't skew
-    # the GC calculation.
-    length = atgc = gc = 0
+    # Length and GC for the current read. We also need both at and gc count so N's
+    # don't skew the GC calculation.
+    length = at = gc = 0
     # Count of reads read
     count = 0
 
     for l in fh:
         if l.startswith('>'):
             if count:
-                yield(fastaline(length, atgc, gc))
+                yield(fastaline(length, at, gc))
             count += 1
             length = atgc = gc = 0
         else:
             l = l.strip()
             if trim_n:
                 l = l.strip('Nn')
-            atgc += sum( 1 for n in l if n in 'ATGCatgc' )
-            gc   += sum( 1 for n in l if n in 'GCgc' )
+
+            # This was my original atgc counter. It works but is slow.
+            #atgc += sum( 1 for n in l if n in 'ATGCatgc' )
+            # These variations are faster
+            #atgc += sum( l.count(n) for n in 'ATGCatgc' )
+            #atgc += len(re.findall('[ATGCatgc]', l))
+
+            # But this is the best I found.
+            at += sum( l.count(n) for n in 'ATat' )
+            gc += sum( l.count(n) for n in 'GCgc' )
+
             length += len(l)
     if count:
-        yield(fastaline(length, atgc, gc))
+        yield(fastaline(length, at, gc))
 
 def fasta_to_histo(fastalines):
     """Reads fastaline tuples as produced by read_fasta(...) and retuns a histogram (a list) of
-       dict(tally=..., atgc_bases=..., gc_bases=...)
+       dict(tally=..., at_bases=..., gc_bases=...)
     """
     res = list()
 
     for fline in fastalines:
         if fline.length > len(res) - 1:
-            res.extend( dict(tally=0, atgc_bases=0, gc_bases=0) for _ in range(len(res) - 1, fline.length) )
+            res.extend( dict(tally=0, at_bases=0, gc_bases=0) for _ in range(len(res) - 1, fline.length) )
         res[fline.length]['tally'] += 1
-        res[fline.length]['atgc_bases'] += fline.atgc_bases
+        res[fline.length]['at_bases'] += fline.at_bases
         res[fline.length]['gc_bases'] += fline.gc_bases
 
     return res
@@ -96,9 +105,9 @@ def histo_to_result(histo, cutoffs=(0,), headings=True):
 
         # GC
         total_gc = sum( h['gc_bases'] for h in histo[cutoff:] )
-        total_atgc = sum( h['atgc_bases'] for h in histo[cutoff:] )
+        total_at = sum( h['at_bases'] for h in histo[cutoff:] )
         try:
-            res[labelize('GC', cutoff)] = total_gc / total_atgc * 100
+            res[labelize('GC', cutoff)] = total_gc / (total_at + total_gc) * 100
         except Exception:
             res[labelize('GC', cutoff)] = 0.0
 
