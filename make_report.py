@@ -101,8 +101,8 @@ def find_sequelstats_plots(graph_dir, run_name=None):
         fn_bits = p.split('.')[1:-1]
 
         # These should match
-        if run_name and (run_name == rname):
-            L.warning("Unexpected PNG file with run_name {} instead of {}.".format(
+        if run_name and (run_name != rname):
+            L.warning("Unexpected PNG file with run_name {} instead of {}".format(
                                                 rname,              run_name))
             continue
 
@@ -249,7 +249,7 @@ def format_cell(cdict):
             res.append("<dd>{}</dd>".format(escape(v)))
     res.append('</dl>')
 
-    # Now add the stats table
+    # Now add the stats table for stuff produced by fasta_stats.py
     if cdict.get('_cstats'):
         res.append('')
         res.extend(make_table(cdict['_cstats']))
@@ -258,10 +258,15 @@ def format_cell(cdict):
     if cdict.get('_plots'):
         for plot_section in cdict['_plots']:
             res.append('\n### {}\n'.format(plot_section['title']))
-            for f in plot_section['files']:
 
-                # Insert the image, to be viewed in a lightbox.
-                res.append("[plot]({}){{.thumbnail}}".format("img/" + f))
+            # Expect the plots to come in pairs. I'm going to make a table.
+            for n in [1, 0]:
+                res.append("<div class='flex'>")
+                res.append(" ".join(
+                        "[plot]({}){{.thumbnail}} ".format("img/" + plot_pair[n])
+                        for plot_pair in plot_section['files']
+                    ))
+                res.append("</div>")
 
     return res + ['::::::\n']
 

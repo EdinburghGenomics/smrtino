@@ -57,8 +57,10 @@
                 dom:      'Bfrtip',
                 paging:   false,
                 info:     false,
+                ordering: false,
+                order:    [],
                 buttons:  (div_id != 'no_buttons' ? [ 'copy', 'csv', 'excel' ] : []),
-                searching: div_id != 'no_buttons',
+                searching: false,
                 columnDefs: [ { width: "100pt", targets: 0 } ],
             });
 

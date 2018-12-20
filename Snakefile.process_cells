@@ -250,13 +250,20 @@ rule list_blob_plots:
         counts = [ l.split()[0] for l in
                    shell("grep -o '^>' {input.sub_sample} {input.scrap_sample} | uniq -c", iterable=True) ]
 
-        plots = [ dict(title = 'Taxonomy by {} ({} sequences)'.format(taxlevel, '+'.join(counts)),
-                       files  = expand( "{cell}.{s}.{taxlevel}.{extn}.png",
-                                        cell = [wildcards.cell],
-                                        taxlevel = [taxlevel],
-                                        s = "subreads scraps".split(),
-                                        extn = "cov0 read_cov.cov0".split() )
-                      ) for taxlevel in BLOB_LEVELS ]
+        # I need to emit the plots in order in pairs. Unfortunately expand() won't quite
+        # cut it here but I can make a nested list comprehension.
+        plots = [ dict(title = 'Taxonomy for {} ({} sequences) by {}'.format(
+                                        s,
+                                        counts[n],
+                                        ', '.join(BLOB_LEVELS) ),
+                       files = [ [ ("{cell}.{s}.{taxlevel}.{extn}.png").format( cell = wildcards.cell,
+                                                                                s = s,
+                                                                                taxlevel = taxlevel,
+                                                                                extn = extn )
+                                   for extn in "cov0 read_cov.cov0".split() ]
+                                 for taxlevel in BLOB_LEVELS ]
+
+                      ) for n, s in enumerate("subreads scraps".split()) ]
         with open(output[0], 'w') as ofh:
             print(yaml.safe_dump(plots), file=ofh)
 
@@ -348,7 +355,7 @@ rule blob_plot_png:
     input:
         json = "blob/{foo}.blobDB.json"
     params:
-        thumbsize = "600x600"
+        thumbsize = "400x400"
     shadow: 'shallow'
     shell:
         """ mkdir blob_tmp
