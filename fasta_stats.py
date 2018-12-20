@@ -26,7 +26,7 @@ def read_fasta(fh, trim_n=False):
             if count:
                 yield(fastaline(length, at, gc))
             count += 1
-            length = atgc = gc = 0
+            length = at = gc = 0
         else:
             l = l.strip()
             if trim_n:
@@ -106,6 +106,7 @@ def histo_to_result(histo, cutoffs=(0,), headings=True):
         # GC
         total_gc = sum( h['gc_bases'] for h in histo[cutoff:] )
         total_at = sum( h['at_bases'] for h in histo[cutoff:] )
+
         try:
             res[labelize('GC', cutoff)] = total_gc / (total_at + total_gc) * 100
         except Exception:

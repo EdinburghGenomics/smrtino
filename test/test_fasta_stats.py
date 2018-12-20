@@ -112,5 +112,22 @@ class T(unittest.TestCase):
         self.assertEqual( res4['N50 for reads >=6'], 9 )
         self.assertEqual( histo_to_result(self.load_histo('foo5'))['N50'], 11 )
 
+    def test_10000(self):
+        """Look at the file which is a subsample of some real PacBio data.
+        """
+        res = histo_to_result(self.load_histo('m54041_180926_125231.subreads+sub10000'))
+
+        # These numbers come from the old Perl script:
+        # Max subread length,Num subreads >=1,Total bases in subreads >=1,N50 for subreads >=1,GC subreads >=1,Mean length for subreads >=1
+        # 10765,             10000,           10989199,                   1306,                50.1,           1098.9
+
+        self.assertEqual( res['Max read length'], 10765 )
+        self.assertEqual( res['Reads'], 10000 )
+        self.assertEqual( res['Total bases'], 10989199 )
+        self.assertEqual( res['N50'], 1306 )
+        self.assertEqual( "{:.1f}".format(res['GC']), "50.1" )
+        self.assertEqual( "{:.1f}".format(res['Mean length']), "1098.9" )
+
+
 if __name__ == '__main__':
     unittest.main()
