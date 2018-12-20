@@ -42,7 +42,6 @@ TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 """
 INFO_YML = glob("*.info.yml")
 STATS_PLOTS = glob("sequelstats_plots/*/.done")
-BLOB_PLOTS = glob("blob/*.png")
 
 # This may well be a temporary problem, but we shouldn't ignore it.
 assert len(INFO_YML) >= len(STATS_PLOTS), \
@@ -66,14 +65,19 @@ rule report_main:
            ln -sr {input.pan}.html {output}
         '''
 
+# This rule marshalls all the .png images and makes the report in PanDoc format.
 rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
     input:
         yaml = INFO_YML,
         plots = "sequelstats_plots/.done",
-        fs_plots = BLOB_PLOTS,
+        blob_plots = glob("blob/*.png"),
     shell:
-        "make_report.py -o {output} -s <(pb_run_status.py) {input.yaml}"
+        '''mkdir -p all_reports/img
+           ln -srnt all_reports/img blob/*.png || true
+           ln -srnt all_reports/img sequelstats_plots/*.png || true
+           make_report.py -o {output} -s <(pb_run_status.py) {input.yaml}
+        '''
 
 # Makes some nice plots using the sequelstats package. See doc/sequelstats.txt
 # Due to flakiness, this needs to tolerate missing input data, indicated by a
@@ -81,6 +85,8 @@ rule make_report:
 rule sequelstats_plots:
     output: "sequelstats_plots/.done"
     input: STATS_PLOTS
+    params:
+        thumbsize = "600x600"
     shell:
         '''outdir="sequelstats_plots"
            rm -rf $outdir/stats
@@ -94,7 +100,11 @@ rule sequelstats_plots:
            done
            if [ -e $outdir/stats ] ; then
              {TOOLBOX} sequelstats_plot "`readlink -f $outdir`"/stats "$(basename $(pwd))"
-             mv "$outdir"/stats/*.png "$outdir"
+             for p in "$outdir"/stats/*.png ; do
+                mv -t "$outdir" "$p"
+                ( cd "$outdir" ; pbase=`basename "$p" .png` ; \
+                  {TOOLBOX} convert "$pbase".png -resize {params.thumbsize} "$pbase".__thumb.png )
+             done
            fi
            touch {output}
         '''

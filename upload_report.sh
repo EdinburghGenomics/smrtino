@@ -33,6 +33,7 @@ dest="${REPORT_DESTINATION}"
 # DMZ machines.
 echo "Uploading report for $runname to $dest..." >&2
 rsync -drvlOt all_reports $dest/$runname/ >&2
+rsync -drvLOt all_reports/img $dest/$runname/all_reports/ >&2
 
 # Add the index. We now have to make this a PHP script but at least the content is totally fixed.
 # This is very similar to what we have on Illuminatus (but not quite).

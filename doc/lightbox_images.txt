@@ -1,0 +1,25 @@
+Embedding the outputs from BLOBtools directly into the HTML is not going to work.
+
+As they are tooo big.
+
+Instead I'll use the same lightbox tech that I already added to the javascript for the project
+QC reports. As a reminder - we add a tag like:
+
+[plot](foo/bar.png){.thumbnail}
+
+And the bar.png must be bar.__thumb.png.
+
+I feel I'd like to make all the thumbnails as a separate step, just before making the report.
+And I feel this should be run on the cluster.
+
+Ah, but the sequelstats plots don't get made until the report does.
+
+Erm.
+
+No, let's have the thumbnails made at the same time as the blob plots.
+
+And I'll have a rule in the Snakefile.report that gathers up all the images.
+
+OK- added this last bit to "make_report"
+
+Now to remove the image embedder.

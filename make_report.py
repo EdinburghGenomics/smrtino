@@ -89,6 +89,13 @@ def find_sequelstats_plots(graph_dir, run_name=None):
     plots_seen = glob(graph_dir + '/*.*.png')
 
     for p in plots_seen:
+
+        p = os.path.basename(p)
+
+        # Don't include the thumbnails
+        if '__' in p:
+            continue
+
         # Chop off run name and .png extension
         rname = p.split('.')[0]
         fn_bits = p.split('.')[1:-1]
@@ -99,7 +106,8 @@ def find_sequelstats_plots(graph_dir, run_name=None):
                                                 rname,              run_name))
             continue
 
-        # Now munge the name
+        # Now munge the name to make a printable title:
+        #  changing _ to ' ' and capitalizing.
         munged_name = re.sub('_', ' ', '_'.join(fn_bits))
         munged_name = munged_name[0].upper() + munged_name[1:]
 
@@ -191,7 +199,7 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, sequelstats
             replines.append("**No plots were produced for this run.**")
         else:
             if sequelstats_plots.get('__ALL__'):
-                replines.extend(blockquote(plots['__ALL__']['msg']))
+                replines.extend(blockquote(sequelstats_plots['__ALL__']['msg']))
 
             for p, pdict in sequelstats_plots.items():
                 if p.startswith('__') or pdict.get('hide'):
@@ -201,7 +209,7 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, sequelstats
                 replines.append("")
                 if pdict.get('msg'):
                     replines.extend(blockquote(pdict['msg']))
-                replines.append(embed_image(pdict['img']))
+                replines.append("[plot]({}){{.thumbnail}}".format('img/' + pdict['img']))
 
     if aborted_list and aborted_list.split():
         # Specifically note incomplete cells
@@ -223,9 +231,8 @@ def blockquote(txt):
 
 def embed_image(filename):
     """ Convert an image into base64 suitable for embedding in HTML (and/or PanDoc).
-        I could mess around with thumbnails and lightboxes here but I think showing all
-        graphs full size is fine.
     """
+    # FIXME - delete this unused function.
     with open(filename, 'rb') as fh:
         img_as_b64 = base64.b64encode(fh.read()).decode()
     return "<img src='data:image/png;base64,{}'>".format(img_as_b64)
@@ -253,18 +260,15 @@ def format_cell(cdict):
             res.append('\n### {}\n'.format(plot_section['title']))
             for f in plot_section['files']:
 
-                # TODO - convert to lightbox
-                # This involves adding lines like:
-                #  [plot](blob/foo.png){.thumbnail}
-                # And making thumbnails like blob/foo.__thumb.png
-                res.append(embed_image(f))
+                # Insert the image, to be viewed in a lightbox.
+                res.append("[plot]({}){{.thumbnail}}".format("img/" + f))
 
     return res + ['::::::\n']
 
 def make_table(rows):
     """ Yet another PanDoc table formatter oh yeah
     """
-    headers = rows[0]['_headers']
+    headings = rows[0]['_headings']
 
     def fmt(v):
         if type(v) == float:
@@ -273,10 +277,10 @@ def make_table(rows):
             return "{}".format(v)
 
     res = []
-    res.append('|' + '|'.join([escape(h) for h in headers))  + '|')
-    res.append('|' + '|'.join(('-' * len(h)) for h in headers)  + '|')
+    res.append('|' + '|'.join(escape(h) for h in headings)  + '|')
+    res.append('|' + '|'.join(('-' * len(h)) for h in headings)  + '|')
     for r in rows:
-        res.append('|' + '|'.join([fmt(r.get(h)) for h in headers])  + '|')
+        res.append('|' + '|'.join(fmt(r.get(h)) for h in headings)  + '|')
 
     return res
 

@@ -49,7 +49,7 @@ def main(args):
             filename = s.split('.')[-3].capitalize()
 
         with open(s) as sfh:
-            stats = yaml.safe_load(s)
+            stats = yaml.safe_load(sfh)
             stats['File'] = filename
             stats['_headings'] = ['File'] + stats['_headings']
             info.setdefault('_cstats', []).append(stats)

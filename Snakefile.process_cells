@@ -185,10 +185,10 @@ rule filter_control:
 rule get_contig_stats_yaml:
     output:
         yaml = "{bam}.cstats.yml",
-        histo = "{bam}.length_histo.csv"
+        histo = "{bam}.length_histo.tsv"
     input:  "{bam}.bam"
     shell:
-        "subread_stats.pl -h {output.histo} <({TOOLBOX} samtools fasta {input}) > {output.yaml}"
+        "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta {input}) > {output.yaml}"
 
 # A shim rule to write the absolute paths of the .bam files to matching .fn
 # files. As long as this runs on the login node sequelstats_stats can run on
@@ -200,7 +200,7 @@ rule sequelstats_make_fn:
     shell:
         "readlink -f {input} > {output}"
 
-# Computes sequelstats for a single cell, ready to run the plot step above.
+# Computes sequelstats for a single cell, ready to run the plot step in Snakefile.report.
 # The invocation for sequelstats_pipe is weird but never mind.
 # Also we can get failures on bad data.
 rule sequelstats_stats:
@@ -232,14 +232,17 @@ BLOB_CHUNKS = 100
 BLOB_LEVELS = "phylum order species".split()
 
 # This is how I want to pass my plots into compile_cell_info.py
-# Serves as the driver by depending on the 6 plots
+# Serves as the driver by depending on the 6 plots and thumbnails for
+# each.
 localrules: list_blob_plots
 rule list_blob_plots:
     output: "blob/{cell}.plots.yml"
     input:
-        png = expand( "blob/{{cell}}.{s}.{taxlevel}.{extn}.png", s = "subreads scraps".split(),
-                                                                 taxlevel = BLOB_LEVELS,
-                                                                 extn = "cov0 read_cov.cov0".split() ),
+        png = expand( "blob/{{cell}}.{s}.{taxlevel}.{extn}{thumb}.png",
+                      s = "subreads scraps".split(),
+                      taxlevel = BLOB_LEVELS,
+                      extn = "cov0 read_cov.cov0".split(),
+                      thumb = ['.__thumb', ''] ),
         sub_sample = "blob/{{cell}}.subreads+sub{}.fasta".format(BLOB_SUBSAMPLE),
         scrap_sample = "blob/{{cell}}.scraps+sub{}.fasta".format(BLOB_SUBSAMPLE)
     run:
@@ -248,11 +251,11 @@ rule list_blob_plots:
                    shell("grep -o '^>' {input.sub_sample} {input.scrap_sample} | uniq -c", iterable=True) ]
 
         plots = [ dict(title = 'Taxonomy by {} ({} sequences)'.format(taxlevel, '+'.join(counts)),
-                       files  = expand( "blob/{cell}.{s}.{taxlevel}.{extn}.png",
-                                                         cell = [wildcards.cell],
-                                                         taxlevel = [taxlevel],
-                                                         s = "subreads scraps".split(),
-                                                         extn = "cov0 read_cov.cov0".split() )
+                       files  = expand( "{cell}.{s}.{taxlevel}.{extn}.png",
+                                        cell = [wildcards.cell],
+                                        taxlevel = [taxlevel],
+                                        s = "subreads scraps".split(),
+                                        extn = "cov0 read_cov.cov0".split() )
                       ) for taxlevel in BLOB_LEVELS ]
         with open(output[0], 'w') as ofh:
             print(yaml.safe_dump(plots), file=ofh)
@@ -339,11 +342,13 @@ rule blob_db:
 # stats file and a pair of png files
 rule blob_plot_png:
     output:
-        plotc = "blob/{foo}.{taxlevel}.cov0.png",
-        plotr = "blob/{foo}.{taxlevel}.read_cov.cov0.png",
+        plotc = ["blob/{foo}.{taxlevel}.cov0.png", "blob/{foo}.{taxlevel}.cov0.__thumb.png"],
+        plotr = ["blob/{foo}.{taxlevel}.read_cov.cov0.png", "blob/{foo}.{taxlevel}.read_cov.cov0.__thumb.png"],
         stats = "blob/{foo}.{taxlevel}.blobplot.stats.txt"
     input:
         json = "blob/{foo}.blobDB.json"
+    params:
+        thumbsize = "600x600"
     shadow: 'shallow'
     shell:
         """ mkdir blob_tmp
@@ -351,8 +356,10 @@ rule blob_plot_png:
             {TOOLBOX} blobtools blobplot -i {input.json} -o blob_tmp/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
             ls -l blob_tmp
             mv blob_tmp/{wildcards.foo}.*.stats.txt {output.stats}
-            mv blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png {output.plotc}
-            mv blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png {output.plotr}
+            mv blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png {output.plotc[0]}
+            mv blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png {output.plotr[0]}
+            {TOOLBOX} convert {output.plotc[0]} -resize {params.thumbsize} {output.plotc[1]}
+            {TOOLBOX} convert {output.plotr[0]} -resize {params.thumbsize} {output.plotr[1]}
         """
 
 
