@@ -4,9 +4,12 @@ library (ggplot2, quietly=TRUE)
 p <- arg_parser("Create binned subread histogram")
 
 # Add command line arguments & parse
-p <- add_argument(p, "--bins", help="Read length bin boundaries", default = "1K,2K,3K,5K,10K,50K,100K")
-p <- add_argument(p, "--file", help="Table file of histogram data", nargs = 1)
+p <- add_argument(p, "--bins",   help="Read length bin boundaries", default = "1K,2K,3K,5K,10K,50K,100K")
+p <- add_argument(p, "--file",   help="Table file of histogram data", nargs = 1)
 p <- add_argument(p, "--output", help = "Output PNG file, please specify as 'x.png'", default = 'plot_histo_R.png')
+p <- add_argument(p, "--title", help = "Title to add to the plot", default = "")
+p <- add_argument(p, "--color", help = "Fill colour", default = "blue")
+p <- add_argument(p, "--size", help = "Plot size", default = "600x400")
 argv <- parse_args(p)
 
 # Do work based on the passed arguments
@@ -18,11 +21,14 @@ if(tail(bins,n=1) < nrow(data)){bins<-append(bins,nrow(data)-1)}
 
 # Set output to the desired file. On a headless system we need to do this before plotting
 # or we get "Error in grid.newpage() : no active or default device"
-png(argv$output, width=600, height=400)
+geom<-as.integer(unlist(strsplit(argv$size, "x")))
+png(argv$output,
+    width  = geom[1],
+    height = geom[2] )
 
 #Make & save the histogram
 ggplot(data = data, aes(data$V1))+
-  geom_histogram(breaks=bins, fill="blue", color="black")+
-  ylab("Frequency")+xlab("Read Length")+
+  geom_histogram(breaks=bins, fill=argv$color, color="black")+
+  labs(y="Frequency", x="Read Length", title=argv$title)+
   theme_light()
 
