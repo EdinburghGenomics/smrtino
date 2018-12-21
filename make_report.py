@@ -209,7 +209,8 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, sequelstats
                 replines.append("")
                 if pdict.get('msg'):
                     replines.extend(blockquote(pdict['msg']))
-                replines.append("[plot]({}){{.thumbnail}}".format('img/' + pdict['img']))
+                #replines.append("[plot]({}){{.thumbnail}}".format('img/' + pdict['img']))
+                replines.append("<img src='{}'>".format('img/' + pdict['img']))
 
     if aborted_list and aborted_list.split():
         # Specifically note incomplete cells
@@ -265,7 +266,7 @@ def format_cell(cdict):
             for plot_row in plot_group['files']:
                 res.append("<div class='flex'>")
                 res.append(" ".join(
-                        "[plot]({}){{.thumbnail}} ".format("img/" + p)
+                        "[plot]({}){{.thumbnail}}".format("img/" + p)
                         for p in plot_row
                     ))
                 res.append("</div>")

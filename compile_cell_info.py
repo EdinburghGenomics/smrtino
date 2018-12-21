@@ -39,7 +39,7 @@ def main(args):
 
     # Add plots if we have them
     for p in args.plots:
-        with open(args.plots) as yfh:
+        with open(p) as yfh:
             info.setdefault('_plots', []).append(yaml.safe_load(yfh))
 
     # Add stats if we have them

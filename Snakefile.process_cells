@@ -135,7 +135,7 @@ rule one_cell_info:
         # stats, maybe? At present the script will discover extra files automagically.
         '''compile_cell_info.py {input.xml2} \
              -s {input.stats} {input.scrapstats} \
-             -p {input.blobs} {input.hplots} - > {output}
+             -p {input.hplots} {input.blobs} > {output}
         '''
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
@@ -201,10 +201,11 @@ rule histo_plot:
     input:
         histo = "{bam}.length_histo.tsv"
     params:
-        thumbsize = "400x400",
+        thumbsize = "480x480",
         bins = "1K,2K,3K,5K,10K,50K,100K"
     shell:
-        '''{TOOLBOX} plot_histo.R -f {input} -o {output.hplot} --bins {params.bins}
+        '''{TOOLBOX} plot_histo.R -f {input} -o {output.hplot} --bins {params.bins} \
+                --title `basename {input} .length_histo.tsv`
            {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
         '''
 
@@ -297,9 +298,10 @@ rule list_histo_plots:
                        thumb = ['.__thumb', ''] )
     run:
         plots = [  dict(title = 'Binned sequence lengths',
-                        files = [ "{cell}.{s}.length_histo.png".format( cell = wildcards.cell,
+                        files = [ [ "{cell}.{s}.length_histo.png".format( cell = wildcards.cell,
                                                                         s = s )
-                                  for s in "subreads scraps".split() ] ]
+                                    for s in "subreads scraps".split() ] ]
+                       ) ]
         with open(output[0], 'w') as ofh:
             print(yaml.safe_dump(plots), file=ofh)
 
@@ -391,7 +393,7 @@ rule blob_plot_png:
     input:
         json = "blob/{foo}.blobDB.json"
     params:
-        thumbsize = "400x400"
+        thumbsize = "320x320"
     shadow: 'shallow'
     shell:
         """ mkdir blob_tmp

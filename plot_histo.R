@@ -9,7 +9,7 @@ p <- add_argument(p, "--file",   help="Table file of histogram data", nargs = 1)
 p <- add_argument(p, "--output", help = "Output PNG file, please specify as 'x.png'", default = 'plot_histo_R.png')
 p <- add_argument(p, "--title", help = "Title to add to the plot", default = "")
 p <- add_argument(p, "--color", help = "Fill colour", default = "blue")
-p <- add_argument(p, "--size", help = "Plot size", default = "600x400")
+p <- add_argument(p, "--size", help = "Plot size", default = "1000x600")
 argv <- parse_args(p)
 
 # Do work based on the passed arguments
