@@ -129,10 +129,14 @@ rule one_cell_info:
         stats      = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreads.cstats.yml",
         scrapstats = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".scraps.cstats.yml",
         blobs      = lambda wc: "blob/" + wc.cell + SC[wc.cell]['filter'] + ".plots.yml",
+        hplots     = lambda wc: "histo/" + wc.cell + SC[wc.cell]['filter'] + ".plots.yml",
     shell:
         # What needs to go into the YML? Stuff from the XML and also some stuff from the
         # stats, maybe? At present the script will discover extra files automagically.
-        "compile_cell_info.py {input.xml2} -s {input.stats} {input.scrapstats} -p {input.blobs} > {output}"
+        '''compile_cell_info.py {input.xml2} \
+             -s {input.stats} {input.scrapstats} \
+             -p {input.blobs} {input.hplots} - > {output}
+        '''
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
 if os.environ.get('FILTER_LOCALLY', '0') != '0':
@@ -181,14 +185,28 @@ rule filter_control:
         # Filter with standard sequences (would we ever use anything else??)
         "{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol"
 
-# This script produces some headline stats as well as a histogram we'll use later
+# This script produces some headline stats as well as a histogram we'll use in the next rule
 rule get_contig_stats_yaml:
     output:
         yaml = "{bam}.cstats.yml",
-        histo = "{bam}.length_histo.tsv"
+        histo = "histo/{bam}.length_histo.tsv"
     input:  "{bam}.bam"
     shell:
         "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta {input}) > {output.yaml}"
+
+rule histo_plot:
+    output:
+        hplot = "{bam}.length_histo.png",
+        thumb = "{bam}.length_histo.__thumb.png"
+    input:
+        histo = "{bam}.length_histo.tsv"
+    params:
+        thumbsize = "400x400",
+        bins = "1K,2K,3K,5K,10K,50K,100K"
+    shell:
+        '''{TOOLBOX} plot_histo.R -f {input} -o {output.hplot} --bins {params.bins}
+           {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
+        '''
 
 # A shim rule to write the absolute paths of the .bam files to matching .fn
 # files. As long as this runs on the login node sequelstats_stats can run on
@@ -232,8 +250,9 @@ BLOB_CHUNKS = 100
 BLOB_LEVELS = "phylum order species".split()
 
 # This is how I want to pass my plots into compile_cell_info.py
-# Serves as the driver by depending on the 6 plots and thumbnails for
-# each.
+# Serves as the driver by depending on the 6 blob plots and thumbnails for
+# each, and arranges the plots into two rows of three columns as we wish to
+# display them.
 localrules: list_blob_plots
 rule list_blob_plots:
     output: "blob/{cell}.plots.yml"
@@ -256,14 +275,31 @@ rule list_blob_plots:
                                         s,
                                         counts[n],
                                         ', '.join(BLOB_LEVELS) ),
-                       files = [ [ ("{cell}.{s}.{taxlevel}.{extn}.png").format( cell = wildcards.cell,
-                                                                                s = s,
-                                                                                taxlevel = taxlevel,
-                                                                                extn = extn )
-                                   for extn in "cov0 read_cov.cov0".split() ]
-                                 for taxlevel in BLOB_LEVELS ]
+                       files = [ [ "{cell}.{s}.{taxlevel}.{extn}.png".format( cell = wildcards.cell,
+                                                                              s = s,
+                                                                              taxlevel = taxlevel,
+                                                                              extn = extn )
+                                    for taxlevel in BLOB_LEVELS ]
+                                 for extn in "read_cov.cov0 cov0".split() ]
 
                       ) for n, s in enumerate("subreads scraps".split()) ]
+        with open(output[0], 'w') as ofh:
+            print(yaml.safe_dump(plots), file=ofh)
+
+# As above but for the histo plots
+# As there is only one heading this returns a singleton list.
+localrules: list_histo_plots
+rule list_histo_plots:
+    output: "histo/{cell}.plots.yml"
+    input:
+        png = expand( "histo/{{cell}}.{s}.length_histo{thumb}.png",
+                       s = "subreads scraps".split(),
+                       thumb = ['.__thumb', ''] )
+    run:
+        plots = [  dict(title = 'Binned sequence lengths',
+                        files = [ "{cell}.{s}.length_histo.png".format( cell = wildcards.cell,
+                                                                        s = s )
+                                  for s in "subreads scraps".split() ] ]
         with open(output[0], 'w') as ofh:
             print(yaml.safe_dump(plots), file=ofh)
 

@@ -254,17 +254,19 @@ def format_cell(cdict):
         res.append('')
         res.extend(make_table(cdict['_cstats']))
 
-    # Now add the blob plots
-    if cdict.get('_plots'):
-        for plot_section in cdict['_plots']:
-            res.append('\n### {}\n'.format(plot_section['title']))
+    # Now add the blob and histo plots. The input data defines the plot order
+    # and placement.
+    for plot_section in cdict.get('_plots', []):
+        for plot_group in plot_section:
+            res.append('\n### {}\n'.format(plot_group['title']))
 
-            # Expect the plots to come in pairs. I'm going to make a table.
-            for n in [1, 0]:
+            # plot_group['files'] will be a a list of lists, so plot
+            # each list a s a row.
+            for plot_row in plot_group['files']:
                 res.append("<div class='flex'>")
                 res.append(" ".join(
-                        "[plot]({}){{.thumbnail}} ".format("img/" + plot_pair[n])
-                        for plot_pair in plot_section['files']
+                        "[plot]({}){{.thumbnail}} ".format("img/" + p)
+                        for p in plot_row
                     ))
                 res.append("</div>")
 

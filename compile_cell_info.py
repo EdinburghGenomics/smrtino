@@ -38,9 +38,9 @@ def main(args):
     info['_filename'] = xmlfile
 
     # Add plots if we have them
-    if args.plots:
+    for p in args.plots:
         with open(args.plots) as yfh:
-            info['_plots'] = yaml.safe_load(yfh)
+            info.setdefault('_plots', []).append(yaml.safe_load(yfh))
 
     # Add stats if we have them
     for s in args.stats:
@@ -65,10 +65,10 @@ def parse_args(*args):
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("xmlfile", nargs=1,
                             help="XML to be loaded")
-    argparser.add_argument("-p", "--plots",
-                            help="Plots generated for this cell (YAML file)")
+    argparser.add_argument("-p", "--plots", nargs="*",
+                            help="Plots generated for this cell (YAML files)")
     argparser.add_argument("-s", "--stats", nargs="*",
-                            help="Stats generated for this cell (YAML file)")
+                            help="Stats generated for this cell (YAML files)")
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 
