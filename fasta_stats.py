@@ -108,9 +108,9 @@ def histo_to_result(histo, cutoffs=(0,), headings=True):
         total_at = sum( h['at_bases'] for h in histo[cutoff:] )
 
         try:
-            res[labelize('GC', cutoff)] = total_gc / (total_at + total_gc) * 100
+            res[labelize('GC %', cutoff)] = total_gc / (total_at + total_gc) * 100
         except Exception:
-            res[labelize('GC', cutoff)] = 0.0
+            res[labelize('GC %', cutoff)] = 0.0
 
         # Mean length
         try:

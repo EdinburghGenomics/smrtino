@@ -280,7 +280,9 @@ def make_table(rows):
 
     def fmt(v):
         if type(v) == float:
-            return "{:.02f}".format(v)
+            return "{:,.02f}".format(v)
+        elif type(v) == int:
+            return "{:,d}".format(v)
         else:
             return "{}".format(v)
 
