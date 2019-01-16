@@ -74,7 +74,8 @@ rule make_report:
         blob_plots = glob("blob/*.png"),
         histo_plots = glob("histo/*.png"),
     shell:
-        '''mkdir -p all_reports/img
+        '''shopt -s nullglob
+           mkdir -p all_reports/img
            ln -srnt all_reports/img blob/*.png || true
            ln -srnt all_reports/img histo/*.png || true
            ln -srnt all_reports/img sequelstats_plots/*.png || true
