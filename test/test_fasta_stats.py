@@ -56,13 +56,13 @@ class T(unittest.TestCase):
                                              'Reads',
                                              'Total bases',
                                              'N50',
-                                             'GC',
+                                             'GC %',
                                              'Mean length'],
                               'Max read length': -1,
                               'Reads' : 0,
                               'Total bases': 0,
                               'N50': -1,
-                              'GC': 0.0,
+                              'GC %': 0.0,
                               'Mean length': 0.0 } )
 
         self.assertEqual(dict(histo_to_result([], headings=False)),
@@ -70,7 +70,7 @@ class T(unittest.TestCase):
                               'Reads' : 0,
                               'Total bases': 0,
                               'N50': -1,
-                              'GC': 0.0,
+                              'GC %': 0.0,
                               'Mean length': 0.0 } )
 
 
@@ -125,7 +125,7 @@ class T(unittest.TestCase):
         self.assertEqual( res['Reads'], 10000 )
         self.assertEqual( res['Total bases'], 10989199 )
         self.assertEqual( res['N50'], 1306 )
-        self.assertEqual( "{:.1f}".format(res['GC']), "50.1" )
+        self.assertEqual( "{:.1f}".format(res['GC %']), "50.1" )
         self.assertEqual( "{:.1f}".format(res['Mean length']), "1098.9" )
 
 
