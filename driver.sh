@@ -37,6 +37,11 @@ if [ -e "$ENVIRON_SH" ] ; then
     pushd "`dirname $ENVIRON_SH`" >/dev/null
     source "`basename $ENVIRON_SH`"
     popd >/dev/null
+
+    # Saves having to put 'export' on every line in the config.
+    export CLUSTER_QUEUE FROM_LOCATION TO_LOCATION GENOLOGICSRC \
+           PROJECT_NAME_LIST PROJECT_PAGE_URL REPORT_DESTINATION REPORT_LINK \
+           RT_SYSTEM STALL_TIME TO_LOCATION VERBOSE
 fi
 
 # Tools may reliably use this to report the version of SMRTino being run right now.
