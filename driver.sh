@@ -126,7 +126,7 @@ if [ "${py_venv}" != none ] ; then
     if [ "${py_venv}" = default ] ; then
         log -n "Running `dirname $BASH_SOURCE`/activate_venv ..."
         pushd "`dirname $BASH_SOURCE`" >/dev/null
-        source ./activate_venv || { log 'FAILED' ; exit 1 ; }
+        source ./activate_venv >&5 || { log 'FAILED' ; exit 1 ; }
         popd >/dev/null
     else
         log -n "Activating Python3 VEnv from ${py_venv} ..."

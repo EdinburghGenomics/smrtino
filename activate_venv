@@ -24,13 +24,20 @@ if [ -e ./_py3_venv/bin/activate ] ; then
 else
     echo "Bootstrapping new VEnv from `which python3`"
     ( set -e ; #)
-    python3 -mvenv ./_py3_venv
-    activate_venv
+        python3 -mvenv ./_py3_venv
+        activate_venv
 
-    pip3 install --upgrade pip
-    pip3 install Rt
-    pip3 install pystache
-    pip3 install pyyaml
+        pip3 install --upgrade pip
+        pip3 install Rt
+        pip3 install pystache
+        pip3 install pyyaml
 
-    ) ; [ $? = 0 ] || echo "Provisioning VEnv Failed!"
+    )
+    if [ $? = 0 ] ; then
+        # We need this since we quit the subshell
+        activate_venv
+    else
+        echo "Provisioning VEnv Failed!"
+        false
+    fi
 fi
