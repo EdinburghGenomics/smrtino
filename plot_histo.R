@@ -15,9 +15,9 @@ argv <- parse_args(p)
 # Do work based on the passed arguments
 data<-read.table(argv$file)
 bins<-strsplit(argv$bins, ",")
-bins<-gsub("K","000",bins[[1]])
+bins<-c("0",gsub("K|k","000",bins[[1]]))
 bins<-unique(sort(as.numeric(bins)))
-if(tail(bins,n=1) < nrow(data)){bins<-append(bins,nrow(data)-1)}
+if(tail(bins,n=1) < max(data$V1)+1){bins<-append(bins,max(data$V1)+1)}
 
 # Set output to the desired file. On a headless system we need to do this before plotting
 # or we get "Error in grid.newpage() : no active or default device"
@@ -26,9 +26,12 @@ png(argv$output,
     width  = geom[1],
     height = geom[2] )
 
-#Make & save the histogram
-ggplot(data = data, aes(data$V1))+
-  geom_histogram(breaks=bins, fill=argv$color, color="black")+
+# Make & save the 'histogram'.
+# The use of V1+1 is because we consider, say, 10 to belong in the [10,20) bin whereas ggplot
+# sees the bins as (10,20] and puts 10 into the (0,10] bin. And zero-length items vanish entirely.
+# The quickest fix for this is to just add 1 to everything
+ggplot(data = data, aes(V1+1,V2))+
+  stat_summary_bin(fun.y='sum', breaks=bins, geom='col', fill=argv$color, color="black")+
   labs(y="Frequency", x="Read Length", title=argv$title)+
   theme_light()
 
