@@ -162,47 +162,60 @@ ppCol<-800
 pRows<-1
 pCols<-1
 
-covCols<-c(colorRampPalette(brewer.pal(8,"RdYlGn")[1:4])(10),colorRampPalette(brewer.pal(8,"RdYlGn")[5:8])(10))
+# Set plot limits and number of steps. Limits need to divide by stp
+xLim<-140 # 140kb read length
+yLim<-28  # 28Gb yield
+stp<-14   # 14 squares across and down
+xScf<-10**3
+yScf<-10**9
 
-xLim<-140
-yLim<-10
-stp<-20
-xScf<-1000
-yScf<-1000000000
 
+covCols1<-c(colorRampPalette(brewer.pal(8,"RdYlGn")[1:4])(stp/2),colorRampPalette(brewer.pal(8,"RdYlGn")[5:8])(stp/2))
 
 png(paste(SPEC, "SMRT_cell.raw_output.png", sep="."), width=(pCols*ppCol), height=(pRows*ppRow))
 
 plot(NULL, xlim=c(0,xLim), ylim=c(0,yLim), xlab="", ylab="", xaxt="n", yaxt="n", bty="n", main="SMRT cell raw output analysis")
 
+# Manually draw a load of coloured squares across the plot.
 for (i in 1:stp) {
-	tCol<-col2rgb(covCols[i])
+	tCol<-col2rgb(covCols1[i])
 	xf<-xLim/stp
 	rect(((i-1)*xf), 0, (i*xf), yLim, col=rgb(tCol[1], tCol[2], tCol[3], 128, maxColorValue=255), border=NA)
 }
 
 for (i in 1:stp) {
-	tCol<-col2rgb(covCols[i])
+	tCol<-col2rgb(covCols1[i])
 	yf<-yLim/stp
 	rect(0, ((i-1)*yf), xLim, (i*yf), col=rgb(tCol[1], tCol[2], tCol[3], 128, maxColorValue=255), border=NA)
 }
 
+# This puts the green target box in place
+# Original code hard-coded 11 as the 5Gb cutoff but we can use the formula:
+#  (5 * stp) / ylim + 1
+# Similarly for the 8Gb top and the 20kb left
+box_bottom<-((5*stp) / yLim)
+box_top<-((8*stp) / yLim)
+box_left<-((20*stp) / xLim)
 
-for (i in 11:stp) {
-	tCol<-col2rgb(covCols[i])
+covCols2<-c(colorRampPalette(brewer.pal(8,"RdYlGn")[1:4])(box_left),colorRampPalette(brewer.pal(8,"RdYlGn")[5:8])(stp-box_left))
+
+
+for (i in box_left+1:stp) {
+	tCol<-col2rgb(covCols2[i])
 	xf<-xLim/stp
 	yf<-yLim/stp
-	rect(((i-1)*xf), (10*yf), (i*xf), (16*yf), col=rgb(tCol[1], tCol[2], tCol[3], 128, maxColorValue=255), border=NA)
+	rect(((i-1)*xf), (box_bottom*yf), (i*xf), (box_top*yf), col=rgb(tCol[1], tCol[2], tCol[3], 128, maxColorValue=255), border=NA)
 }
 
-for (i in 11:16) {
-	tCol<-col2rgb(covCols[i])
+for (i in (box_bottom+1):box_top) {
+	tCol<-col2rgb(covCols2[i])
 	xf<-xLim/stp
 	yf<-yLim/stp
-	rect((10*xf), ((i-1)*yf), xLim, (i*yf), col=rgb(tCol[1], tCol[2], tCol[3], 128, maxColorValue=255), border=NA)
+	rect((box_left*xf), ((i-1)*yf), xLim, (i*yf), col=rgb(tCol[1], tCol[2], tCol[3], 128, maxColorValue=255), border=NA)
 }
 
 
+# This puts all the dotted lines in
 for (i in 0:stp) {
 	xf<-xLim/stp
 	yf<-yLim/stp
@@ -211,10 +224,11 @@ for (i in 0:stp) {
 	lines(c((i*xf),(i*xf)), c(0,yLim), col="black", lwd=1, lty=3)
 }
 
-lines(c(0,xLim), c((yLim/2),(yLim/2)), col="black", lwd=1, lty=1)
-lines(c((xLim/2),(xLim/2)), c(0,yLim), col="black", lwd=1, lty=1)
+# This puts the hard lines in
+lines(c(0,xLim), c((box_bottom*(yLim/stp)),(box_bottom*(yLim/stp))), col="black", lwd=1, lty=1)
+lines(c((box_left*(xLim/stp)),(box_left*(xLim/stp))), c(0,yLim), col="black", lwd=1, lty=1)
 
-rect((xLim/2), (yLim/2), xLim, ((yLim/stp)*16), col=NA, border="black", lwd=1, lty=1)
+rect((box_left*(xLim/stp)), (box_bottom*(yLim/stp)), xLim, (box_top*(yLim/stp)), col=NA, border="black", lwd=1, lty=1)
 
 
 for (i in SMRTcells) {
