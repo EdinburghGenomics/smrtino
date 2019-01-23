@@ -67,19 +67,19 @@ else
 	for i in "Hn" "HpSn" "HpSp" ;
 	do
 		mkdir "${SPIPE_sta}/${i}"
-		
+
 		for j in "aCnt" "hist" "lFlg" "stats" ;
 		do
 			SEQL_osfile="${SPIPE_pro}/PRO.${SPIPE_smrtc}.txt.${i}.${j}"	# Stat file generated from processed input file
 			SEQL_nsfile="${SPIPE_sta}/${i}/${SPIPE_smrtc}.${i}.${j}"	# New location and name for the file
-			
+
 			if [[ -e "${SEQL_osfile}" ]] ; then
 				if [[ -s "${SEQL_osfile}" ]] ; then
 					mv "${SEQL_osfile}" "${SEQL_nsfile}"
-					
-					
+
+
 					chk=$?	# get 'mv' exit code
-					
+
 					if [[ "${chk}" -ne 0 ]] ; then
 						echo -e "\n[${SCRIPT_Name}]:\tError moving \"${SEQL_osfile}\", exit code \"${chk}\"!\n"
 						exit 10
@@ -93,7 +93,7 @@ else
 			fi
 		done
 	done
-fi	
+fi
 
 rm "${SEQL_block}"
 

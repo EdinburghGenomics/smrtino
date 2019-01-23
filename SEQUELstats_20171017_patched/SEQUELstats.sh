@@ -82,10 +82,10 @@ mkdir -p "${SEQL_sta}/Hn" "${SEQL_sta}/HpSn" "${SEQL_sta}/HpSp"
 for i in `seq 0 3` ;
 do
 	SEQL_step="${SPIPE_STEPS[${i}]}"
-	
+
 	SEQL_done="${SEQL_dpath}/${SEQL_step}.DONE"
 	SEQL_block="${SEQL_dpath}/${SEQL_step}.RUNNING"
-	
+
 	########################################################################################################################################################################################
 	# Line-wrapped command :
 	#---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -107,39 +107,39 @@ do
 	#	"
 	#
 	########################################################################################################################################################################################
-	
+
 	bsub -Ep "echo \"Done\" > \"${SEQL_done}.\$LSB_JOBINDEX\"" -q normal -R "select[type==X86_64 && mem > 8192] rusage[mem=8192]" -M 8192 -J "SEQSTATS_${SEQL_step}[1-${SEQL_srfs}]%${SEQL_srfs}" -o "${SEQL_out}/${SEQL_step}.%I.out" -e "${SEQL_err}/${SEQL_step}.%I.err" "\"${SEQUEL_pipe}\" \"${SEQL_srfofn}\" \"${SEQL_scfofn}\" \"${SEQL_dpath}\" \$LSB_JOBINDEX \"${SEQL_step}\""
-	
-	
+
+
 	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 	#	CHECKS, PROCESSING & CLEANUP
 	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
-		
+
 		failed=4
-		
+
 		#- Wait for all SMRTcell jobs to finish
 		while ! [[ -e "${SEQL_done}".1 ]] || [[ `ls "${SEQL_done}".* | wc -l` -ne "${SEQL_srfs}" ]] ; do sleep 60s; done
 		#-
-		
+
 		sleep 60s
-		
+
 		#- Check whether all jobs finished successfully
 		if [[ `ls "${SEQL_dpath}"/*.* | grep -Ec "^${SEQL_block}\..+$"` -eq 0 ]]                               ; then (( --failed )); fi	# Check for "road block" files
 		if [[ `ls "${SEQL_out}"/*.* | grep -Ec "${SEQL_step}\.[[:digit:]]+\.out"` -eq "${SEQL_srfs}" ]]        ; then (( --failed )); fi	# Count "out" files
 		if [[ `ls "${SEQL_err}"/*.* | grep -Ec "${SEQL_step}\.[[:digit:]]+\.err"` -eq "${SEQL_srfs}" ]]        ; then (( --failed )); fi	# Count "err" files
 		if [[ `cat "${SEQL_out}/${SEQL_step}."*.out | grep -Fc "Successfully completed"` -eq "${SEQL_srfs}" ]] ; then (( --failed )); fi	# Check "out" files
 		#-
-		
+
 		#- If so ...
 		if [[ "${failed}" -eq 0 ]] ; then
 			rm "${SEQL_done}".*
-			
+
 			#-- Archive LSF "*.out" files
 			cd "${SEQL_out}"
 			tar -czf "${SEQL_step}.OUT.tar.gz" "${SEQL_step}".*.out
 			if [[ -e "${SEQL_step}.OUT.tar.gz" ]] && [[ -s "${SEQL_step}.OUT.tar.gz" ]] ; then rm "${SEQL_step}".*.out; fi
 			#--
-			
+
 			#-- Archive LSF "*.err" files
 			cd "${SEQL_err}"
 			tar -czf "${SEQL_step}.ERR.tar.gz" "${SEQL_step}".*.err
@@ -150,7 +150,7 @@ do
 			exit 8
 		fi
 		#-
-		
+
 	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 done
 

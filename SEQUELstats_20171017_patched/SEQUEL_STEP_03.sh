@@ -47,7 +47,7 @@ echo "Starting '${SPIPE_step}' ..." > "${SEQL_block}"
 #		}
 #		{
 #			if(outf==""){outf=FILENAME}
-#			
+#
 #			if($3~/[[:digit:]]+H/){
 #				if($4~/[[:digit:]]+S/){
 #					print $0 > outf".HpSp"
@@ -86,14 +86,14 @@ for i in "Hn" "HpSn" "HpSp" ;
 do
 	SEQL_prefile="${SPIPE_pre}/PRE.${SPIPE_smrtc}.txt.${i}"	# Preprocessed file for current subset
 	SEQL_profile="${SPIPE_pro}/PRO.${SPIPE_smrtc}.txt.${i}"	# Processed file for current subset
-	
+
 	#- Check the "preprocessed" files for each subset as they could be empty depending on the data
 	if [[ -e "${SEQL_prefile}" ]] && [[ -s "${SEQL_prefile}" ]] ; then
 		awk -f "${SEQUEL_process}" "${SEQL_prefile}" > "${SEQL_profile}"
-		
-		
+
+
 		chk=$?	# get 'awk' exit code
-		
+
 		if [[ "${chk}" -ne 0 ]] ; then
 			echo -e "\n[${SCRIPT_Name}]:\t'awk' terminated with exit code \"${chk}\" while processing \"${SEQL_prefile}\"!\n"
 			exit 9

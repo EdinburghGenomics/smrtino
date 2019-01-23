@@ -59,29 +59,29 @@ The generated stats output files are :
 | **\*.aCnt**  | **HpSp**    | List of LSRs (length per LSR) flanked by only one adapter                            |
 | **\*.lFlg**  | **HpSp**    | List of LSRs (length per LSR) flanked by adapter on both sides                       |
 
-> _**ZR**="ZMW read"_  
-> _**PR**="Polymerase read"_  
-> _**SR**/**LSR**="Subread"/"Longest subread"_  
-> _**ZOR**="ZMW occupancy ratio" (i.e. how many of the ZMWs in the SMRTcell contained at least one DNA fragment for sequencing. Values >0.5 usually indicate overloading)_  
-> _**PSR**="Polymerase read to Subread ratio" (for assebmly a PSR=1 would be ideal as in that case the fragment would have been read only once without reaching the end)_  
+> _**ZR**="ZMW read"_
+> _**PR**="Polymerase read"_
+> _**SR**/**LSR**="Subread"/"Longest subread"_
+> _**ZOR**="ZMW occupancy ratio" (i.e. how many of the ZMWs in the SMRTcell contained at least one DNA fragment for sequencing. Values >0.5 usually indicate overloading)_
+> _**PSR**="Polymerase read to Subread ratio" (for assebmly a PSR=1 would be ideal as in that case the fragment would have been read only once without reaching the end)_
 
 <br>
 
 Based on these files seven plots are generated:
 
- * **"[SAMPLE_NAME].SMRT_cell.efficiency.png"**  
+ * **"[SAMPLE_NAME].SMRT_cell.efficiency.png"**
 	PSR vs. ZOR plot (one dot/SMRTcell). All dots on the right border just underneath the 0.5 line would be optimal for assembly
- * **"[SAMPLE_NAME].SMRT_cell.raw_output.png"**  
+ * **"[SAMPLE_NAME].SMRT_cell.raw_output.png"**
 	Read length stats ("Median"=red/white, "Mean"=black, "N50"=black/white) vs. SMRTcell yield (based on polymerase reads, one line per SMRTcell). PacBio [advertises](http://www.pacb.com/wp-content/uploads/2015/09/Revolutionize-Genomics-with-SMRT-Sequencing.pdf "see page 6") SEQUEL SMRTcells with 5-8Gb of data with polymerase read N50 of >20kb
- * **"[SAMPLE_NAME].SMRT_cell.processed_output.png"**  
+ * **"[SAMPLE_NAME].SMRT_cell.processed_output.png"**
 	Read length stats vs. SMRTcell yield (same as above but this time using only the LSR)
- * **"[SAMPLE_NAME].seq_run.yield_and_efficiency.png"**  
+ * **"[SAMPLE_NAME].seq_run.yield_and_efficiency.png"**
 	Amount of sequence per SMRTcell in Hn ("LQ"), HpSn ("MQ"), and HpSp ("HQ") sets. "HQS" = sum of PR in HQ, "LSR" = sum of LSR in HQ
- * **"[SAMPLE_NAME].Polymerase_and_subread.length_profiles.png"**  
+ * **"[SAMPLE_NAME].Polymerase_and_subread.length_profiles.png"**
 	Histogram of polymerase reads and subreads per SMRTcell
- * **"[SAMPLE_NAME].estimated_lib_size_distribution.png"**  
+ * **"[SAMPLE_NAME].estimated_lib_size_distribution.png"**
 	Fragment length distribution in library estimated from LSR flanked by adapters on both sides
- * **"[SAMPLE_NAME].estimated_lib_size_distribution.full_data.png"**  
+ * **"[SAMPLE_NAME].estimated_lib_size_distribution.full_data.png"**
 	Same as above but also using LSRs with just one adapter
 
 <br>

@@ -5,7 +5,7 @@ library(RColorBrewer)
 
 n50<-function(x){
 	y<-x[order(x, decreasing=T)]
-	
+
 	return(y[which(cumsum(as.numeric(y)) >= (sum(as.numeric(y))/2))[1]])
 }
 
@@ -33,48 +33,48 @@ PacBio.other<-NULL
 #- Parse data produced by "SEQUEL_stats.pl"
 for (h in 1:length(statSets)) {
 	setwd(paste(BASE, "/", statSets[h], sep=""))
-	
+
 	for (i in list.files(patt=".stats")) {
 		tmpFrame<-read.table(i, header=F, sep="\t", stringsAsFactors=F)
 		tmpCell<-tmpFrame[1,1]
-		
+
 		if(!(tmpCell %in% names(PacBio.stats))) { PacBio.stats[[tmpCell]]<-NULL }
-		
+
 		PacBio.stats[[tmpCell]][[statNames[h]]]<-statFrame
-		
+
 		for (j in 1:nrow(tmpFrame)) {
 			PacBio.stats[[tmpCell]][[statNames[h]]][tmpFrame[j,3],tmpFrame[j,2]]<-tmpFrame[j,4]
 		}
 	}
-	
+
 	if(statSets[h] == "HpSp") {
 		for (i in list.files(patt=".hist")) {
 			tmpFrame<-read.table(i, header=F, sep="\t", stringsAsFactors=F)
 			tmpCell<-tmpFrame[1,1]
-			
+
 			if(!(tmpCell %in% names(PacBio.hists))) { PacBio.hists[[tmpCell]]<-NULL }
-			
+
 			PacBio.hists[[tmpCell]][[statNames[h]]]<-tmpFrame[,2:4]
 			colnames(PacBio.hists[[tmpCell]][[statNames[h]]])<-c("BIN","PR","SR")
 		}
-		
+
 		for (i in list.files(patt=".aCnt")) {
 			tmpFrame<-read.table(i, header=F, sep="\t", stringsAsFactors=F)
 			tmpCell<-tmpFrame[1,1]
-			
+
 			if(!(tmpCell %in% names(PacBio.other))) { PacBio.other[[tmpCell]]<-NULL }
 			if(!(statNames[h] %in% names(PacBio.other[[tmpCell]]))) { PacBio.other[[tmpCell]][[statNames[h]]]<-NULL }
-			
+
 			PacBio.other[[tmpCell]][[statNames[h]]][["aCnt"]]<-as.vector(tmpFrame[,2])
 		}
-		
+
 		for (i in list.files(patt=".lFlg")) {
 			tmpFrame<-read.table(i, header=F, sep="\t", stringsAsFactors=F)
 			tmpCell<-tmpFrame[1,1]
-			
+
 			if(!(tmpCell %in% names(PacBio.other))) { PacBio.other[[tmpCell]]<-NULL }
 			if(!(statNames[h] %in% names(PacBio.other[[tmpCell]]))) { PacBio.other[[tmpCell]][[statNames[h]]]<-NULL }
-			
+
 			PacBio.other[[tmpCell]][[statNames[h]]][["lFlg"]]<-as.vector(tmpFrame[,2])
 		}
 	}
@@ -103,12 +103,12 @@ rownames(SReadStats)<-SMRTcells
 for (i in SMRTcells) {
 	PReadStats[i,"ZOR"]<-PacBio.stats[[i]][["HQ"]]["ZOR","PR"]
 	PReadStats[i,"PSR"]<-PacBio.stats[[i]][["HQ"]]["PSR","PR"]
-	
+
 	PReadStats[i,"SEQ"]<-PacBio.stats[[i]][["HQ"]]["SEQ","PR"]
 	PReadStats[i,"Mean"]<-PacBio.stats[[i]][["HQ"]]["MEAN","PR"]
 	PReadStats[i,"Median"]<-PacBio.stats[[i]][["HQ"]]["MEDIAN","PR"]
 	PReadStats[i,"N50"]<-PacBio.stats[[i]][["HQ"]]["N50","PR"]
-	
+
 	SReadStats[i,"SEQ"]<-PacBio.stats[[i]][["HQ"]]["SEQ","SR"]
 	SReadStats[i,"Mean"]<-PacBio.stats[[i]][["HQ"]]["MEAN","SR"]
 	SReadStats[i,"Median"]<-PacBio.stats[[i]][["HQ"]]["MEDIAN","SR"]
@@ -143,7 +143,7 @@ for (i in SMRTcells) {
 	lines(c(PacBio.stats[[i]][["HQ"]]["MEAN","PR"],PacBio.stats[[i]][["HQ"]]["MEAN","PR"]),c(0,maxRCount), lwd=1, lty=2, col="black")
 	lines(c(PacBio.stats[[i]][["HQ"]]["MEDIAN","PR"],PacBio.stats[[i]][["HQ"]]["MEDIAN","PR"]),c(0,maxRCount), lwd=1, lty=3, col="black")
 	lines(c(PacBio.stats[[i]][["HQ"]]["N50","PR"],PacBio.stats[[i]][["HQ"]]["N50","PR"]),c(0,maxRCount), lwd=1, lty=4, col="black")
-	
+
 	plot(PacBio.hists[[i]][["HQ"]][,c("BIN","SR")], type="h", col="green4", xlim=c(-100,maxRLength), ylim=c(0,maxRCount), xlab="Subread length", ylab="Count", main=i, bty="n")
 	lines(c(PacBio.stats[[i]][["HQ"]]["MEAN","SR"],PacBio.stats[[i]][["HQ"]]["MEAN","SR"]),c(0,maxRCount), lwd=1, lty=2, col="black")
 	lines(c(PacBio.stats[[i]][["HQ"]]["MEDIAN","SR"],PacBio.stats[[i]][["HQ"]]["MEDIAN","SR"]),c(0,maxRCount), lwd=1, lty=3, col="black")
@@ -206,7 +206,7 @@ for (i in 11:16) {
 for (i in 0:stp) {
 	xf<-xLim/stp
 	yf<-yLim/stp
-	
+
 	lines(c(0,xLim), c((i*yf),(i*yf)), col="black", lwd=1, lty=3)
 	lines(c((i*xf),(i*xf)), c(0,yLim), col="black", lwd=1, lty=3)
 }
@@ -221,7 +221,7 @@ for (i in SMRTcells) {
 	tY<-(PReadStats[i,"SEQ"]/yScf)
 	tXl<-(PReadStats[i,"Median"]/xScf)
 	tXr<-(PReadStats[i,"N50"]/xScf)
-	
+
 	lines(c(tXl,tXr), c(tY,tY), col="black", lwd=1, lty=1)
 }
 
@@ -296,7 +296,7 @@ for (i in 11:16) {
 for (i in 0:stp) {
 	xf<-xLim/stp
 	yf<-yLim/stp
-	
+
 	lines(c(0,xLim), c((i*yf),(i*yf)), col="black", lwd=1, lty=3)
 	lines(c((i*xf),(i*xf)), c(0,yLim), col="black", lwd=1, lty=3)
 }
@@ -311,7 +311,7 @@ for (i in SMRTcells) {
 	tY<-(SReadStats[i,"SEQ"]/yScf)
 	tXl<-(SReadStats[i,"Median"]/xScf)
 	tXr<-(SReadStats[i,"N50"]/xScf)
-	
+
 	lines(c(tXl,tXr), c(tY,tY), col="black", lwd=1, lty=1)
 }
 
