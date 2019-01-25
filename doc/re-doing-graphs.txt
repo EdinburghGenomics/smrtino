@@ -9,18 +9,28 @@ Here's my idea:
 
 So, first I'll release 1.1.6, then (as pipeline user):
 
+# Prepare to run stuff in this shell
+$ pushd ~pipeline/smrtino/v1.1.6
+$ export PATH="`pwd`:$PATH"
+$ source ./environ.sh
+$ source ./activate_venv
+$ popd
+
+# Here's a copy-paste-friendly one-liner for all that:
+pushd ~pipeline/smrtino/v1.1.6 && export PATH="`pwd`:$PATH" && source ./environ.sh && source ./activate_venv ; popd
+
+-----
+
 $ cd /lustre/pacbio/pacbio_data/r54041_20181214_164538/
 
 # Show that the plots are out of date (blobs, histos and sequelstats)
 $ touch -ch blob/*.blobDB.json histo/*.length_histo.tsv sequelstats_plots/*/.done
 
-# Run the bits of the pipeline
-$ export PATH="`echo ~pipeline`/smrtino/v1.1.6:$PATH"
-$ source activate_venv
+# Prepare to run  the bits of the pipeline
 $ Snakefile.process_cells
 $ Snakefile.report -F --config pstatus="Re-format report" -- report_main
 
 # Manual upload of the new report
-upload_report.sh
+$ export REPORT_DESTINATION ; upload_report.sh
 
 # And we should be golden?
