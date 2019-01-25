@@ -17,10 +17,10 @@ $ touch *.length_histo.tsv
 $ sequelstats_plots/*/.done
 
 # Run the bits of the pipeline
-$ export PATH="`echo ~pipeline`/smrtino/current:$PATH"
+$ export PATH="`echo ~pipeline`/smrtino/v1.1.6:$PATH"
 $ source activate_venv
-$ ~pipeline/smrtino/current/Snakefile.process_cells
-$ ~pipeline/smrtino/Snakefile.report -F --config pstatus="$_pstatus" -- report_main
+$ Snakefile.process_cells
+$ Snakefile.report -F --config pstatus="$_pstatus" -- report_main
 
 # Manual upload of the new report
 upload_report.sh
