@@ -1,0 +1,28 @@
+I need a better way to fix reports if I've tinkered with just the plotting code.
+
+Here's my idea:
+
+1) Release new version of the code
+2) Run the re-plot and the reports manually
+3) Upload manually
+4) Notify RT ticket manually
+
+So, first I'll release 1.1.6, then (as pipeline user):
+
+$ cd /lustre/pacbio/pacbio_data/r54041_20181214_164538/
+
+# Show that the plots are out of date (blobs, histos and sequelstats)
+$ touch blob/*.blobDB.json
+$ touch *.length_histo.tsv
+$ sequelstats_plots/*/.done
+
+# Run the bits of the pipeline
+$ export PATH="`echo ~pipeline`/smrtino/current:$PATH"
+$ source activate_venv
+$ ~pipeline/smrtino/current/Snakefile.process_cells
+$ ~pipeline/smrtino/Snakefile.report -F --config pstatus="$_pstatus" -- report_main
+
+# Manual upload of the new report
+upload_report.sh
+
+# And we should be golden?
