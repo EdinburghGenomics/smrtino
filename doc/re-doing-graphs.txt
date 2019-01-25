@@ -12,15 +12,13 @@ So, first I'll release 1.1.6, then (as pipeline user):
 $ cd /lustre/pacbio/pacbio_data/r54041_20181214_164538/
 
 # Show that the plots are out of date (blobs, histos and sequelstats)
-$ touch blob/*.blobDB.json
-$ touch *.length_histo.tsv
-$ sequelstats_plots/*/.done
+$ touch -ch blob/*.blobDB.json histo/*.length_histo.tsv sequelstats_plots/*/.done
 
 # Run the bits of the pipeline
 $ export PATH="`echo ~pipeline`/smrtino/v1.1.6:$PATH"
 $ source activate_venv
 $ Snakefile.process_cells
-$ Snakefile.report -F --config pstatus="$_pstatus" -- report_main
+$ Snakefile.report -F --config pstatus="Re-format report" -- report_main
 
 # Manual upload of the new report
 upload_report.sh
