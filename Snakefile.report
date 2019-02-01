@@ -65,7 +65,25 @@ rule report_main:
            ln -sr {input.pan}.html {output}
         '''
 
+# A list of projects, like with Illuminatus. TODO - update the get_fqdata script
+# to make use of these files, and add them to all previous runs.
+localrules: list_projects
+rule list_projects:
+    output: "projects_ready.txt"
+    input: INFO_YML
+    priority: 100
+    run:
+        plist = set()
+        for y in input:
+            with open(y) as yfh:
+                plist.add(yaml.safe_load(y)['ws_project'])
+        with open(output, "w") as ofh:
+            print( *sorted(plist), file=ofh, sep='\n' )
+
 # This rule marshalls all the .png images and makes the report in PanDoc format.
+# FIXME - the run_status should be fudged somehow so that it says 'complete' when
+# the run is complete, even though it's not complete as this script runs. Maybe just
+# a flag to pb_run_status.py? --fudge.
 rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
     input:
@@ -73,6 +91,7 @@ rule make_report:
         plots = "sequelstats_plots/.done",
         blob_plots = glob("blob/*.png"),
         histo_plots = glob("histo/*.png"),
+        plist = "projects_ready.txt",
     shell:
         '''shopt -s nullglob
            rm -rf all_reports/img
