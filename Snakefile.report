@@ -65,7 +65,7 @@ rule report_main:
            ln -sr {input.pan}.html {output}
         '''
 
-# A list of projects, like with Illuminatus. TODO - update the get_fqdata script
+# A list of projects, like with Illuminatus. Once this is running I'll update the get_pbdata script
 # to make use of these files, and add them to all previous runs.
 localrules: list_projects
 rule list_projects:
@@ -81,9 +81,9 @@ rule list_projects:
             print( *sorted(plist), file=ofh, sep='\n' )
 
 # This rule marshalls all the .png images and makes the report in PanDoc format.
-# FIXME - the run_status should be fudged somehow so that it says 'complete' when
-# the run is complete, even though it's not complete as this script runs. Maybe just
-# a flag to pb_run_status.py? --fudge.
+# Note - the run_status is now fudged so that the report says 'complete' when
+# the run is complete, even though it's not complete (according to pb_run_status.py)
+# as this script runs.
 rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
     input:
@@ -99,7 +99,7 @@ rule make_report:
            ln -srnt all_reports/img blob/*.png || true
            ln -srnt all_reports/img histo/*.png || true
            ln -srnt all_reports/img sequelstats_plots/*.png || true
-           make_report.py -o {output} -s <(pb_run_status.py) {input.yaml}
+           make_report.py -o {output} --fudge complete -s <(pb_run_status.py) {input.yaml}
         '''
 
 # Makes some nice plots using the sequelstats package. See doc/sequelstats.txt

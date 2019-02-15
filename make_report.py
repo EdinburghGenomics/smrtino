@@ -49,7 +49,7 @@ def main(args):
     sequelstats_plots = find_sequelstats_plots(args.plots, pipedata.get('rundir'))
 
     # And some more of that
-    status_info = load_status_info(args.status)
+    status_info = load_status_info(args.status, fudge=args.fudge_status)
 
     rep = format_report(all_info,
                         pipedata = pipedata,
@@ -120,7 +120,7 @@ def find_sequelstats_plots(graph_dir, run_name=None):
 
     return res
 
-def load_status_info(sfile):
+def load_status_info(sfile, fudge=None):
     """ Parse the output of pb_run_status.py, either from a file or more likely
         from a BASH <() construct - we don't care.
         It's quasi-YAML format but I'll not use the YAML parser. Also I want to
@@ -132,6 +132,9 @@ def load_status_info(sfile):
             for line in fh:
                 k, v = line.split(':', 1)
                 res[k.strip()] = v.strip()
+    if fudge:
+        # Note this keeps the order or else adds the status on the end.
+        res['PipelineStatus'] = fudge
     return res
 
 def get_pipeline_metadata(pipe_dir):
@@ -308,6 +311,8 @@ def parse_args(*args):
                             help="Directory to scan for PNG plots relating to the whole run.")
     argparser.add_argument("-s", "--status", default=None,
                             help="File containing status info on this run.")
+    argparser.add_argument("-f", "--fudge_status", default=None,
+                            help="Override the PipelineStatus shown in the report.")
     argparser.add_argument("-o", "--out",
                             help="Where to save the report. Defaults to stdout.")
     argparser.add_argument("-d", "--debug", action="store_true",
