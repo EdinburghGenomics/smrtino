@@ -1,5 +1,0 @@
-#!/bin/bash
-set -eu
-
-#exec /lustre/software/SEQUELstats/SEQUELstats_20171017/SEQUEL_pipe.sh "$@"
-exec "$(dirname $BASH_SOURCE)"/../SEQUELstats_20171017_patched/SEQUEL_pipe.sh "$@"
