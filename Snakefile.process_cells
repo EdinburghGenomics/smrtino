@@ -113,8 +113,7 @@ def copy_all_files(i, o):
 localrules: main, one_cell_info, link_file
 rule main:
     input:
-        yaml     = [ c + '.info.yml' for c in SC ],
-        seqstats = [ 'sequelstats_plots/' + c + '/.done' for c in SC ]
+        yaml     = [ c + '.info.yml' for c in SC ]
 
 # This rule connects the .info.yml to all the bits of data we need and also generates
 # the .info.yml contents. The inputs get complex since we need to account for whether
@@ -207,35 +206,6 @@ rule histo_plot:
         '''{TOOLBOX} plot_histo.R -f {input} -o {output.hplot} --bins {params.bins} \
                 --title `basename {input} .length_histo.tsv`
            {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
-        '''
-
-# A shim rule to write the absolute paths of the .bam files to matching .fn
-# files. As long as this runs on the login node sequelstats_stats can run on
-# a compute node.
-localrules: sequelstats_make_fn
-rule sequelstats_make_fn:
-    output: temp("{cell}.{part}.bam.fn")
-    input:  lambda wc: wc.cell + SC[wc.cell]['filter'] + "." + wc.part + ".bam"
-    shell:
-        "readlink -f {input} > {output}"
-
-# Computes sequelstats for a single cell, ready to run the plot step in Snakefile.report.
-# The invocation for sequelstats_pipe is weird but never mind.
-# Also we can get failures on bad data.
-rule sequelstats_stats:
-    output: "sequelstats_plots/{cell}/.done"
-    input:
-        bamfn    = "{cell}.subreads.bam.fn",
-        scrapsfn = "{cell}.scraps.bam.fn",
-    shell:
-        '''rm -rf sequelstats_plots/{wildcards.cell}/stats
-           set +e ; _retval=0
-           for step in 01 02 03 04 ; do
-             echo STEP_"$step" >&2
-             {TOOLBOX} sequelstats_pipe {input.bamfn} {input.scrapsfn} sequelstats_plots 1 STEP_"$step"
-             _retval=$(( $_retval + $? ))
-           done
-           echo $_retval > {output}
         '''
 
 ## BLOB plotter rules ##

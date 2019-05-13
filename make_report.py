@@ -45,17 +45,13 @@ def main(args):
     else:
         pipedata = dict()
 
-    # See if there are any plots to include
-    sequelstats_plots = find_sequelstats_plots(args.plots, pipedata.get('rundir'))
-
     # And some more of that
     status_info = load_status_info(args.status, fudge=args.fudge_status)
 
     rep = format_report(all_info,
                         pipedata = pipedata,
                         run_status = status_info,
-                        aborted_list = status_info.get('CellsAborted'),
-                        sequelstats_plots = sequelstats_plots)
+                        aborted_list = status_info.get('CellsAborted'))
 
     if (not args.out) or (args.out == '-'):
         print(*rep, sep="\n")
@@ -68,57 +64,6 @@ def escape(in_txt, backwhack=re.compile(r'([][\`*_{}()#+-.!])')):
     """ HTML escaping is not the same as markdown escaping
     """
     return re.sub(backwhack, r'\\\1', str(in_txt))
-
-def find_sequelstats_plots(graph_dir, run_name=None):
-    """ Look for all the PNG images. These are drawn per-run so don't apply to
-        a specific SMRT cell.
-        If run_name is supplied the script will sanity-check all images belong to the run.
-        It will try to order the plots by looking in the sequelstats_infos.yml file, and
-        capture any meta-data therein.
-    """
-    res = OrderedDict()
-
-    # Try to get the info on plot annotation and ordering.
-    try:
-        with open(os.path.dirname(__file__) + '/templates/sequelstats_infos.yml') as yfh:
-            res.update( [ ( i['plot'], dict(msg=i['msg'], hide=bool(i.get('hide'))) )
-                          for i in yaml.safe_load(yfh) ] )
-    except Exception:
-        L.exception("Failed to load any annotations for the plots.")
-
-    plots_seen = glob(graph_dir + '/*.*.png')
-
-    for p in plots_seen:
-
-        p = os.path.basename(p)
-
-        # Don't include the thumbnails
-        if '__' in p:
-            continue
-
-        # Chop off run name and .png extension
-        rname = p.split('.')[0]
-        fn_bits = p.split('.')[1:-1]
-
-        # These should match
-        if run_name and (run_name != rname):
-            L.warning("Unexpected PNG file with run_name {} instead of {}".format(
-                                                rname,              run_name))
-            continue
-
-        # Now munge the name to make a printable title:
-        #  changing _ to ' ' and capitalizing.
-        munged_name = re.sub('_', ' ', '_'.join(fn_bits))
-        munged_name = munged_name[0].upper() + munged_name[1:]
-
-        res.setdefault(munged_name, dict())['img'] = p
-
-    # Remove junk form the dict
-    for pn in list(res):
-        if not pn.startswith('__') and not res[pn].get('img'):
-            del res[pn]
-
-    return res
 
 def load_status_info(sfile, fudge=None):
     """ Parse the output of pb_run_status.py, either from a file or more likely
@@ -164,7 +109,7 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_info, pipedata, run_status, aborted_list=None, sequelstats_plots=None):
+def format_report(all_info, pipedata, run_status, aborted_list=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
     """
@@ -193,27 +138,6 @@ def format_report(all_info, pipedata, run_status, aborted_list=None, sequelstats
     for k, v in sorted(all_info.items()):
         replines.append("\n## {}\n".format(k))
         replines.extend(format_cell(v))
-
-    # And the SEQUELstats plots (that cover the whole run)
-    if sequelstats_plots is not None:
-        replines.append("\n# SEQUELstats plots\n")
-
-        if not [ k for k in sequelstats_plots if not k.startswith("__") ]:
-            replines.append("**No plots were produced for this run.**")
-        else:
-            if sequelstats_plots.get('__ALL__'):
-                replines.extend(blockquote(sequelstats_plots['__ALL__']['msg']))
-
-            for p, pdict in sequelstats_plots.items():
-                if p.startswith('__') or pdict.get('hide'):
-                    continue
-
-                replines.append("\n## {}\n".format(p))
-                replines.append("")
-                if pdict.get('msg'):
-                    replines.extend(blockquote(pdict['msg']))
-                #replines.append("[plot]({}){{.thumbnail}}".format('img/' + pdict['img']))
-                replines.append("<img src='{}'>".format('img/' + pdict['img']))
 
     if aborted_list and aborted_list.split():
         # Specifically note incomplete cells
@@ -307,8 +231,6 @@ def parse_args(*args):
                             help="Supply a list of info.yml files to compile into a report.")
     argparser.add_argument("-p", "--pbpipeline", default="pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
-    argparser.add_argument("--plots", default="sequelstats_plots",
-                            help="Directory to scan for PNG plots relating to the whole run.")
     argparser.add_argument("-s", "--status", default=None,
                             help="File containing status info on this run.")
     argparser.add_argument("-f", "--fudge_status", default=None,

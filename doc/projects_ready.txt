@@ -1,0 +1,7 @@
+We can easily add a projects_ready.txt to all the existing runs:
+
+for d in /lustre/pacbio/pacbio_data/r54041_*/ ; do ( test -e $d/pbpipeline/aborted || grep -h ws_project $d/*.info.yml | egrep -o '[0-9]{5}' | sort -u ) >> $d/projects_ready.txt ; done
+
+The actual code does a proper YAML parse but for a quickie one-off this is fine.
+
+Note r54041_20190115_115419 already had this list. Not sure when I added it but it's right.
