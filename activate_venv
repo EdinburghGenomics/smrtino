@@ -28,9 +28,9 @@ else
         activate_venv
 
         pip3 install --upgrade pip
+        pip3 install 'pyyaml==3.13'
         pip3 install Rt
         pip3 install pystache
-        pip3 install pyyaml
 
     )
     if [ $? = 0 ] ; then
