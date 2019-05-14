@@ -76,6 +76,7 @@ class BinMocker:
            place of the real version.
            Except if mock contains a / character - then we need to use
            functions instead.
+           side_effect may be a line to be inserted in the shell script
         """
         if '/' in mock:
             #We can still mock these by defining BASH functions.

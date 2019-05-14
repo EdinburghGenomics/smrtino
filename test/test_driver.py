@@ -20,10 +20,12 @@ from test.binmocker import BinMocker
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 DRIVER = os.path.abspath(os.path.dirname(__file__) + '/../driver.sh')
 
-PROGS_TO_MOCK = """
-    Snakefile.process_run Snakefile.report
-    rt_runticket_manager.py upload_report.sh
-""".split()
+PROGS_TO_MOCK = {
+    "Snakefile.process_run" : None,
+    "Snakefile.report" : None,
+    "rt_runticket_manager.py" : "echo STDERR rt_runticket_manager.py >&2",
+    "upload_report.sh" : "echo STDERR upload_report.sh >&2"
+}
 
 class T(unittest.TestCase):
 
@@ -41,7 +43,7 @@ class T(unittest.TestCase):
             pass
 
         self.bm = BinMocker()
-        for p in PROGS_TO_MOCK: self.bm.add_mock(p)
+        for p, s in PROGS_TO_MOCK.items(): self.bm.add_mock(p, side_effect=s)
 
         # Set the driver to run in our test harness. Note I can set
         # $BIN_LOCATION to more than one path.

@@ -233,7 +233,7 @@ action_processed() {
     touch "$RUN_OUTPUT"/pbpipeline/report.started
 
     # In case we didn't already...
-    notify_run_complete
+    notify_run_complete |& plog
 
     # FIXME - report aborted vs. good cells!
 
@@ -273,7 +273,7 @@ action_processing() {
     # and aborted too I'm not sure)
     debug "\_PROCESSING $RUNID"
 
-    notify_run_complete
+    notify_run_complete |& plog
 }
 
 action_stalled() {
@@ -346,6 +346,7 @@ save_start_time(){
         >>"$RUN_OUTPUT"/pbpipeline/start_times
 }
 
+# Wrapper for ticket manager that sets the run and queue
 rt_runticket_manager(){
     rt_runticket_manager.py -r "$RUNID" -Q pbrun "$@"
 }
