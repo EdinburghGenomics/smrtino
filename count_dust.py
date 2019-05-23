@@ -9,11 +9,14 @@ count = 0
 # These aren't contigs but we pretend they are...
 contig = None
 
-# This just prints out the proportion
+# This just prints out the proportion, which is the more sensible
+# type of output.
+"""
 def emit():
     if count:
         total = upper + lower
         print('0.000' if total == 0 else "{:.3f}".format(upper / total))
+"""
 
 # But for blobtools we want something a little different
 print("## count_dust v0.0")
