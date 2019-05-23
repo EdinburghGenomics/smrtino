@@ -1,0 +1,3 @@
+In SMRTino 1.1.7, the ststus on all the final reports was "reporting".
+
+

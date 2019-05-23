@@ -181,7 +181,7 @@ action_new(){
     # will be noted by the main loop.
     # Note this triggers a summary to be sent to RT as a comment, which should create
     # the new RT ticket.
-    run_report "Waiting for cells." "new" | plog && log DONE
+    run_report "Waiting for cells." "new" "new" | plog && log DONE
 }
 
 # TODO - it might be that we don't want to run multiple processings in parallel after all
@@ -212,7 +212,7 @@ action_cell_ready(){
 
       # Now we can have an interim report.
       # FIXME - this may not be safe - two reports running at once!
-      run_report "Processing completed for cells $CELLSREADY." "awaiting_cells" | plog && log DONE
+      run_report "Processing completed for cells $CELLSREADY." "" "awaiting_cells" | plog && log DONE
 
       for c in $CELLSREADY ; do
           ( cd "$RUN_OUTPUT" && mv pbpipeline/${c}.started pbpipeline/${c}.done )
@@ -239,7 +239,7 @@ action_processed() {
 
     BREAK=1
     set +e ; ( set -e
-        run_report "All processing complete."
+        run_report "All processing complete." "complete" ""
         log "  Completed processing on $RUNID [$CELLS]."
 
         if [ -s "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt ] ; then
@@ -371,29 +371,30 @@ notify_run_complete(){
 
 run_report() {
     # Makes a report. Will not exit on error. I'm assuming all substantial processing
-    # will have been done by Snakefile.process_cells
+    # will have been done by Snakefile.process_cells so this should be quick.
 
-    # usage: run_report [rt_prefix] [rt_run_status] [plog_dest]
-    # A blank rt_run_status will leave the status unchanged. A value of "NONE" will
+    # usage: run_report [rt_prefix] [report_fudge_status] [rt_set_status]
+
+    # rt_prefix is mandatory and should be descriptive
+    # A blank report_fudge_status will cause the status to be determined from the
+    # state machine, but sometimes we want to override this.
+    # A blank rt_set_status will leave the status unchanged. A value of "NONE" will
     # suppress reporting to RT entirely.
-    # Caller is responsible for log redirection, so this function just prints any
-    # progress messages, but the [plog_dest] hint can be used to ensure the right
-    # file is referenced when logging error messages.
+    # Caller is responsible for log redirection to plog, but in some cases we want to
+    # make a regular log message referencing the plog destination, so this is a bit messy.
     set +o | grep '+o errexit' && _ereset='set +e' || _ereset='set -e'
     set +e
 
-    _rprefix="${1:-}"
-    _pstatus="${1:-}"
-    _rt_run_status="${2:-}"
+    # All of these must be supplied.
+    _rprefix="$1"
+    _rep_status="$2"
+    _rt_run_status="$3"
 
-    if [ "${3:--}" != - ] ; then
-        _plog="$3" # Caller may hint where the log is going.
-    else
-        plog </dev/null #Just to set $per_run_log
-        _plog="${per_run_log}"
-    fi
+    # Get a handle on logging.
+    plog </dev/null
+    _plog="${per_run_log}"
 
-    ( cd "$RUN_OUTPUT" ; Snakefile.report -F --config pstatus="$_pstatus" -- report_main ) 2>&1
+    ( cd "$RUN_OUTPUT" ; Snakefile.report -F --config rep_status="$_rep_status" -- report_main ) 2>&1
 
     # Snag that return value
     _retval=$(( $? + ${_retval:-0} ))

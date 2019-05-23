@@ -226,7 +226,7 @@ class T(unittest.TestCase):
         # Initial report should be made
         expected_calls = self.bm.empty_calls()
         expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun --subject new --comment @???']
-        expected_calls['Snakefile.report'] = ['-F --config pstatus=Waiting for cells. -- report_main']
+        expected_calls['Snakefile.report'] = ['-F --config rep_status=new -- report_main']
         expected_calls['upload_report.sh'] = [self.to_path]
 
         # The call to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
@@ -333,7 +333,7 @@ class T(unittest.TestCase):
         self.bm_rundriver()
         self.assertInStdout("r54041_20180518_131155", "PROCESSED")
 
-        expected_calls['Snakefile.report'] = ['-F --config pstatus=All processing complete. -- report_main']
+        expected_calls['Snakefile.report'] = ['-F --config rep_status=complete -- report_main']
         expected_calls['upload_report.sh'] = [self.to_path]
         expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180518_131155 -Q pbrun '
                                                      '--subject processing --reply 2 SMRT cells '

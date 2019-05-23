@@ -86,12 +86,14 @@ rule make_report:
         blob_plots = glob("blob/*.png"),
         histo_plots = glob("histo/*.png"),
         plist = "projects_ready.txt",
+    params:
+        fudge = "--fudge {rep_status}".format(**config) if config.get('rep_status') else ""
     shell:
         '''shopt -s nullglob
            rm -rf all_reports/img
            mkdir all_reports/img
            ln -srnt all_reports/img blob/*.png || true
            ln -srnt all_reports/img histo/*.png || true
-           make_report.py -o {output} --fudge complete -s <(pb_run_status.py) {input.yaml}
+           make_report.py -o {output} {params.fudge} -s <(pb_run_status.py) {input.yaml}
         '''
 
