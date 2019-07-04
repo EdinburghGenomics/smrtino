@@ -94,10 +94,7 @@ if ! [ -e "$TO_LOCATION"/.smrtino ] ; then
     exit 1
 fi
 
-# Per-project log for project progress messages, goes into the output
-# directory.
-# Unfortunately this can get scrambled if we try to run read1 processing and demux
-# at the same time, so have a plog1 for that.
+# Per-run log for detailed progress messages, goes into the output directory.
 plog() {
     per_run_log="$RUN_OUTPUT/pipeline.log"
     if ! { [ $# = 0 ] && cat >> "$per_run_log" || echo "$*" >> "$per_run_log" ; } ; then
