@@ -20,6 +20,8 @@ from test.binmocker import BinMocker
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 DRIVER = os.path.abspath(os.path.dirname(__file__) + '/../driver.sh')
 
+# Note the reason for forcing output to STDERR is to test that any such message
+# is being logged and not emitted!
 PROGS_TO_MOCK = {
     "Snakefile.process_run" : None,
     "Snakefile.report" : None,

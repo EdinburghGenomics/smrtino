@@ -308,8 +308,8 @@ if __name__ == '__main__':
     #Very cursory option parsing
     optind = 1 ; opts = ''
     if sys.argv[optind:] and sys.argv[optind].startswith('-'):
-        optind += 1
         opts = sys.argv[optind][1:]
+        optind += 1
 
     L.basicConfig(level=L.WARNING, stream=sys.stderr)
 
