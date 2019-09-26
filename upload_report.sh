@@ -13,7 +13,7 @@ cd "${1:-.}"
 runname="`basename $PWD`"
 
 # Confirm we do have all_reports/run_report.html
-if ! [ -L all_reports/run_report.html ] && [ -e all_reports/run_report.html ] ; then
+if [ ! -L all_reports/run_report.html ] || [ ! -e all_reports/run_report.html ] ; then
     echo "No such file all_reports/run_report.html or it is not a link."
     false
 fi

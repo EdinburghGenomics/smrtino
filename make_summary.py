@@ -50,7 +50,7 @@ def main(args):
 
             all_info[slot].update(xml_info)
 
-    rep = format_report(all_info, run_id=args.runid)
+    rep = format_report(all_info, run_id=args.runid, run_dir=os.path.realpath(args.dir))
 
     if (not args.txt) or (args.txt == '-'):
         print(*rep, sep="\n")
@@ -59,7 +59,7 @@ def main(args):
         with open(args.txt, "w") as ofh:
             print(*rep, sep="\n", file=ofh)
 
-def format_report(all_info, run_id=None):
+def format_report(all_info, run_id=None, run_dir='.'):
     """ Make a summary report based upon the contents of a dict of {slot_id: {infos}, ...}
         Return a list of lines to be included in a summary sent to RT
     """
@@ -76,7 +76,7 @@ def format_report(all_info, run_id=None):
     except ValueError:
         exit("Cannot determine Run ID. Please supply a --runid consistent with {}.".format(run_id_set))
 
-    replines = [ os.getcwd(),
+    replines = [ run_dir,
                  "Run {} with {} SMRT cells".format(run_id, len(all_info))]
 
     for k, v in sorted(all_info.items()):
