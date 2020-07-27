@@ -41,7 +41,7 @@ if [ -e "$ENVIRON_SH" ] ; then
     # Saves having to put 'export' on every line in the config.
     export CLUSTER_QUEUE FROM_LOCATION TO_LOCATION GENOLOGICSRC \
            PROJECT_NAME_LIST PROJECT_PAGE_URL REPORT_DESTINATION REPORT_LINK \
-           RT_SYSTEM STALL_TIME TO_LOCATION VERBOSE
+           RT_SYSTEM STALL_TIME TO_LOCATION VERBOSE BLOBS
 fi
 
 # Tools may reliably use this to report the version of SMRTino being run right now.
@@ -204,7 +204,7 @@ action_cell_ready(){
       log "  Starting Snakefile.process_cells on $RUNID."
       # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
       ( cd "$RUN_OUTPUT"
-        Snakefile.process_cells --config cells="$CELLSREADY"
+        Snakefile.process_cells --config cells="$CELLSREADY" blobs="${BLOBS:-1}"
       ) |& plog
 
       # Now we can have an interim report.
@@ -441,6 +441,7 @@ send_summary_to_rt() {
 
     echo "Sending new summary of PacBio run to RT."
     # Subshell needed to capture STDERR from make_summary.py
+    # TODO - test that this works as advertised with different results from make_summary.py
     last_upload_report="`cat "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt 2>/dev/null || echo "Report was not generated or upload failed"`"
     ( set +u ; rt_runticket_manager "${_run_status[@]}" --"${_reply_or_comment}" \
         @<(echo "$_preamble "$'\n'"$last_upload_report" ;

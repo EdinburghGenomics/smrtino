@@ -35,6 +35,7 @@ PROJECT_PAGE_URL=https://www.wiki.ed.ac.uk/display/GenePool/
 # MAINLOG=/dev/stdout                         ## log stright to terminal
 # RUN_NAME_REGEX='r54041_2018...._.*'         ## restrict the runs examined (BASH regex syntax)
 # VERBOSE=1                                   ## verbose log messages form driver.sh
+# BLOBS=0                                     ## Disable contamination check
 
 ## You could end reports to localhost rather than web1. There won't be a valid http:// link.
 # REPORT_DESTINATION='gseg-login0:test_pacbiodata/uploaded_reports'
