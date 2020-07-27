@@ -118,7 +118,7 @@ rule main:
 # This rule connects the .info.yml to all the bits of data we need and also generates
 # the .info.yml contents. The inputs get complex since we need to account for whether
 # filters need to be applied, and if so we need both the filtered and unfiltered .xml files.
-if str(config.get('BLOBS', '1')) != '0':
+if str(config.get('blobs', '1')) != '0':
     rule one_cell_info:
         output: "{cell}.info.yml"
         input:
