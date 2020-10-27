@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Bootstrap a new VEnv in ./_py3_venv suitable for running SMRTino.
+# Bootstrap a new VEnv in ./_smrtino_venv suitable for running SMRTino.
 # The idea is that we make a new VEnv for each version released and so
 # we really can roll back to an old version and get the exact same
 # behaviour.
@@ -13,24 +13,47 @@ fi
 activate_venv() {
     #We need to ensure -u is not set but then put the old value back.
     reset=`set +o | grep -w nounset` ; set +o nounset
-    source ./_py3_venv/bin/activate
+    source ./_smrtino_venv/bin/activate
     $reset
 }
 
-if [ -e ./_py3_venv/bin/activate ] ; then
+pip_install() {
+    # Send all output to stdout
+    pip3 --disable-pip-version-check install "$@" 2>&1
+}
+
+
+if [ -e ./_smrtino_venv/bin/activate ] ; then
 
     activate_venv
 
 else
-    echo "Bootstrapping new VEnv from `which python3`"
-    ( set -e ; #)
-        python3 -mvenv ./_py3_venv
+    _py3="${TOOLBOX:-`dirname $BASH_SOURCE`/toolbox}"/bootstrap_python3
+    _py3_real="$(readlink -f "$_py3")"
+    echo "Bootstrapping new VEnv from $_py3 ($_py3_real)"
+    ( set -e ;
+        "$_py3_real" -mvenv ./_smrtino_venv
         activate_venv
 
-        pip3 install --upgrade pip
-        pip3 install 'pyyaml==3.13'
-        pip3 install Rt
-        pip3 install pystache
+        pip_install --upgrade pip wheel
+        pip_install 'pyyaml==3.13'
+        pip_install Rt
+        pip_install pystache
+
+        # things needed for Blobtools - we are using
+        # https://github.com/EdinburghGenomics/blobtools/tree/tims_patches
+        pip_install docopt==0.6.2
+        pip_install matplotlib==3.0.3
+        pip_install pysam==0.15.2
+        pip_install tqdm==4.32.2
+
+        # snakemake and drmaa (note the settings/wrapper in shell_helper_functions.sh)
+        pip_install snakemake==5.5.3
+        pip_install drmaa==0.7.9
+
+        # For access the Clarity
+        #pip_install pyclarity_lims==0.4.8
+        #pip_install psycopg2-binary==2.8.3
 
     )
     if [ $? = 0 ] ; then

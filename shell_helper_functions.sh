@@ -1,26 +1,29 @@
 #!/bin/bash
 
 ## Helper functions for shell scripts.
-__EXEC_DIR="${EXEC_DIR:-`basename $BASH_SOURCE`}"
+__EXEC_DIR="${EXEC_DIR:-`dirname $BASH_SOURCE`}"
 
-## boolean - are we on the new cluster or not?
-function is_new_cluster(){
-   [ -d /lustre/software ]
-}
+# All the Snakefiles have bootstrapping scripts on them, but this script
+# will run snakemake directly via the shell helper functions.
+export DRY_RUN=${DRY_RUN:-0}
+LOCAL_CORES=${LOCAL_CORES:-4}
+SNAKE_THREADS=${SNAKE_THREADS:-100}
+EXTRA_SNAKE_FLAGS="${EXTRA_SNAKE_FLAGS:-}"
+EXTRA_SLURM_FLAGS="${EXTRA_SLURM_FLAGS:--t 24:00}"
 
-## Dump out the right cluster config
-function cat_cluster_yml(){
-    cat "`dirname $0`"/cluster.`is_new_cluster && echo slurm || echo sge`.yml
+## Dump out the right cluster config (just now we only have one)
+function cat_cluster_yaml(){
+    cat "`dirname $0`"/cluster.slurm.yaml
 }
 
 find_toolbox() {
-    #The toolbox used by the pipeline can be set by setting TOOLBOX in the
-    #environment (or environ.sh). Otherwise look for it in the program dir.
-    _def_toolbox="$(readlink -f $(dirname "$BASH_SOURCE")/toolbox)"
-    echo "${TOOLBOX:-$_def_toolbox}"
+    # The toolbox used by the pipeline can be set by setting TOOLBOX in the
+    # environment (or environ.sh). Otherwise look for it in the program dir.
+    _toolbox="$( cd $__EXEC_DIR && readlink -f ${TOOLBOX:-toolbox} )"
+    echo "$_toolbox"
 
-    if ! [ -e "${TOOLBOX:-$_def_toolbox}/" ] ; then
-        echo "WARNING - find_toolbox - No such directory ${TOOLBOX:-$_def_toolbox}" >&2
+    if ! [ -e "$_toolbox/" ] ; then
+        echo "WARNING - find_toolbox - No such directory ${_toolbox}" >&2
     fi
 }
 
@@ -49,7 +52,7 @@ find_snakefile() {
 }
 
 snakerun_drmaa() {
-    CLUSTER_QUEUE="${CLUSTER_QUEUE:-casava}"
+    CLUSTER_QUEUE="${CLUSTER_QUEUE:-edgen-casava}"
 
     if [ "$CLUSTER_QUEUE" = none ] ; then
         snakerun_single "$@"
@@ -63,52 +66,37 @@ snakerun_drmaa() {
     fi
 
     # Spew out cluster.yaml
-    [ -e cluster.yml ] || cat_cluster_yml > cluster.yml
+    [ -e cluster.yaml ] || cat_cluster_yaml > cluster.yaml
+
+    # Ensure Snakemake uses the right wrapper script.
+    # In particular this sets TMPDIR
+    _jobscript="`find_toolbox`/snakemake_jobscript.sh"
 
     echo
-    if is_new_cluster ; then
-        echo "Running $snakefile in `pwd -P` on the GSEG cluster"
-        __SNAKE_THREADS="${SNAKE_THREADS:-100}"
+    echo "Running $snakefile in `pwd` on the SLURM cluster"
 
-        mkdir -p ./slurm_output
-        set -x
-        snakemake \
-             -s "$snakefile" -j $__SNAKE_THREADS -p -T --rerun-incomplete \
-             ${EXTRA_SNAKE_FLAGS:-} --keep-going --cluster-config cluster.yml \
-             --jobname "{rulename}.snakejob.{jobid}.sh" \
-             --drmaa " -p ${CLUSTER_QUEUE} {cluster.slurm_opts} \
-                       -e slurm_output/{rule}.snakejob.{jobid}.%A.err \
-                       -o slurm_output/{rule}.snakejob.{jobid}.%A.out \
-                     " \
-             "$@"
+    mkdir -p ./slurm_output
+    set -x
+    snakemake \
+         -s "$snakefile" -j $SNAKE_THREADS -p --rerun-incomplete \
+         ${EXTRA_SNAKE_FLAGS} --keep-going --cluster-config cluster.yaml \
+         --resources nfscopy=1 --local-cores $LOCAL_CORES --latency-wait 10 \
+         --jobname "{rulename}.snakejob.{jobid}.sh" --jobscript "$_jobscript" \
+         --drmaa " ${EXTRA_SLURM_FLAGS} -p ${CLUSTER_QUEUE} {cluster.slurm_opts} \
+                   -e slurm_output/{rule}.snakejob.%A.err \
+                   -o slurm_output/{rule}.snakejob.%A.out \
+                 " \
+         "$@"
 
-    else
-        echo "Running $snakefile in `pwd -P` on the old cluster"
-        __SNAKE_THREADS="${SNAKE_THREADS:-20}"
-
-        mkdir -p ./sge_output
-        set -x
-        snakemake \
-             -s "$snakefile" -j $__SNAKE_THREADS -p -T --rerun-incomplete \
-             ${EXTRA_SNAKE_FLAGS:-} --keep-going --cluster-config cluster.yml \
-             --jobname "{rulename}.{jobid}.sh" \
-             --drmaa " -q qc -cwd -v SNAKE_PRERUN='$SNAKE_PRERUN' -p -10 -V \
-                       -pe {cluster.pe} -l h_vmem={cluster.mem} {cluster.extra} \
-                       -o sge_output -e sge_output \
-                     " \
-             "$@"
-    fi
 }
 
 snakerun_single() {
     snakefile=`find_snakefile "$1"` ; shift
 
-    if is_new_cluster ; then __LOCALJOBS=4 ; else __LOCALJOBS=1 ; fi
-
     echo
     echo "Running $snakefile in `pwd -P` in local mode"
     snakemake \
-         -s "$snakefile" -j $__LOCALJOBS -p -T --rerun-incomplete \
+         -s "$snakefile" -j $LOCAL_CORES -p --rerun-incomplete ${EXTRA_SNAKE_FLAGS:-} \
          "$@"
 }
 
@@ -122,16 +110,11 @@ snakerun_touch() {
 }
 
 
-# All the Snakefiles have bootstrapping scripts on them, but this script
-# will run snakemake directly via the shell helper functions.
-export DRY_RUN=${DRY_RUN:-0}
-
-
 if [ "$0" = "$BASH_SOURCE" ] ; then
     echo "Source this file in your BASH script to make use of the helper functions."
 
     echo
     echo "Here is the cluster config..."
-    cat_cluster_yml
+    cat_cluster_yaml
 fi
 

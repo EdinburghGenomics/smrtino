@@ -3,9 +3,13 @@
 # Run bam2bam with standard references. If these ever need to be customised then I'll
 # need to re-think baking them into the script like this. But how would the setting then
 # be set?
-smrt_bin=/lustre/software/pacbio_smrttools/smrttools_5.0.1.9585/smrtcmds/bin
-pb_ca=/lustre/references/pacbio/pacbio_sequel_adapters.fasta
-pb_cs=/lustre/references/pacbio/pacbio_control_sequence.fasta
+
+# Also note that bam2bam is missing after smrttools 5 so I suspect this whole thing is
+# way out of date.
+
+smrt_bin=/lustre-gseg/software/pacbio_smrttools/smrttools_5.0.1.9585/smrtcmds/bin
+pb_ca=/lustre-gseg/references/pacbio/pacbio_sequel_adapters.fasta
+pb_cs=/lustre-gseg/references/pacbio/pacbio_control_sequence.fasta
 
 
 exec env PATH="$smrt_bin:$PATH" bam2bam --controlAdapters="$pb_ca" --controls="$pb_cs" "$@"
