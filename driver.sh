@@ -41,7 +41,7 @@ if [ -e "$ENVIRON_SH" ] ; then
     # Saves having to put 'export' on every line in the config.
     export CLUSTER_QUEUE FROM_LOCATION TO_LOCATION GENOLOGICSRC \
            PROJECT_NAME_LIST PROJECT_PAGE_URL REPORT_DESTINATION REPORT_LINK \
-           RT_SYSTEM STALL_TIME TO_LOCATION VERBOSE BLOBS
+           RT_SYSTEM STALL_TIME TO_LOCATION VERBOSE BLOBS FILTER_LOCALLY
 fi
 
 # Tools may reliably use this to report the version of SMRTino being run right now.
@@ -516,11 +516,14 @@ for run in "$FROM_LOCATION"/*/ ; do
   #Call the appropriate function in the appropriate directory.
   BREAK=0
   RUN_OUTPUT="$TO_LOCATION/$RUNID"
-  { pushd "$run" >/dev/null && eval action_"$STATUS" &&
-    popd >/dev/null
-  } || log "Error while trying to run action_$STATUS on $run"
-  #in case this setting got clobbered...
+  pushd "$run" >/dev/null ; eval action_"$STATUS"
+
+  # Even though 'set -e' is in effect this next line is reachable if the called function turns
+  # it off...
+  [ $? = 0 ] || log "Error while trying to run action_$STATUS on $run"
+  # So in case this setting got clobbered...
   set -e
+  popd >/dev/null
 
   # If the driver started some actual work it should request to break, as the CRON will start
   # a new scan at regular intervals in any case. We don't want an instance of the driver to

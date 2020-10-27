@@ -21,10 +21,6 @@ source "`dirname $0`"/shell_helper_functions.sh
 export TOOLBOX="$(find_toolbox)"
 export PATH="${PATH}:$(dirname "$0")"
 
-# This may change in future. Do we need to do the initial filter/copy op
-# as a local job?
-export FILTER_LOCALLY="$(is_new_cluster && echo 1 || echo 0)"
-
 snakerun_drmaa "$0" "$@"
 
 "exit""" ### End of shell script part
@@ -158,7 +154,7 @@ else:
             '''
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
-if os.environ.get('FILTER_LOCALLY', '0') != '0':
+if os.environ.get('FILTER_LOCALLY', '1') != '0':
     localrules: filter_control, copy_reads, copy_xml
 
 # This copies the files, without applying any filter.
@@ -388,7 +384,7 @@ rule blob_plot_png:
     shell:
         """ mkdir blob_tmp
             export BLOB_COVERAGE_LABEL=Non-Dustiness
-            {TOOLBOX} blobtools blobplot -i {input.json} -o blob_tmp/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
+            {TOOLBOX} blobtools plot -i {input.json} -o blob_tmp/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
             ls -l blob_tmp
             mv blob_tmp/{wildcards.foo}.*.stats.txt {output.stats}
             mv blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png {output.plotc[0]}
