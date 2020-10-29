@@ -28,9 +28,13 @@ shopt -sq failglob
 
 ###--->>> CONFIGURATION <<<---###
 
+# Canonicalize the path.
+BASH_SRC="$(readlink -f "$BASH_SOURCE")"
+BASH_DIR="$(dirname "$BASH_SRC")"
+
 # For the sake of the unit tests, we must be able to skip loading the config file,
 # so allow the location to be set to, eg. /dev/null
-ENVIRON_SH="${ENVIRON_SH:-`dirname $BASH_SOURCE`/environ.sh}"
+ENVIRON_SH="${ENVIRON_SH:-$BASH_DIR/environ.sh}"
 
 # This file must provide FROM_LOCATION, TO_LOCATION if not already set.
 if [ -e "$ENVIRON_SH" ] ; then
@@ -46,13 +50,13 @@ fi
 
 # Tools may reliably use this to report the version of SMRTino being run right now.
 # They should look at pbpipeline/start_times to see which versions have touched a given run.
-export SMRTINO_VERSION=$(cat "$(dirname $BASH_SOURCE)"/version.txt || echo unknown)
+export SMRTINO_VERSION=$(cat "$BASH_DIR/version.txt" || echo unknown)
 
 # LOG_DIR is ignored if MAINLOG is set explicitly.
 LOG_DIR="${LOG_DIR:-${HOME}/smrtino/logs}"
 RUN_NAME_REGEX="${RUN_NAME_REGEX:-r.*_[0-9]{8\}_.*}"
 
-BIN_LOCATION="${BIN_LOCATION:-$(dirname $0)}"
+BIN_LOCATION="${BIN_LOCATION:-$BASH_DIR}"
 PATH="$(readlink -m $BIN_LOCATION):$PATH"
 MAINLOG="${MAINLOG:-${LOG_DIR}/pbpipeline_driver.`date +%Y%m%d`.log}"
 
@@ -105,11 +109,11 @@ plog() {
 
 plog_start() {
     mkdir -vp "$RUN_OUTPUT" |& debug
-    plog $'>>>\n>>>\n>>>'" $0 starting action_$STATUS at `date`"
+    plog $'>>>\n>>>\n>>>'" $BASH_SRC starting action_$STATUS at `date`"
 }
 
 # Print a message at the top of the log, and trigger one to print at the end.
-intro="`date`. Running $(readlink -f "$0"); PID=$$"
+intro="`date`. Running $BASH_SRC; PID=$$"
 log "====`tr -c '' = <<<"$intro"`==="
 log "=== $intro ==="
 log "====`tr -c '' = <<<"$intro"`==="
@@ -121,8 +125,8 @@ trap 'log "=== `date`. Finished run; PID=$$ ==="' EXIT
 py_venv="${PY3_VENV:-default}"
 if [ "${py_venv}" != none ] ; then
     if [ "${py_venv}" = default ] ; then
-        log -n "Running `dirname $BASH_SOURCE`/activate_venv ..."
-        pushd "`dirname $BASH_SOURCE`" >/dev/null
+        log -n "Running $BASH_DIR/activate_venv ..."
+        pushd "$BASH_DIR" >/dev/null
         source ./activate_venv >&5 || { log 'FAILED' ; exit 1 ; }
         popd >/dev/null
     else
@@ -488,6 +492,7 @@ pipeline_fail() {
 ###--->>> SCANNING LOOP <<<---###
 
 log "Looking for run directories matching regex $FROM_LOCATION/$RUN_NAME_REGEX/"
+log "Output will be created in $TO_LOCATION/"
 
 # 6) Scan through each run until we find something that needs dealing with.
 for run in "$FROM_LOCATION"/*/ ; do
