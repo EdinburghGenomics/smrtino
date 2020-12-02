@@ -362,7 +362,7 @@ rule blob_db:
         cov           = "blob/{{foo}}+sub{}.complexity".format(BLOB_SUBSAMPLE)
     shadow: 'shallow'
     shell:
-        """mkdir blob_tmp
+       r"""mkdir blob_tmp
            {TOOLBOX} blobtools create -i {input.reads_sample} -o blob_tmp/{wildcards.foo} \
                -t {input.blast_results} -c {input.cov}
            ls -l blob_tmp
@@ -370,7 +370,8 @@ rule blob_db:
         """
 
 # Run the blob plotting command once per set per tax level. Produce a single
-# stats file and a pair of png files
+# stats file and a pair of PNG files. Note I gave up on hacking BLOBTools to make sensible
+# sized images I just downsample them with GM.
 rule blob_plot_png:
     output:
         plotc = ["blob/{foo}.{taxlevel}.cov0.png", "blob/{foo}.{taxlevel}.cov0.__thumb.png"],
@@ -379,18 +380,25 @@ rule blob_plot_png:
     input:
         json = "blob/{foo}.blobDB.json"
     params:
+        maxsize = "1750x1750",
         thumbsize = "320x320"
     shadow: 'shallow'
     shell:
-        """ mkdir blob_tmp
+       r""" mkdir blob_tmp
             export BLOB_COVERAGE_LABEL=Non-Dustiness
             {TOOLBOX} blobtools plot -i {input.json} -o blob_tmp/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
             ls -l blob_tmp
             mv blob_tmp/{wildcards.foo}.*.stats.txt {output.stats}
-            mv blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png {output.plotc[0]}
-            mv blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png {output.plotr[0]}
-            {TOOLBOX} convert {output.plotc[0]} -resize {params.thumbsize} {output.plotc[1]}
-            {TOOLBOX} convert {output.plotr[0]} -resize {params.thumbsize} {output.plotr[1]}
+
+            {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png \
+                -resize {params.maxsize}'>' {output.plotc[0]}
+            {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png \
+                -resize {params.thumbsize}'>' {output.plotc[1]}
+
+            {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png \
+                -resize {params.maxsize}'>' {output.plotr[0]}
+            {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png \
+                -resize {params.thumbsize}'>' {output.plotr[1]}
         """
 
 
