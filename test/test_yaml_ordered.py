@@ -6,7 +6,7 @@ from collections import OrderedDict, Hashable, defaultdict
 # Adding this to sys.path makes the test work if you just run it directly.
 sys.path.insert(0,'.')
 
-from smrtino.YAMLOrdered import yaml
+from smrtino.yaml_ordered import yaml
 
 class TestYAMLOrderded(unittest.TestCase):
 
@@ -18,7 +18,7 @@ class TestYAMLOrderded(unittest.TestCase):
             ])
 
     def setUp(self):
-        self.adict_as_yaml = yaml.safe_dump(self.adict)
+        self.adict_as_yaml = yaml.safe_dump(self.adict, default_flow_style=None)
 
     def test_tag_order(self):
         adict_as_yaml = self.adict_as_yaml

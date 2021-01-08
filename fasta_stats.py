@@ -7,7 +7,7 @@ from collections import namedtuple, OrderedDict
 from itertools import islice
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-from smrtino.YAMLOrdered import yaml
+from smrtino.yaml_ordered import yaml
 
 fastaline = namedtuple('fastaline', 'length at_bases gc_bases'.split())
 
