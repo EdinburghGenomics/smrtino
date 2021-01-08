@@ -227,13 +227,13 @@ class T(unittest.TestCase):
 
         # Initial report should be made
         expected_calls = self.bm.empty_calls()
-        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun --subject new --comment @???']
-        expected_calls['Snakefile.report'] = ['-F --config rep_status=new -- report_main']
-        expected_calls['upload_report.sh'] = [self.to_path]
+        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun --subject new --comment @???'.split()]
+        expected_calls['Snakefile.report'] = ['-F --config rep_status=new -- report_main'.split()]
+        expected_calls['upload_report.sh'] = [[self.to_path]]
 
         # The call to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
-        self.bm.last_calls['rt_runticket_manager.py'][0] = re.sub(
-                                    r'@\S+$', '@???', self.bm.last_calls['rt_runticket_manager.py'][0] )
+        self.bm.last_calls['rt_runticket_manager.py'][0][-1] = re.sub(
+                                    r'@\S+$', '@???', self.bm.last_calls['rt_runticket_manager.py'][0][-1] )
 
         # But nothing else should happen
         self.assertEqual(self.bm.last_calls, expected_calls)
@@ -257,8 +257,7 @@ class T(unittest.TestCase):
         self.assertInStdout("r54041_20180613_132039", "PROCESSING")
 
         # Nothing should happen
-        expected_calls = self.bm.empty_calls()
-        self.assertEqual(self.bm.last_calls, expected_calls)
+        self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
     def test_run_just_finished(self):
         """ Run is already processing, but we do want to notify that
@@ -277,9 +276,10 @@ class T(unittest.TestCase):
 
         # Message should be sent
         expected_calls = self.bm.empty_calls()
-        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun '
-                                                     '--subject processing --reply All 1 SMRT cells '
-                                                     'have run on the instrument. Final report will follow soon.']
+        expected_calls['rt_runticket_manager.py'] = [[ '-r', 'r54041_20180613_132039', '-Q', 'pbrun',
+                                                       '--subject', 'processing',
+                                                       '--reply', 'All 1 SMRT cells have run on the instrument.'
+                                                       ' Final report will follow soon.' ]]
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
@@ -298,9 +298,9 @@ class T(unittest.TestCase):
         self.assertInStdout("r54041_20180613_132039", "STALLED")
 
         expected_calls = self.bm.empty_calls()
-        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun '
-                                                     '--no_create --subject aborted --status resolved --comment No activity '
-                                                     'in the last 0 hours.']
+        expected_calls['rt_runticket_manager.py'] = [[ '-r', 'r54041_20180613_132039', '-Q', 'pbrun',
+                                                       '--no_create', '--subject', 'aborted', '--status', 'resolved',
+                                                       '--comment', 'No activity in the last 0 hours.' ]]
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         # Now it should be aborted - since we're in verbose mode we do see this,
@@ -326,8 +326,7 @@ class T(unittest.TestCase):
         self.assertInStdout("r54041_20180518_131155", "STALLED")
 
         # A this point, nothing should happen
-        expected_calls = self.bm.empty_calls()
-        self.assertEqual(self.bm.last_calls, expected_calls)
+        self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
         # But on the next round, it should complete
         # Except that 'upload_report.sh' will appear to fail, so there will be an error.
@@ -335,15 +334,18 @@ class T(unittest.TestCase):
         self.bm_rundriver()
         self.assertInStdout("r54041_20180518_131155", "PROCESSED")
 
-        expected_calls['Snakefile.report'] = ['-F --config rep_status=complete -- report_main']
-        expected_calls['upload_report.sh'] = [self.to_path]
-        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180518_131155 -Q pbrun '
-                                                     '--subject processing --reply 2 SMRT cells '
-                                                     'have run. 5 were aborted. Final report will follow soon.',
-                                                     self.bm.last_calls['rt_runticket_manager.py'][1],
-                                                     '-r r54041_20180518_131155 -Q pbrun --subject '
-                                                     'failed --reply Report_final_upload failed. See '
-                                                     'log in ' + self.to_path + '/pipeline.log']
+        # The second to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
+        self.bm.last_calls['rt_runticket_manager.py'][1][-1] = re.sub(
+                                    r'@\S+$', '@???', self.bm.last_calls['rt_runticket_manager.py'][1][-1] )
+
+        expected_calls = self.bm.empty_calls()
+        expected_calls['Snakefile.report'] = ['-F --config rep_status=complete -- report_main'.split()]
+        expected_calls['upload_report.sh'] = [[self.to_path]]
+        expected_calls['rt_runticket_manager.py'] = [[ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--subject', 'processing',
+                                                       '--reply', '2 SMRT cells have run. 5 were aborted. Final report will follow soon.' ],
+                                                     [ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--comment', '@???'],
+                                                     [ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--subject', 'failed',
+                                                       '--reply', 'Report_final_upload failed. See log in ' + self.to_path + '/pipeline.log' ]]
         self.assertEqual(self.bm.last_calls, expected_calls)
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
 
