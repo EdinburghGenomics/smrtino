@@ -9,8 +9,8 @@ FROM_LOCATION=~/test_sequel TO_LOCATION=~/test_pacbio_data
 # Bypass RT and use the global partition on SLURM
 RT_SYSTEM=none CLUSTER_QUEUE=global
 
-# Process all runs on our instrument
-RUN_NAME_REGEX='r54041_.*'
+# Process all runs on our IIe instrument
+RUN_NAME_REGEX='r64175e_.*'
 
 # Runs are declared dead after 24 hours of inactivity
 STALL_TIME=24

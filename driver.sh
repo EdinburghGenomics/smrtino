@@ -489,6 +489,29 @@ pipeline_fail() {
     fi
 }
 
+get_run_status() { # run_dir
+  # invoke pb_run_status.py on $1 and collect some meta-information about the run.
+  # We're passing this info to the state functions via global variables.
+  _run="$1"
+
+  # This construct allows error output to be seen in the log.
+  _runstatus="$(pb_run_status.py "$_run")" || pb_run_status.py "$_run" | log 2>&1
+
+  # Capture the various parts into variables (see test/grs.sh in Hesiod)
+  for _v in RUNID/RunID INSTRUMENT/Instrument STATUS/PipelineStatus \
+            CELLS/Cells CELLSREADY/CellsReady CELLSABORTED/CellsAborted ; do
+    _line="$(awk -v FS=":" -v f="${_v#*/}" '$1==f {gsub(/^[^:]*:[[:space:]]*/,"");print}' <<<"$_runstatus")"
+    eval "${_v%/*}"='"$_line"'
+  done
+
+  if [ -z "${STATUS:-}" ] ; then
+    STATUS=unknown
+  fi
+
+  # Resolve output location (this has to work for new runs so we can't follow the symlink)
+  RUN_OUTPUT="$TO_LOCATION/$RUNID"
+}
+
 ###--->>> SCANNING LOOP <<<---###
 
 log "Looking for run directories matching regex $FROM_LOCATION/$RUN_NAME_REGEX/"
@@ -503,24 +526,14 @@ for run in "$FROM_LOCATION"/*/ ; do
   fi
 
   # invoke runinfo and collect some meta-information about the run. We're passing this info
-  # to the state functions via global variables.
-  # This construct allows error output to be seen in the log.
-  _runstatus="$(pb_run_status.py "$run")" || pb_run_status.py "$run" | log 2>&1
-
-  # Ugly, but I can't think of a better way...
-  RUNID=`grep ^RunID: <<<"$_runstatus"` ;                          RUNID=${RUNID#*: }
-  INSTRUMENT=`grep ^Instrument: <<<"$_runstatus"` ;                INSTRUMENT=${INSTRUMENT#*: }
-  CELLS=`grep ^Cells: <<<"$_runstatus"` ;                          CELLS=${CELLS#*: }
-  CELLSREADY=`grep ^CellsReady: <<<"$_runstatus" || echo ''` ;     CELLSREADY=${CELLSREADY#*: }
-  CELLSABORTED=`grep ^CellsAborted: <<<"$_runstatus" || echo ''` ; CELLSABORTED=${CELLSABORTED#*: }
-  STATUS=`grep ^PipelineStatus: <<<"$_runstatus"` ;                STATUS=${STATUS#*: }
+  # to the state functions via global variables. RUNID INSTRUMENT CELLS etc.
+  get_run_status "$run"
 
   if [ "$STATUS" = complete ] || [ "$STATUS" = aborted ] ; then _log=debug ; else _log=log ; fi
   $_log "$run has $RUNID from $INSTRUMENT with cell(s) [$CELLS] and status=$STATUS"
 
   #Call the appropriate function in the appropriate directory.
   BREAK=0
-  RUN_OUTPUT="$TO_LOCATION/$RUNID"
   pushd "$run" >/dev/null ; eval action_"$STATUS"
 
   # Even though 'set -e' is in effect this next line is reachable if the called function turns
