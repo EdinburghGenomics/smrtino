@@ -90,7 +90,7 @@ def determine_parts(cellpath):
     """Work out if this is a ['subreads', 'scraps'] cell or a ['reads'] cell.
     """
     bamfiles = glob(cellpath + '.*.bam')
-    parts = [ b[-len(cellpath):-len('.bam') for b in bamfiles ]
+    parts = [ b[-len(cellpath):-len('.bam')] for b in bamfiles ]
 
     assert parts, 'No .bam files found matching ' + cellpath + '.*.bam'
     # Fix the order. This works.
@@ -458,4 +458,3 @@ rule md5sum_file:
     output: "md5sums/{foo}.md5"
     input: "{foo}"
     shell: "( cd `dirname {input}` && md5sum `basename {input}` ) > {output}"
-
