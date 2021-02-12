@@ -1,0 +1,19 @@
+From our point of view the new IIe instrument has two differences compared to the mark I:
+
+More data produced.
+Operates in two modes, the 'normal' mode is now where it does the CCS onboard and we never see
+the subreads and scraps. But we still sometimes might. We have some example runs:
+
+/fluidfs/sequel/r64175e_20201027_144023: scraps + subreads
+
+/fluidfs/sequel/r64175e_20201027_155623: scraps + subreads
+
+/fluidfs/sequel/r64175e_20201211_163702: CCS
+
+First thing is we need to change the regex that matches run names. Where is this?
+
+Sample config files. And I think that's it. The main config also needs fixed.
+
+Let's work on r64175e_20201211_163702 first. No need to copy as SMRTino never writes to the source,
+only the dest.
+

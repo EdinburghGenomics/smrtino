@@ -53,7 +53,8 @@ RUNDIR = config.get('rundir', 'pbpipeline/from')
 def scan_cells():
     """ Work out all the cells to process based on config['cells'] and config['rundir']
         and thus infer the base names  of the info.yml files that need to be made.
-        Return a dict of cell_id->{'slot': slot_id, 'filter': /(.nocontrol|)/}.
+        Return a dict of:
+            cell_id->{'slot': slot_id, 'filter': /(.nocontrol|)/, 'parts': [...]}.
         This in turn allows me to work out everything else by pattern matching.
         When run on a GSEG worker node this list will come out empty, but that's
         OK.
@@ -71,17 +72,29 @@ def scan_cells():
         assert res, "No subreads found in {} matching cell [{}].".format(RUNDIR, config.get('cells', '*'))
 
     return { r.split('/')[-1]: { 'slot':   r.split('/')[-2],
-                                 'filter': determine_filter(r) } for r in res }
+                                 'filter': determine_filter(r),
+                                 'parts':  determine_parts(r) } for r in res }
 
 def determine_filter(cellpath):
     """ Work out what filter needs to be applied to this cell. The cell is supplied
         as a full path, since scan_cells() already worked that out.
     """
+    # FIXME - FileNotFoundError??
     root = ET.parse(cellpath + '.subreadset.xml').getroot()
     ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd' )
     filter_was_done = bool(root.findall('.//pbmeta:ControlKit', ns))
 
     return '' if filter_was_done else '.nocontrol'
+
+def determine_parts(cellpath):
+    """Work out if this is a ['subreads', 'scraps'] cell or a ['reads'] cell.
+    """
+    bamfiles = glob(cellpath + '.*.bam')
+    parts = [ b[-len(cellpath):-len('.bam') for b in bamfiles ]
+
+    assert parts, 'No .bam files found matching ' + cellpath + '.*.bam'
+    # Fix the order. This works.
+    return sorted(parts, reverse=True)
 
 # And run the scan just once
 SC = scan_cells()
@@ -95,7 +108,10 @@ def find_source_file(extn):
         This returns a function which can be used as an input function.
     """
     def _ff(wildcards):
-        return "{}/{}/{}{}".format(RUNDIR, SC[wildcards.cell]['slot'], wildcards.cell, extn)
+        return "{}/{}/{}{}".format( RUNDIR,
+                                    SC[wildcards.cell]['slot'],
+                                    wildcards.cell,
+                                    extn.format(**vars(wildcards)) )
     return _ff
 
 def copy_all_files(i, o):
@@ -112,53 +128,64 @@ rule main:
         yaml     = [ c + '.info.yml' for c in SC ]
 
 # This rule connects the .info.yml to all the bits of data we need and also generates
-# the .info.yml contents. The inputs get complex since we need to account for whether
-# filters need to be applied, and if so we need both the filtered and unfiltered .xml files.
-if str(config.get('blobs', '1')) != '0':
-    rule one_cell_info:
-        output: "{cell}.info.yml"
-        input:
-            bam_md5    = lambda wc: "md5sums/" + wc.cell + SC[wc.cell]['filter'] + ".subreads.bam.md5",
-            scraps_md5 = lambda wc: "md5sums/" + wc.cell + SC[wc.cell]['filter'] + ".scraps.bam.md5",
-            xml1       = lambda wc: wc.cell + ".subreadset.xml" if SC[wc.cell]['filter'] else [],
-            xml2       = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreadset.xml",
-            stats      = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreads.cstats.yml",
-            scrapstats = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".scraps.cstats.yml",
-            blobs      = lambda wc: "blob/" + wc.cell + SC[wc.cell]['filter'] + ".plots.yml",
-            hplots     = lambda wc: "histo/" + wc.cell + SC[wc.cell]['filter'] + ".plots.yml",
-        shell:
-            # What needs to go into the YML? Stuff from the XML and also some stuff from the
-            # stats, maybe? At present the script will discover extra files automagically.
-            '''compile_cell_info.py {input.xml2} \
-                 -s {input.stats} {input.scrapstats} \
-                 -p {input.hplots} {input.blobs} > {output}
-            '''
-else:
-    # Bypass the blobology, for speed.
-    rule one_cell_info:
-        output: "{cell}.info.yml"
-        input:
-            bam_md5    = lambda wc: "md5sums/" + wc.cell + SC[wc.cell]['filter'] + ".subreads.bam.md5",
-            scraps_md5 = lambda wc: "md5sums/" + wc.cell + SC[wc.cell]['filter'] + ".scraps.bam.md5",
-            xml1       = lambda wc: wc.cell + ".subreadset.xml" if SC[wc.cell]['filter'] else [],
-            xml2       = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreadset.xml",
-            stats      = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".subreads.cstats.yml",
-            scrapstats = lambda wc: wc.cell + SC[wc.cell]['filter'] + ".scraps.cstats.yml",
-            hplots     = lambda wc: "histo/" + wc.cell + SC[wc.cell]['filter'] + ".plots.yml",
-        shell:
-            # What needs to go into the YML? Stuff from the XML and also some stuff from the
-            # stats, maybe? At present the script will discover extra files automagically.
-            '''compile_cell_info.py {input.xml2} \
-                 -s {input.stats} {input.scrapstats} \
-                 -p {input.hplots} > {output}
-            '''
+# the .info.yml contents.
+def i_one_cell_info(wildcards):
+    """The inputs for one_cell_info get complex since we need to account for whether
+       filters need to be applied, and if so we need both the filtered and unfiltered .xml files.
+       Also we now need to worry about the difference between cells that have been CCS-processed
+       and the old subreads+scraps.
+    """
+    # get slot + filter + type from SC
+    scinfo = SC[wildcards.cell]
+    cellbase = wildcards.cell + scinfo['filter']
+    res = dict( md5 = [],
+                cstats = [],
+                xml = [],
+                blobs = [],
+                hplots = [] )
+
+    # This will loop over ['subreads', 'scraps'] or ['reads']
+    for apart in scinfo['parts']:
+        res['md5'].append("md5sums/" + cellbase + "." + apart + ".bam.md5")
+        res['cstats'].append(cellbase + "." + apart + ".cstats.yml")
+
+    # We may need 1 or 2 .subreadset.xml depending on the filter
+    # For .consensusreadset.xml no filters are actually supported but they could be.
+    for apart, rsname in dict( subreads = ".subreadset.xml",
+                               reads    = ".consensusreadset.xml" ).items():
+        if apart in scinfo['parts']:
+            # this was input.xml2
+            res['xml'].append(cellbase + rsname)
+            if scinfo['filter']:
+                # this was input.xml1
+                res['xml'].append(wildcards.cell + rsname)
+
+    # Length histograms
+    res['hplots'].append("histo/" + cellbase + ".plots.yml"),
+
+    # Blobs or no?
+    if str(config.get('blobs', '1')) != '0':
+        res['blobs'].append("blob/" + cellbase + ".plots.yml")
+
+    return res
+
+rule one_cell_info:
+    output: "{cell}.info.yml"
+    input:  unpack(i_one_cell_info)
+    shell:
+        # What needs to go into the YML? Stuff from the XML and also some stuff from the
+        # stats, maybe? At present the script will discover extra files automagically.
+        '''compile_cell_info.py {input.xml[0]} \
+             -s {input.stats} {input.scrapstats} \
+             -p {input.hplots} {input.blobs} > {output}
+        '''
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
 if os.environ.get('FILTER_LOCALLY', '1') != '0':
-    localrules: filter_control, copy_reads, copy_xml
+    localrules: filter_control, copy_subreads, copy_reads, copy_xml
 
 # This copies the files, without applying any filter.
-rule copy_reads:
+rule copy_subreads:
     output:
         bam    = "{cell,[^./]+}.subreads.bam",
         pbi    = "{cell,[^./]+}.subreads.bam.pbi",
@@ -172,12 +199,26 @@ rule copy_reads:
     run:
         copy_all_files(input, output)
 
+# Ditto for reads.bam
+rule copy_reads:
+    output:
+        bam    = "{cell,[^./]+}.reads.bam",
+        pbi    = "{cell,[^./]+}.reads.bam.pbi"
+    input:
+        bam    = find_source_file(".reads.bam"),
+        pbi    = find_source_file(".reads.bam.pbi")
+    resources:
+        nfscopy=1
+    run:
+        copy_all_files(input, output)
+
 # This has to be separate from copy_reads since it happens regardless of the filter applied
+# Works for subreadset + consensusreadset
 rule copy_xml:
     output:
-        xml    = "{cell,[^./]+}.subreadset.xml"
+        xml    = "{cell,[^./]+}.{foo,[a-z]+}readset.xml"
     input:
-        xml    = find_source_file(".subreadset.xml")
+        xml    = find_source_file(".{foo}readset.xml")
     resources:
         nfscopy=1
     run:
@@ -244,23 +285,29 @@ localrules: list_blob_plots
 rule list_blob_plots:
     output: "blob/{cell}.plots.yml"
     input:
-        png = expand( "blob/{{cell}}.{s}.{taxlevel}.{extn}{thumb}.png",
-                      s = "subreads scraps".split(),
-                      taxlevel = BLOB_LEVELS,
-                      extn = "cov0 read_cov.cov0".split(),
-                      thumb = ['.__thumb', ''] ),
-        sub_sample = "blob/{{cell}}.subreads+sub{}.fasta".format(BLOB_SUBSAMPLE),
-        scrap_sample = "blob/{{cell}}.scraps+sub{}.fasta".format(BLOB_SUBSAMPLE)
+        png = lambda wc: expand( "blob/{cell}.{s}.{taxlevel}.{extn}{thumb}.png",
+                                 cell = [wc.cell],
+                                 s = SC[wc.cell]['parts'], # subreads/scraps/reads
+                                 taxlevel = BLOB_LEVELS,
+                                 extn = "cov0 read_cov.cov0".split(),
+                                 thumb = ['.__thumb', ''] ),
+        subs = lambda wc: expand( "blob/{cell}.{s}.+sub{size}.fasta",
+                                  cell = [wc.cell],
+                                  s = SC[wc.cell]['parts'],
+                                  size = [BLOB_SUBSAMPLE] )
+#        sub_sample = "blob/{{cell}}.subreads+sub{}.fasta".format(BLOB_SUBSAMPLE),
+#        scrap_sample = "blob/{{cell}}.scraps+sub{}.fasta".format(BLOB_SUBSAMPLE)
     run:
         # We want to know how big the subsample actually was, so check the FASTQ
-        counts = [ l.split()[0] for l in
-                   shell("grep -o '^>' {input.sub_sample} {input.scrap_sample} | uniq -c", iterable=True) ]
+        counts = dict(zip( SC[wildcards.cell]['parts'],
+                           [ l.split()[0] for l in
+                             shell("grep -o '^>' {input.subs} | uniq -c", iterable=True) ] ))
 
         # I need to emit the plots in order in pairs. Unfortunately expand() won't quite
         # cut it here but I can make a nested list comprehension.
         plots = [ dict(title = 'Taxonomy for {} ({} sequences) by {}'.format(
                                         s,
-                                        counts[n],
+                                        counts[s],
                                         ', '.join(BLOB_LEVELS) ),
                        files = [ [ "{cell}.{s}.{taxlevel}.{extn}.png".format( cell = wildcards.cell,
                                                                               s = s,
@@ -269,7 +316,7 @@ rule list_blob_plots:
                                     for taxlevel in BLOB_LEVELS ]
                                  for extn in "read_cov.cov0 cov0".split() ]
 
-                      ) for n, s in enumerate("subreads scraps".split()) ]
+                      ) for s in SC[wildcards.cell]['parts'] ]
         with open(output[0], 'w') as ofh:
             print(yaml.safe_dump(plots), file=ofh)
 
@@ -279,14 +326,15 @@ localrules: list_histo_plots
 rule list_histo_plots:
     output: "histo/{cell}.plots.yml"
     input:
-        png = expand( "histo/{{cell}}.{s}.length_histo{thumb}.png",
-                       s = "subreads scraps".split(),
-                       thumb = ['.__thumb', ''] )
+        png = lambda wc: expand( "histo/{cell}.{s}.length_histo{thumb}.png",
+                                 cell = [wc.cell],
+                                 s = SC[wc.cell]['parts'], # subreads/scraps/reads
+                                 thumb = ['.__thumb', ''] )
     run:
         plots = [  dict(title = 'Binned sequence lengths',
                         files = [ [ "{cell}.{s}.length_histo.png".format( cell = wildcards.cell,
-                                                                        s = s )
-                                    for s in "subreads scraps".split() ] ]
+                                                                          s = s )
+                                    for s in SC[wildcards.cell]['parts'] ] ]
                        ) ]
         with open(output[0], 'w') as ofh:
             print(yaml.safe_dump(plots), file=ofh)
