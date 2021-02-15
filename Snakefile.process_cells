@@ -79,18 +79,24 @@ def determine_filter(cellpath):
     """ Work out what filter needs to be applied to this cell. The cell is supplied
         as a full path, since scan_cells() already worked that out.
     """
-    # FIXME - FileNotFoundError??
-    root = ET.parse(cellpath + '.subreadset.xml').getroot()
-    ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd' )
-    filter_was_done = bool(root.findall('.//pbmeta:ControlKit', ns))
+    try:
+        root = ET.parse(cellpath + '.subreadset.xml').getroot()
+        ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd' )
+        filter_was_done = bool(root.findall('.//pbmeta:ControlKit', ns))
 
-    return '' if filter_was_done else '.nocontrol'
+        return '' if filter_was_done else '.nocontrol'
+    except FileNotFoundError:
+        # This is OK iff there is a valid .consensusreadset.xml
+        root = ET.parse(cellpath + '.consensusreadset.xml').getroot()
+
+        # But we don't actually care what it says
+        return ''
 
 def determine_parts(cellpath):
     """Work out if this is a ['subreads', 'scraps'] cell or a ['reads'] cell.
     """
     bamfiles = glob(cellpath + '.*.bam')
-    parts = [ b[-len(cellpath):-len('.bam')] for b in bamfiles ]
+    parts = [ b[len(cellpath + '.'):-len('.bam')] for b in bamfiles ]
 
     assert parts, 'No .bam files found matching ' + cellpath + '.*.bam'
     # Fix the order. This works.
@@ -122,7 +128,7 @@ def copy_all_files(i, o):
 
 # Main target is one yml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
-localrules: main, one_cell_info, link_file
+localrules: main, one_cell_info
 rule main:
     input:
         yaml     = [ c + '.info.yml' for c in SC ]
@@ -175,8 +181,8 @@ rule one_cell_info:
     shell:
         # What needs to go into the YML? Stuff from the XML and also some stuff from the
         # stats, maybe? At present the script will discover extra files automagically.
-        '''compile_cell_info.py {input.xml[0]} \
-             -s {input.stats} {input.scrapstats} \
+        r'''compile_cell_info.py {input.xml[0]} \
+             -s {input.cstats} \
              -p {input.hplots} {input.blobs} > {output}
         '''
 
@@ -291,12 +297,10 @@ rule list_blob_plots:
                                  taxlevel = BLOB_LEVELS,
                                  extn = "cov0 read_cov.cov0".split(),
                                  thumb = ['.__thumb', ''] ),
-        subs = lambda wc: expand( "blob/{cell}.{s}.+sub{size}.fasta",
+        subs = lambda wc: expand( "blob/{cell}.{s}+sub{size}.fasta",
                                   cell = [wc.cell],
                                   s = SC[wc.cell]['parts'],
                                   size = [BLOB_SUBSAMPLE] )
-#        sub_sample = "blob/{{cell}}.subreads+sub{}.fasta".format(BLOB_SUBSAMPLE),
-#        scrap_sample = "blob/{{cell}}.scraps+sub{}.fasta".format(BLOB_SUBSAMPLE)
     run:
         # We want to know how big the subsample actually was, so check the FASTQ
         counts = dict(zip( SC[wildcards.cell]['parts'],

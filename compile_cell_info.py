@@ -4,7 +4,7 @@ import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import yaml
 
-from smrtino.ParseXML import get_subreadset_info
+from smrtino.ParseXML import get_readset_info
 
 """ Emits .info.yml files for SMRT cells by parsing the xml files from
     SMRT link, among other things. This script, along with make_report.py,
@@ -27,12 +27,15 @@ def main(args):
         pbits[-1] = '{}.{}.{}'.format( fbits[0], *fbits[2:] )
     else:
         filtername = None
-    # Reconstrunct path...
+    # Reconstruct path...
     xmlfile = '/'.join(pbits)
+
+    # The penultimate part of the filename should be 'consensusreadset' or 'subreadset' but we'll
+    # get this info from the XML instead.
 
     # Load the file then...
     L.debug("Reading from {}".format(xmlfile))
-    info = get_subreadset_info(xmlfile)
+    info = get_readset_info(xmlfile)
 
     info['filter_added'] = filtername
     info['_filename'] = xmlfile
