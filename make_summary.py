@@ -10,7 +10,7 @@ def glob():
     return lambda p: sorted( (f.rstrip('/') for f in glob(os.path.expanduser(p))) )
 glob = glob()
 
-from smrtino.ParseXML import get_subreadset_info
+from smrtino.ParseXML import get_readset_info
 
 """ Makes a summary (in text format) for a run.
     This is somewhat similar to make_report.py, but it runs on the original directory
@@ -40,9 +40,9 @@ def main(args):
         all_info[slot] = dict()
 
         # Load the XML, if found
-        srs_xml = glob(slot_dir + '/*.subreadset.xml')
+        srs_xml = glob(slot_dir + '/*.*readset.xml')
         if len(srs_xml) > 1:
-            L.error("Multiple .subreadset.xml found for slot " + slot)
+            L.error("Multiple .*readset.xml found for slot " + slot)
         elif srs_xml:
             srs_xml, = srs_xml
 

@@ -50,7 +50,7 @@ fi
 
 # Tools may reliably use this to report the version of SMRTino being run right now.
 # They should look at pbpipeline/start_times to see which versions have touched a given run.
-export SMRTINO_VERSION=$(cat "$BASH_DIR/version.txt" || echo unknown)
+export SMRTINO_VERSION=$(smrtino_version.py)
 
 # LOG_DIR is ignored if MAINLOG is set explicitly.
 LOG_DIR="${LOG_DIR:-${HOME}/smrtino/logs}"
