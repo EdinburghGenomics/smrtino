@@ -26,6 +26,7 @@ class T(unittest.TestCase):
 
         self.assertEqual(info, {
                         'cell_id':    'm54041_180613_132945',
+                        '_parts':     ['subreads', 'scraps'],
                         'readset_type': 'SubreadSet (CLR)',
                         'run_id':     'r54041_20180613_132039',
                         'run_slot':   '1_A01',
@@ -43,6 +44,7 @@ class T(unittest.TestCase):
 
         self.assertEqual(info, {
                         'cell_id':      'm64175e_201211_164938',
+                        '_parts':       ['reads'],
                         'readset_type': 'ConsensusReadSet (HiFi)',
                         'run_id':       'r64175e_20201211_163702',
                         'run_slot':     '1_A01',

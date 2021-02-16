@@ -12,8 +12,10 @@ import xml.etree.ElementTree as ET
 _ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
             pb     = 'http://pacificbiosciences.com/PacBioDatasets.xsd' )
 
-rs_types = dict( ConsensusReadSet = 'ConsensusReadSet (HiFi)',
-                 SubreadSet       = 'SubreadSet (CLR)' )
+rs_labels = dict( ConsensusReadSet = 'ConsensusReadSet (HiFi)',
+                  SubreadSet       = 'SubreadSet (CLR)' )
+rs_parts  = dict( ConsensusReadSet = ['reads'],
+                  SubreadSet       = ['subreads', 'scraps'] )
 
 def get_readset_info(xmlfile):
     """ Glean info from the file as per scan_for_smrt_cells in get_pacbio_yml.py
@@ -33,7 +35,8 @@ def get_readset_info(xmlfile):
 
     # See if this is a ConsensusReadSet (HiFi) or SubreadSet (CLR)
     root_tag = re.sub(r'{.*}', '', root.tag)
-    info['readset_type'] = rs_types.get(root_tag, root_tag)
+    info['readset_type'] = rs_labels.get(root_tag, root_tag)
+    info['_parts'] = rs_parts.get(root_tag, [])
 
     well_samples = root.findall('.//pbmeta:WellSample', _ns)
     # There should be 1!
