@@ -283,7 +283,7 @@ BLOB_LEVELS = "phylum order species".split()
 # display them.
 localrules: list_blob_plots
 rule list_blob_plots:
-    output: "blob/{cell,\w+}{filter,\.[a-z]+|}.plots.yml"
+    output: r"blob/{cell,\w+}{filter,\.[a-z]+|}.plots.yml"
     input:
         png = lambda wc: expand( "blob/{cell}.{s}.{taxlevel}.{extn}{thumb}.png",
                                  cell = [wc.cell + wc.filter],
@@ -323,7 +323,7 @@ rule list_blob_plots:
 # As there is only one heading this returns a singleton list.
 localrules: list_histo_plots
 rule list_histo_plots:
-    output: "histo/{cell,\w+}{filter,\.[a-z]+|}.plots.yml"
+    output: r"histo/{cell,\w+}{filter,\.[a-z]+|}.plots.yml"
     input:
         png = lambda wc: expand( "histo/{cell}.{s}.length_histo{thumb}.png",
                                  cell = [wc.cell + wc.filter],
