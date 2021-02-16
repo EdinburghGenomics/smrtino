@@ -46,7 +46,7 @@ def main(args):
         elif srs_xml:
             srs_xml, = srs_xml
 
-            xml_info = get_subreadset_info(srs_xml)
+            xml_info = get_readset_info(srs_xml)
 
             all_info[slot].update(xml_info)
 

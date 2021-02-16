@@ -54,8 +54,9 @@ def scan_cells():
     """ Work out all the cells to process based on config['cells'] and config['rundir']
         and thus infer the base names  of the info.yml files that need to be made.
         Return a dict of:
-            cell_id->{'slot': slot_id, 'filter': /(.nocontrol|)/, 'parts': [...]}.
-        This in turn allows me to work out everything else by pattern matching.
+            cell_id->{'slot': slot_id, 'filter': '', 'parts': [...]}.
+        This in turn allows me to work out everything else by pattern matching. Note that
+        no filter is currently supported but I left this feature in just in case.
         When run on a GSEG worker node this list will come out empty, but that's
         OK.
     """
@@ -79,18 +80,9 @@ def determine_filter(cellpath):
     """ Work out what filter needs to be applied to this cell. The cell is supplied
         as a full path, since scan_cells() already worked that out.
     """
-    try:
-        root = ET.parse(cellpath + '.subreadset.xml').getroot()
-        ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd' )
-        filter_was_done = bool(root.findall('.//pbmeta:ControlKit', ns))
-
-        return '' if filter_was_done else '.nocontrol'
-    except FileNotFoundError:
-        # This is OK iff there is a valid .consensusreadset.xml
-        root = ET.parse(cellpath + '.consensusreadset.xml').getroot()
-
-        # But we don't actually care what it says
-        return ''
+    # See git commit 1f5ab22383d355e112d31430cc0d8026fc6f5c17 for the last time
+    # this did anything
+    return ''
 
 def determine_parts(cellpath):
     """Work out if this is a ['subreads', 'scraps'] cell or a ['reads'] cell.
@@ -104,8 +96,10 @@ def determine_parts(cellpath):
 
 # And run the scan just once
 SC = scan_cells()
-if 'logging' in globals():
-    logging.info("SC = {!r}".format(SC))
+try:
+    logger.info("SC = {!r}".format(SC))
+except NameError:
+    pass
 
 def find_source_file(extn):
     """ Shim to get me the source file by adding in the cell slot directory as discovered
@@ -289,16 +283,16 @@ BLOB_LEVELS = "phylum order species".split()
 # display them.
 localrules: list_blob_plots
 rule list_blob_plots:
-    output: "blob/{cell}.plots.yml"
+    output: "blob/{cell,\w+}{filter,\.[a-z]+|}.plots.yml"
     input:
         png = lambda wc: expand( "blob/{cell}.{s}.{taxlevel}.{extn}{thumb}.png",
-                                 cell = [wc.cell],
+                                 cell = [wc.cell + wc.filter],
                                  s = SC[wc.cell]['parts'], # subreads/scraps/reads
                                  taxlevel = BLOB_LEVELS,
                                  extn = "cov0 read_cov.cov0".split(),
                                  thumb = ['.__thumb', ''] ),
         subs = lambda wc: expand( "blob/{cell}.{s}+sub{size}.fasta",
-                                  cell = [wc.cell],
+                                  cell = [wc.cell + wc.filter],
                                   s = SC[wc.cell]['parts'],
                                   size = [BLOB_SUBSAMPLE] )
     run:
@@ -313,10 +307,11 @@ rule list_blob_plots:
                                         s,
                                         counts[s],
                                         ', '.join(BLOB_LEVELS) ),
-                       files = [ [ "{cell}.{s}.{taxlevel}.{extn}.png".format( cell = wildcards.cell,
-                                                                              s = s,
-                                                                              taxlevel = taxlevel,
-                                                                              extn = extn )
+                       files = [ [ "{cell}{f}.{s}.{taxlevel}.{extn}.png".format( cell = wildcards.cell,
+                                                                                 f = wildcards.filter,
+                                                                                 s = s,
+                                                                                 taxlevel = taxlevel,
+                                                                                 extn = extn )
                                     for taxlevel in BLOB_LEVELS ]
                                  for extn in "read_cov.cov0 cov0".split() ]
 
@@ -328,16 +323,17 @@ rule list_blob_plots:
 # As there is only one heading this returns a singleton list.
 localrules: list_histo_plots
 rule list_histo_plots:
-    output: "histo/{cell}.plots.yml"
+    output: "histo/{cell,\w+}{filter,\.[a-z]+|}.plots.yml"
     input:
         png = lambda wc: expand( "histo/{cell}.{s}.length_histo{thumb}.png",
-                                 cell = [wc.cell],
+                                 cell = [wc.cell + wc.filter],
                                  s = SC[wc.cell]['parts'], # subreads/scraps/reads
                                  thumb = ['.__thumb', ''] )
     run:
         plots = [  dict(title = 'Binned sequence lengths',
-                        files = [ [ "{cell}.{s}.length_histo.png".format( cell = wildcards.cell,
-                                                                          s = s )
+                        files = [ [ "{cell}{f}.{s}.length_histo.png".format( cell = wildcards.cell,
+                                                                             f = wildcards.filter,
+                                                                             s = s )
                                     for s in SC[wildcards.cell]['parts'] ] ]
                        ) ]
         with open(output[0], 'w') as ofh:

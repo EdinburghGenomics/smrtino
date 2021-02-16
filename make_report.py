@@ -96,11 +96,10 @@ def get_pipeline_metadata(pipe_dir):
         # Meh.
         pass
 
-    # Plus there's the current version
+    # Plus there's the current version, which should be in $SMRTINO_VERSION
     try:
-        with open(os.path.dirname(__file__) + '/version.txt') as fh:
-            versions.add(fh.read().strip())
-    except Exception:
+        versions.add(os.environ['SMRTINO_VERSION'])
+    except KeyError:
         versions.add('unknown')
 
     # Get the name of the directory what pipe_dir is in
@@ -175,6 +174,10 @@ def format_cell(cdict):
         if not(k.startswith('_')):
             res.append("<dt>{}</dt>".format(k))
             res.append("<dd>{}</dd>".format(escape(v)))
+    # If there is no project, we should make this explicit
+    if not 'ws_project' in cdict:
+        res.append("<dt>{}</dt>".format('ws_project'))
+        res.append("<dd><span style='color: Tomato;'>{}</span></dd>".format('None'))
     res.append('</dl>')
 
     # Now add the stats table for stuff produced by fasta_stats.py

@@ -48,10 +48,6 @@ if [ -e "$ENVIRON_SH" ] ; then
            RT_SYSTEM STALL_TIME TO_LOCATION VERBOSE BLOBS FILTER_LOCALLY
 fi
 
-# Tools may reliably use this to report the version of SMRTino being run right now.
-# They should look at pbpipeline/start_times to see which versions have touched a given run.
-export SMRTINO_VERSION=$(smrtino_version.py)
-
 # LOG_DIR is ignored if MAINLOG is set explicitly.
 LOG_DIR="${LOG_DIR:-${HOME}/smrtino/logs}"
 RUN_NAME_REGEX="${RUN_NAME_REGEX:-r.*_[0-9]{8\}_.*}"
@@ -59,6 +55,10 @@ RUN_NAME_REGEX="${RUN_NAME_REGEX:-r.*_[0-9]{8\}_.*}"
 BIN_LOCATION="${BIN_LOCATION:-$BASH_DIR}"
 PATH="$(readlink -m $BIN_LOCATION):$PATH"
 MAINLOG="${MAINLOG:-${LOG_DIR}/pbpipeline_driver.`date +%Y%m%d`.log}"
+
+# Tools may reliably use this to report the version of SMRTino being run right now.
+# They should look at pbpipeline/start_times to see which versions have touched a given run.
+export SMRTINO_VERSION=$(smrtino_version.py)
 
 # 1) Sanity check these directories exist and complain to STDERR (triggering CRON
 #    warning mail) if not.

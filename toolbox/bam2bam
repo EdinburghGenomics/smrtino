@@ -6,6 +6,7 @@
 
 # Also note that bam2bam is missing after smrttools 5 so I suspect this whole thing is
 # way out of date.
+# Maybe I now need https://github.com/PacificBiosciences/recalladapters ?
 
 smrt_bin=/lustre-gseg/software/pacbio_smrttools/smrttools_5.0.1.9585/smrtcmds/bin
 pb_ca=/lustre-gseg/references/pacbio/pacbio_sequel_adapters.fasta

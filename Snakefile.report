@@ -60,8 +60,9 @@ rule report_main:
            ln -sr {input.pan}.html {output}
         '''
 
-# A list of projects, like with Illuminatus. Once this is running I'll update the get_pbdata script
-# to make use of these files, and add them to all previous runs.
+# A list of projects, like with Illuminatus. Used to quickly scan for runs that have data related to
+# a project. If there is no valid project name we still want a report but it should be clear there is
+# a problem.
 localrules: list_projects
 rule list_projects:
     output: "projects_ready.txt"
@@ -71,7 +72,10 @@ rule list_projects:
         plist = set()
         for y in input:
             with open(y) as yfh:
-                plist.add(yaml.safe_load(yfh)['ws_project'])
+                try:
+                    plist.add(yaml.safe_load(yfh)['ws_project'])
+                except KeyError:
+                    logger.error("No ws_project in {} - indicates no 5-digit project name found in readset XML".format(y))
         with open(output[0], "w") as ofh:
             print( *sorted(plist), file=ofh, sep='\n' )
 
