@@ -3,13 +3,13 @@
 ## Helper functions for shell scripts.
 __EXEC_DIR="${EXEC_DIR:-`dirname $BASH_SOURCE`}"
 
-# All the Snakefiles have bootstrapping scripts on them, but this script
-# will run snakemake directly via the shell helper functions.
+# All the Snakefiles have bootstrapping scripts on them, which load these
+# functions to help run themselves. I think this can be done with profiles now??
 export DRY_RUN=${DRY_RUN:-0}
 LOCAL_CORES=${LOCAL_CORES:-4}
 SNAKE_THREADS=${SNAKE_THREADS:-100}
 EXTRA_SNAKE_FLAGS="${EXTRA_SNAKE_FLAGS:-}"
-EXTRA_SLURM_FLAGS="${EXTRA_SLURM_FLAGS:--t 24:00}"
+EXTRA_SLURM_FLAGS="${EXTRA_SLURM_FLAGS:--t 24:00:00}"
 
 ## Dump out the right cluster config (just now we only have one)
 function cat_cluster_yaml(){
