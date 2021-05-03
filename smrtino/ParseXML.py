@@ -48,8 +48,8 @@ def get_readset_info(xmlfile):
         info['ws_name'] = ws.attrib.get('Name', '')
         info['ws_desc'] = ws.attrib.get('Description', '')
 
-        mo = re.match('\d+', info['ws_name'])
+        mo = re.search(r'\b(\d{5,})', info['ws_name'])
         if mo:
-            info['ws_project'] = mo.group(0)
+            info['ws_project'] = mo.group(1)
 
     return info

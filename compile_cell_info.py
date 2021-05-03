@@ -41,12 +41,12 @@ def main(args):
     info['_filename'] = xmlfile
 
     # Add plots if we have them
-    for p in args.plots:
+    for p in args.plots or []:
         with open(p) as yfh:
             info.setdefault('_plots', []).append(yaml.safe_load(yfh))
 
     # Add stats if we have them
-    for s in args.stats:
+    for s in args.stats or []:
         filename = '-'
         if s.endswith(".cstats.yml"):
             filename = s.split('.')[-3].capitalize()
