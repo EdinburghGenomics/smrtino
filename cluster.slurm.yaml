@@ -5,3 +5,4 @@ blast_chunk              : {slurm_opts: '--mem=24000 --mincpus=6'}
 diamond_chunk            : {slurm_opts: '--mem=24000 --mincpus=8'}
 trim_to_n                : {slurm_opts: '--mem=4000  --mincpus=2'}
 smrt_ccs                 : {slurm_opts: '--mem=30000 --mincpus=6'}
+blob_db                  : {slurm_opts: '--mem=30000 --mincpus=6'}
