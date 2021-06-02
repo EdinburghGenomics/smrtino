@@ -39,6 +39,7 @@ from glob import glob
     cells are not conflicting.
 """
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
+PBCORETOOLS = TOOLBOX + " smrt python3 -m pbcoretools.tasks."
 
 # Other than that, ensure that scripts in the directory with this Snakefile are
 # in the PATH (we have to do it here as $PATH does not get preserved on cluster jobs):
@@ -140,6 +141,7 @@ def i_one_cell_info(wildcards):
     cellbase = wildcards.cell + scinfo['filter']
     res = dict( md5 = [],
                 cstats = [],
+                count = [],
                 xml = [],
                 blobs = [],
                 hplots = [] )
@@ -159,6 +161,11 @@ def i_one_cell_info(wildcards):
             if scinfo['filter']:
                 # this was input.xml1
                 res['xml'].append(wildcards.cell + rsname)
+
+    # If we have CCS reads then we also want to extract the HiFi reads and count
+    # the number of sequences. Maybe we should be running cstats on this??
+    if 'reads' in scinfo['parts']:
+        res['count'].append(cellbase + ".hifi_reads.fastq.count")
 
     # Length histograms
     res['hplots'].append("histo/" + cellbase + ".plots.yml"),
@@ -184,48 +191,52 @@ rule one_cell_info:
 if os.environ.get('FILTER_LOCALLY', '1') != '0':
     localrules: filter_control, copy_subreads, copy_reads, copy_xml
 
+def relativize_xml(xfile):
+    """Munge an XML file to reflect new file paths.
+    """
+    shell("mv -v {xfile} {xfile}.orig")
+    shell("strip_readset_resources.py {xfile}.orig > {xfile}")
+    shell("{TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {xfile}")
+    shell("rm -v {xfile}.orig")
+
 # This copies the files, without applying any filter.
 rule copy_subreads:
     output:
         bam    = "{cell,[^./]+}.subreads.bam",
         pbi    = "{cell,[^./]+}.subreads.bam.pbi",
         scraps = "{cell,[^./]+}.scraps.bam",
+        xml    = "{cell,[^./]+}.subreadset.xml"
     input:
         bam    = find_source_file(".subreads.bam"),
         pbi    = find_source_file(".subreads.bam.pbi"),
         scraps = find_source_file(".scraps.bam"),
+        xml    = find_source_file(".subreadset.xml")
     resources:
         nfscopy=1
     run:
         copy_all_files(input, output)
+        relativize_xml(output.xml)
 
 # Ditto for reads.bam
 rule copy_reads:
     output:
         bam    = "{cell,[^./]+}.reads.bam",
-        pbi    = "{cell,[^./]+}.reads.bam.pbi"
+        pbi    = "{cell,[^./]+}.reads.bam.pbi",
+        xml    = "{cell,[^./]+}.consensusreadset.xml"
     input:
         bam    = find_source_file(".reads.bam"),
-        pbi    = find_source_file(".reads.bam.pbi")
+        pbi    = find_source_file(".reads.bam.pbi"),
+        xml    = find_source_file(".consensusreadset.xml")
     resources:
         nfscopy=1
     run:
         copy_all_files(input, output)
+        relativize_xml(output.xml)
 
-# This has to be separate from copy_reads since it happens regardless of the filter applied
-# Works for subreadset + consensusreadset
-rule copy_xml:
-    output:
-        xml    = "{cell,[^./]+}.{foo,[a-z]+}readset.xml"
-    input:
-        xml    = find_source_file(".{foo}readset.xml")
-    resources:
-        nfscopy=1
-    run:
-        copy_all_files(input, output)
 
 # This applies the control removal filter via bam2bam, resulting in files with .nocontrol added to
 # the name and new xml/pbi files.
+# Note that bam2bam is very much deprecated - nee note in toolbox!
 rule filter_control:
     output:
         bam    = "{cell,[^./]+}.nocontrol.subreads.bam",
@@ -264,6 +275,30 @@ rule histo_plot:
                 --title `basename {input} .length_histo.tsv`
            {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
         '''
+
+# Note the auto_ccs_outputs step should produce the .hifi_reads.fastq.gz file as the default output
+# name.
+rule hifi_fastq:
+    output:
+        fastq = "{cell}.hifi_reads.fastq.gz",
+        xml   = "{cell}.hifireadset.xml",
+        json  = "{cell}.fastq.datastore.json"
+    input:
+        xml = "{cell}.consensusreadset.xml",
+        bam = "{cell}.reads.bam"
+    params:
+        filter_args = "--min-qv 20"
+    shell:
+       r"""{PBCORETOOLS}.dataset_filter {params.filter_args} {input.xml} {output.xml} ''
+           {PBCORETOOLS}.auto_ccs_outputs --log-level INFO {params.filter_args} fastq {output.xml} {output.json}
+        """
+
+# Make a .count file for the FASTQ file. Maybe I should use fasta_stats.py for this instead?
+rule count_fastq:
+    output: "{foo}.fastq.count"
+    input:  "{foo}.fastq.gz"
+    shell:  "fq_base_counter.py {input} > {output}"
+
 
 ## BLOB plotter rules ##
 

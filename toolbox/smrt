@@ -1,10 +1,12 @@
 #!/bin/sh
 
 # Run a SMRTLink tool (specific version)
-# Note that for now we need the special CCS 3.1 so bung that in too.
 
-smrt_bin=/lustre/software/pacbio_smrttools/smrttools_6.0.0.47841/smrtcmds/bin
-ccs_bin=/lustre/software/pacbio_smrttools/ccs_3.1.0
+# Try:
+# smrt dataset ---help
+# smrt python3 -m pbcoretools.tasks.dataset_filter --help
+
+smrt_bin=/lustre-gseg/software/pacbio_smrttools/smrttools_10.1.0.119588/smrtcmds/bin
 
 if [ -z "$*" ] ; then
     echo
@@ -12,12 +14,9 @@ if [ -z "$*" ] ; then
     echo
     echo "Tools available in $smrt_bin:"
     ls "$smrt_bin"
-    echo
-    echo "Also $ccs_bin will be prepended to the path, overriding:"
-    ls "$ccs_bin"
 else
     # Disable core dumps
     ulimit -c 0
 
-    exec env PATH="$ccs_bin:$smrt_bin:$PATH" "$@"
+    exec env PATH="$smrt_bin:$PATH" "$@"
 fi
