@@ -283,7 +283,6 @@ rule histo_plot:
 rule hifi_fastq:
     output:
         fastq = "{cell}.hifi_reads.fastq.gz",
-        cfq   = "{cell}.hifi_reads.fastq.count",
         xml   = "{cell}.hifireadset.xml",
         json  = "{cell}.fastq.datastore.json"
     input:
@@ -293,25 +292,20 @@ rule hifi_fastq:
         filter_args = "--min-qv 20"
     shell:
        r"""{PBCORETOOLS}.dataset_filter {params.filter_args} {input.xml} {output.xml} ''
-
-           mkfifo {output.fastq}
-           <{output.fastq} tee {output.fastq}.part | zcat | fq_base_counter.py -s {output.fastq} > {output.cfq} &
-           counter_pid=$!
-
            {PBCORETOOLS}.auto_ccs_outputs --log-level INFO {params.filter_args} fastq {output.xml} {output.json}
-
-           wait "$counter_pid"
-           rm {output.fastq} ; mv {output.fastq}.part {output.fastq}
         """
 
-"""
-# Make a .count file for the FASTQ file. Maybe I should use fasta_stats.py for this instead?
-# Note that I'm now running this as the file is made, for speed!
+# Make a .count file for the FASTQ file
 rule count_fastq:
     output: "{foo}.fastq.count"
     input:  "{foo}.fastq.gz"
     shell:  "fq_base_counter.py {input} > {output}"
-"""
+
+# md5summer that keeps the file path out of the .md5 file
+rule md5sum_file:
+    output: "md5sums/{foo}.md5"
+    input: "{foo}"
+    shell: "( cd `dirname {input}` && md5sum `basename {input}` ) > {output}"
 
 ## BLOB plotter rules ##
 
@@ -500,9 +494,3 @@ rule blob_plot_png:
 
 ## End of BLOB plotter rules ##
 
-
-# md5summer that keeps the file path out of the .md5 file
-rule md5sum_file:
-    output: "md5sums/{foo}.md5"
-    input: "{foo}"
-    shell: "( cd `dirname {input}` && md5sum `basename {input}` ) > {output}"
