@@ -166,6 +166,7 @@ def i_one_cell_info(wildcards):
     # the number of sequences. Maybe we should be running cstats on this??
     if 'reads' in scinfo['parts']:
         res['count'].append(cellbase + ".hifi_reads.fastq.count")
+        res['md5'].append("md5sums/" + cellbase + ".hifi_reads.fastq.gz.md5")
 
     # Length histograms
     res['hplots'].append("histo/" + cellbase + ".plots.yml"),
@@ -276,8 +277,9 @@ rule histo_plot:
            {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
         '''
 
+# Export the HiFi reads and count them in a single pass.
 # Note the auto_ccs_outputs step should produce the .hifi_reads.fastq.gz file as the default output
-# name.
+# name, it's not given explicitly.
 rule hifi_fastq:
     output:
         fastq = "{cell}.hifi_reads.fastq.gz",
@@ -291,17 +293,20 @@ rule hifi_fastq:
         filter_args = "--min-qv 20"
     shell:
        r"""{PBCORETOOLS}.dataset_filter {params.filter_args} {input.xml} {output.xml} ''
-           ( {PBCORETOOLS}.auto_ccs_outputs --log-level INFO {params.filter_args} fastq {output.xml} {output.json} ; sync ) &
 
-           job_pid=$!
+           mkfifo {output.fastq}
+           <{output.fastq} tee {output.fastq}.part | zcat | fq_base_counter.py -s {output.fastq} > {output.cfq} &
+           counter_pid=$!
 
-           # TODO - allow fq_base_counter.py to read from stdin and use a dummy name so this works...
-           tail -f --retry --pid="$gzip_pid" -c+0 {output.fastq} | zcat | fq_base_counter.py -s {output.fastq} > {output.cfq}
+           {PBCORETOOLS}.auto_ccs_outputs --log-level INFO {params.filter_args} fastq {output.xml} {output.json}
+
+           wait "$counter_pid"
+           rm {output.fastq} ; mv {output.fastq}.part {output.fastq}
         """
 
+"""
 # Make a .count file for the FASTQ file. Maybe I should use fasta_stats.py for this instead?
 # Note that I'm now running this as the file is made, for speed!
-"""
 rule count_fastq:
     output: "{foo}.fastq.count"
     input:  "{foo}.fastq.gz"
