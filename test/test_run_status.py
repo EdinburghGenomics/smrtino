@@ -8,9 +8,6 @@ from shutil import rmtree, copytree
 from pprint import pprint
 import logging as L
 
-
-# Adding this to sys.path makes the test work if you just run it directly.
-sys.path.insert(0,'.')
 from pb_run_status import RunStatus
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/mock_examples')

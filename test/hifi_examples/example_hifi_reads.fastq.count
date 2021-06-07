@@ -1,0 +1,5 @@
+filename:    example_hifi_reads.fastq.gz
+total_reads: 200
+read_length: 9764-25524
+total_bases: 3027642
+non_n_bases: 3027642

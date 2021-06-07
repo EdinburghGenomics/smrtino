@@ -3,9 +3,6 @@ import sys, os, re
 import unittest
 from collections import OrderedDict, Hashable, defaultdict
 
-# Adding this to sys.path makes the test work if you just run it directly.
-sys.path.insert(0,'.')
-
 from smrtino.yaml_ordered import yaml
 
 class TestYAMLOrderded(unittest.TestCase):

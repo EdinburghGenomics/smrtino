@@ -5,8 +5,7 @@ import unittest
 from unittest.mock import patch
 from shlex import quote
 
-with patch('sys.path', new=['.'] + sys.path):
-    from test.binmocker import BinMocker
+from test.binmocker import BinMocker
 
 class T(unittest.TestCase):
     """Internal testing for BinMocker helper

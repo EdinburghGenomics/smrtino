@@ -14,7 +14,6 @@ from glob import glob
    and detecting the calls to those programs, similar to the way that Test::Mock works.
    To this end, see the BinMocker class. I've broken this out for general use.
 """
-sys.path.insert(0,'.')
 from test.binmocker import BinMocker
 
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'

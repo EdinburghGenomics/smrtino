@@ -281,7 +281,7 @@ rule histo_plot:
 rule hifi_fastq:
     output:
         fastq = "{cell}.hifi_reads.fastq.gz",
-        count = "{cell}.hifi_reads.fastq.count",
+        cfq   = "{cell}.hifi_reads.fastq.count",
         xml   = "{cell}.hifireadset.xml",
         json  = "{cell}.fastq.datastore.json"
     input:
@@ -296,7 +296,7 @@ rule hifi_fastq:
            job_pid=$!
 
            # TODO - allow fq_base_counter.py to read from stdin and use a dummy name so this works...
-           tail -f --retry --pid="$gzip_pid" -c+0 {output.fastq} | zcat | fq_base_counter.py -s {output.fastq} > {output.count}
+           tail -f --retry --pid="$gzip_pid" -c+0 {output.fastq} | zcat | fq_base_counter.py -s {output.fastq} > {output.cfq}
         """
 
 # Make a .count file for the FASTQ file. Maybe I should use fasta_stats.py for this instead?

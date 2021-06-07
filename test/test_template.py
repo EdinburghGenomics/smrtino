@@ -11,19 +11,7 @@ import logging
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
-try:
-    sys.path.insert(0, '.')
-    # from lib_or_script import functions
-except:
-    #If this fails, you is probably running the tests wrongly
-    print("****",
-          "To test your working copy of the code you should use the helper script:",
-          "  ./run_tests.sh <name_of_test>",
-          "or to run all tests, just",
-          "  ./run_tests.sh",
-          "****",
-          sep="\n")
-    raise
+# from lib_or_script import functions
 
 class T(unittest.TestCase):
 
@@ -36,7 +24,8 @@ class T(unittest.TestCase):
             logging.getLogger().setLevel(logging.CRITICAL)
 
     def setUp(self):
-        pass
+        # See the errors in all their glory
+        self.maxDiff = None
 
     def tearDown(self):
         pass

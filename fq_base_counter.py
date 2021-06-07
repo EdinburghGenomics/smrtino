@@ -27,23 +27,45 @@ def parse_args():
     parser = ArgumentParser( description = description,
                              formatter_class = ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("infile", nargs='+',
+    parser.add_argument("--stdin", "-s", action="store_true",
+                        help="actually read from stdin, but using the given filename")
+
+    parser.add_argument("infile", nargs=1,
                         help=".fastq.gz file to be read")
 
     return parser.parse_args()
 
 def main(args):
 
-    for fn in args.infile:
+    fn, = args.infile
+
+    if args.stdin:
+        print_info(scan_fh(sys.stdin.buffer), fn=os.path.basename(fn))
+    else:
         print_info(scan_fq(fn), fn=os.path.basename(fn))
+
+def scan_fh(filehandle):
+    """ Read an open file handle. The data must be uncompressed.
+    """
+    lens_found = collections.Counter()
+    ns_found = 0
+
+    for n, l in enumerate(filehandle):
+        if n % 4 == 1:
+            # Sequence line
+            lens_found[len(l) - 1] += 1
+            ns_found += l.count(b'N')
+
+    return dict( total_reads = (n + 1) // 4,
+                 min_read_len = min(lens_found.keys() or [0]),
+                 max_read_len = max(lens_found.keys() or [0]),
+                 total_bases = sum([ l * c for l, c in lens_found.items()]),
+                 n_bases = ns_found )
 
 def scan_fq(filename):
     """ Read a file. The file must actually be a gzipped file, unless it's completely empty,
         which is useful for testing.
     """
-    lens_found = collections.Counter()
-    ns_found = 0
-
     if os.stat(filename).st_size == 0:
         return dict( total_reads = 0,
                      min_read_len = 0,
@@ -53,22 +75,12 @@ def scan_fq(filename):
     try:
         n = 0
         with gzip.open(filename, mode='rb') as fh:
-            for n, l in enumerate(fh):
-                if n % 4 == 1:
-                    # Sequence line
-                    lens_found[len(l) - 1] += 1
-                    ns_found += l.count(b'N')
+            return scan_fh(fh)
     except OSError as e:
         #The GZip module doesn't tell you what file it was trying to read
         e.filename = filename
         e.strerror = e.args[0]
         raise
-
-    return dict( total_reads = (n + 1) // 4,
-                 min_read_len = min(lens_found.keys() or [0]),
-                 max_read_len = max(lens_found.keys() or [0]),
-                 total_bases = sum([ l * c for l, c in lens_found.items()]),
-                 n_bases = ns_found )
 
 def print_info(fq_info, fn='input.fastq.gz'):
     """ Show what we got.

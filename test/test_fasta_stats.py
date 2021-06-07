@@ -11,19 +11,7 @@ import logging
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/sample_fasta')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
-try:
-    sys.path.insert(0, '.')
-    from fasta_stats import read_fasta, fasta_to_histo, histo_to_result, fastaline
-except:
-    #If this fails, you is probably running the tests wrongly
-    print("****",
-          "To test your working copy of the code you should use the helper script:",
-          "  ./run_tests.sh <name_of_test>",
-          "or to run all tests, just",
-          "  ./run_tests.sh",
-          "****",
-          sep="\n")
-    raise
+from fasta_stats import read_fasta, fasta_to_histo, histo_to_result, fastaline
 
 class T(unittest.TestCase):
 
