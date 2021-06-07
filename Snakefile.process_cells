@@ -39,7 +39,7 @@ from glob import glob
     cells are not conflicting.
 """
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
-PBCORETOOLS = TOOLBOX + " smrt python3 -m pbcoretools.tasks."
+PBCORETOOLS = TOOLBOX + " smrt python3 -m pbcoretools.tasks"
 
 # Other than that, ensure that scripts in the directory with this Snakefile are
 # in the PATH (we have to do it here as $PATH does not get preserved on cluster jobs):
@@ -281,6 +281,7 @@ rule histo_plot:
 rule hifi_fastq:
     output:
         fastq = "{cell}.hifi_reads.fastq.gz",
+        count = "{cell}.hifi_reads.fastq.count",
         xml   = "{cell}.hifireadset.xml",
         json  = "{cell}.fastq.datastore.json"
     input:
@@ -290,15 +291,22 @@ rule hifi_fastq:
         filter_args = "--min-qv 20"
     shell:
        r"""{PBCORETOOLS}.dataset_filter {params.filter_args} {input.xml} {output.xml} ''
-           {PBCORETOOLS}.auto_ccs_outputs --log-level INFO {params.filter_args} fastq {output.xml} {output.json}
+           ( {PBCORETOOLS}.auto_ccs_outputs --log-level INFO {params.filter_args} fastq {output.xml} {output.json} ; sync ) &
+
+           job_pid=$!
+
+           # TODO - allow fq_base_counter.py to read from stdin and use a dummy name so this works...
+           tail -f --retry --pid="$gzip_pid" -c+0 {output.fastq} | zcat | fq_base_counter.py -s {output.fastq} > {output.count}
         """
 
 # Make a .count file for the FASTQ file. Maybe I should use fasta_stats.py for this instead?
+# Note that I'm now running this as the file is made, for speed!
+"""
 rule count_fastq:
     output: "{foo}.fastq.count"
     input:  "{foo}.fastq.gz"
     shell:  "fq_base_counter.py {input} > {output}"
-
+"""
 
 ## BLOB plotter rules ##
 
