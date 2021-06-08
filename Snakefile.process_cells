@@ -141,7 +141,7 @@ def i_one_cell_info(wildcards):
     cellbase = wildcards.cell + scinfo['filter']
     res = dict( md5 = [],
                 cstats = [],
-                count = [],
+                cou = [],
                 xml = [],
                 blobs = [],
                 hplots = [] )
@@ -165,11 +165,13 @@ def i_one_cell_info(wildcards):
     # If we have CCS reads then we also want to extract the HiFi reads and count
     # the number of sequences. Maybe we should be running cstats on this??
     if 'reads' in scinfo['parts']:
-        res['count'].append(cellbase + ".hifi_reads.fastq.count")
+        res['cou'].append(cellbase + ".hifi_reads.fastq.count")
         res['md5'].append("md5sums/" + cellbase + ".hifi_reads.fastq.gz.md5")
         # Javier confirms we want FASTA+FASTQ+BAM
         res['md5'].append("md5sums/" + cellbase + ".hifi_reads.fasta.gz.md5")
         res['md5'].append("md5sums/" + cellbase + ".hifi_reads.bam.md5")
+        # And we want stats for the BAM, as well as counts for the FASTQ
+        res['cstats'].append(cellbase + ".hifi_reads.cstats.yml")
 
     # Length histograms
     res['hplots'].append("histo/" + cellbase + ".plots.yml"),
