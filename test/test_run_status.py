@@ -22,7 +22,7 @@ class T(unittest.TestCase):
         """Inspect a run.
            If copy=True, copies the selected run into a temporary folder first.
            Sets self.current_run to the run id and
-           self.run_dir to the run dir, temporary or otherwise.
+           self.runs_dir to the run dir, temporary or otherwise.
            Also returns a RunStatus object for you.
         """
         self.cleanup_run()
@@ -31,24 +31,28 @@ class T(unittest.TestCase):
         self.tmp_dir = mkdtemp()
         os.mkdir(self.tmp_dir + '/to')
         if copy:
-            self.run_dir = self.tmp_dir + '/from'
-            os.mkdir(self.run_dir)
+            self.runs_dir = self.tmp_dir + '/from'
+            os.mkdir(self.runs_dir)
 
             # Clone the run folder into it
             copytree( os.path.join(DATA_DIR, run_id),
-                      os.path.join(self.run_dir, run_id),
+                      os.path.join(self.runs_dir, run_id),
                       symlinks=True )
         else:
-            self.run_dir = DATA_DIR
+            self.runs_dir = DATA_DIR
 
         # Set the current_run variable
         self.current_run = run_id
+
+        this_run_dir = os.path.join(self.runs_dir, self.current_run)
+        if not os.path.exists(this_run_dir):
+            raise FileNotFoundError(this_run_dir)
 
         # Presumably we want to inspect the new run, so do that too.
         # If you want to change files around, do that then make a new RunStatus
         # by copying the line below.
         if make_run_info:
-            return RunStatus(os.path.join(self.run_dir, self.current_run),
+            return RunStatus(this_run_dir,
                              to_location = self.tmp_dir + '/to')
 
     def cleanup_run(self):
@@ -58,7 +62,7 @@ class T(unittest.TestCase):
         if vars(self).get('tmp_dir'):
             rmtree(self.tmp_dir)
 
-        self.run_dir = self.tmp_dir = None
+        self.runs_dir = self.tmp_dir = None
         self.current_run = None
 
     def tearDown(self):
@@ -72,14 +76,14 @@ class T(unittest.TestCase):
         if fp.startswith('pbpipeline'):
             os.makedirs(os.path.join(self.tmp_dir, 'to', self.current_run, fp))
         else:
-            os.makedirs(os.path.join(self.run_dir, self.current_run, fp))
+            os.makedirs(os.path.join(self.runs_dir, self.current_run, fp))
 
     def touch(self, fp, content="meh"):
         if fp.startswith('pbpipeline'):
             with open(os.path.join(self.tmp_dir, 'to', self.current_run, fp), 'w') as fh:
                 print(content, file=fh)
         else:
-            with open(os.path.join(self.run_dir, self.current_run, fp), 'w') as fh:
+            with open(os.path.join(self.runs_dir, self.current_run, fp), 'w') as fh:
                 print(content, file=fh)
 
     def rm(self, dp):
@@ -90,7 +94,7 @@ class T(unittest.TestCase):
             os.remove(os.path.join(self.tmp_dir, 'to', self.current_run, dp))
     # And the tests...
 
-    def test_onecell_run( self ):
+    def test_onecell_run(self):
         """ A really basic test
         """
         run_info = self.use_run('r54041_20180613_132039', copy=True)
@@ -104,7 +108,7 @@ class T(unittest.TestCase):
         # Start time should be something (we're not sure what)
         self.assertEqual(len(run_info.get_start_time()), len('Thu Jan  1 01:00:00 1970'))
 
-    def test_run_new( self ):
+    def test_run_new(self):
         """ A totally new run.
         """
         run_info = self.use_run('r54041_20180518_131155')
@@ -120,7 +124,7 @@ class T(unittest.TestCase):
         # None are ready
         self.assertCountEqual( run_info.get_cells_ready(), [] )
 
-    def test_stalled( self ):
+    def test_stalled(self):
         """ Test that I can detect a stalled run.
         """
         run_info = self.use_run('r54041_20180518_131155', copy=True)
@@ -141,7 +145,7 @@ class T(unittest.TestCase):
 
         self.assertEqual(gs(), 'stalled')
 
-    def test_various_states( self ):
+    def test_various_states(self):
         """ Simulate some pipeline activity on that run.
         """
         run_info = self.use_run('r54041_20180518_131155', copy=True)
@@ -207,11 +211,34 @@ class T(unittest.TestCase):
         self.touch('pbpipeline/7_H01.done')
         self.assertEqual(gs(), 'processed')
 
+    def test_issue_20210608(self):
+        """ We seem to have a run with three cells and two are ready to go yet the status is
+            'complete' and nothing is happening. Not good!
+        """
+        run_info = self.use_run('r64175e_20210528_154754', copy=False)
 
-    def test_error_states( self ):
+        self.assertCountEqual( run_info.get_cells(), "1_A01  2_B01  3_C01".split() )
+        self.assertEqual( run_info.get_status(), 'new' )
+
+        # Now add some output
+        self.md('pbpipeline')
+        self.touch('pbpipeline/1_A01.done')
+        run_info._clear_cache()
+        self.assertCountEqual( run_info.get_cells_ready(), "2_B01  3_C01".split() )
+        self.assertEqual( run_info.get_status(), 'cell_ready' )
+
+        # Now say the report is done, but there are still cells ready. I don't know how it
+        # got in this state but I think the status needs to be 'unknown' as this is not
+        # consistent.
+        self.touch('pbpipeline/report.done')
+        run_info._clear_cache()
+        self.assertCountEqual( run_info.get_cells_ready(), "2_B01  3_C01".split() )
+        self.assertEqual( run_info.get_status(), 'unknown' )
+
+    def test_error_states(self):
         """ Simulate some pipeline activity on that run.
         """
-        run_info = self.use_run('r54041_20180518_131155', copy=True)
+        run_info = self.use_run('r54041_20180518_131155', copy=False)
         self.md('pbpipeline')
 
         def gs():

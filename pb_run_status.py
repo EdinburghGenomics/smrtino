@@ -181,12 +181,22 @@ class RunStatus:
         if self._was_aborted():
             return "aborted"
 
+        # At this point we need to know which SMRT cells are ready/done. Disregard aborted cells.
+        # If everything was aborted we'll already have decided status='aborted'
+
+        # As with Illuminatus, this logic is a little contorted. The tests reassure me that all is
+        # well. If you see a problem add a test case before attempting a fix.
+
         # No provision for 'redo' state just now, but if there was this would need to
         # go in here to override the failed and complete statuses.
+        all_cell_statuses = [ v for v in self.get_cells().values() if v != self.CELL_ABORTED ]
 
         if self._exists_to( 'pbpipeline/report.done' ):
             if self._exists_to( 'pbpipeline/failed' ):
                 return "failed"
+            elif any( v == self.CELL_READY for v in all_cell_statuses ):
+                # Not right - see unit tests
+                return "unknown"
             else:
                 return "complete"
 
@@ -204,14 +214,6 @@ class RunStatus:
         # But until the final report is generated, the master 'failed' flag is ignored, so it's
         # possible that an interim report fails but then a new cell gets processed and the report
         # is re-triggered and this time it works and the flag can be cleared. Yeah.
-
-        # At this point we need to know which SMRT cells are ready/done. Disregard aborted cells.
-        # If everything was aborted we'll already have decided status='aborted'
-
-        # As with Illuminatus, this logic is a little contorted. The tests reassure me that all is
-        # well. If you see a problem add a test case before attempting a fix.
-
-        all_cell_statuses = [ v for v in self.get_cells().values() if v != self.CELL_ABORTED ]
 
         # If any cell is ready we need to get it processed
         if any( v == self.CELL_READY for v in all_cell_statuses ):

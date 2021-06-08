@@ -230,7 +230,7 @@ action_processed() {
 
     # This touch file puts the run into status reporting.
     # Upload of report is regarded as the final QC step, so if this fails we need to
-    # log a failure even if everythign else was OK.
+    # log a failure even if everything else was OK.
     touch "$RUN_OUTPUT"/pbpipeline/report.started
 
     # In case we didn't already...

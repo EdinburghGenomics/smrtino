@@ -1,0 +1,144 @@
+I'm trying to work out how to run the filter that SMRTlink applies from the command line.
+
+This relates to the PDF Donald sent me on the 18th May. It looks like the HiFi reads file is simply made by converting
+the BAM file to FASTQ and applying a min quality cutoff of 20.
+
+I don't think it's anything too sophisticated but the details are buried in all the cromwell
+machinery and they way everything is driven by XML files.
+
+So far I ran this:
+
+/lustre-gseg/software/pacbio_smrttools/current/python3 -m pbcoretools.tasks.dataset_filter --min-qv 20 /fluidfs/sequel/r64175e_20210423_164617/1_A01/m64175e_210423_165649.consensusreadset.xml filtered.consensusreadset.xml ''
+
+Which I took from this log:
+
+/fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/0000/0000001/0000001135/logs/workflow.638c9f17-070f-4c5b-ad97-ba0be13c8f99.log
+
+(copied in this dir - that partition is not normally mounted on edgen-login0)
+
+I think I'm on the right track! It only made an XML file but that's a start. If this works I can get SMRTino to generate the output
+which is easier than having to go to SMRTlink GUI and locate the file every time. It may also be possibly to extract it from
+SMRTlink programatically but I think this method will be easier (unless we can customise or tap into SMRTlink in ways I'd not
+considered).
+
+OK, so we have a system where the data processing is driven by the XML.
+
+Original data is on /fluidfs/sequel
+Copy of data is on /lustre-gseg/home/tbooth2/test_pacbio_data
+
+I think if I:
+
+Copy  .zmw_metrics.json.gz
+      .ccs_reports.json
+      .ccs.log
+      .ccs_reports.txt
+      .sts.xml
+
+Then I can relativize the consensusreadset.xml (which is good)
+And then do the pbcoretools.tasks.dataset_filter thing
+And then make the BAM/FASTQ files. Let's try.
+
+I have all this in /lustre-gseg/home/tbooth2/test_pacbio_data/r64175e_20210423_164617 so let's head there...
+
+OK, it works. I do need to check that the FASTQ is identical but I'm sure it will be.
+
+Seems maybe, instead of copying all the files above, I can merely scrub them from the XML? Let's see how is my XSLT-fu?
+
+OK, I made a script that removes all the extra deps. And I confirmed that the .fastq.gz I made is byte-for-byte identical.
+So now:
+
+SMRTino should generate the consensusreadset.xml using my new script, then running 'relativize'.
+It should then make the .fastq.gz file (maybe the BAM/FASTA files too but the process is the same).
+I think I'll still do the blobs on the original file.
+
+==> /lustre-gseg/pacbio/pacbio_projectqc/15940_Jacobs_Arne/refilter_tim/call-export_fastq.script <==
+#!/bin/bash
+PATH="/fluidfs/smrtlink/smrtlink/install/smrtlink-release_10.0.0.108728/admin/bin/../../bundles/smrttools/current/private/otherbins/all/bin:/opt/sge/bin:/opt/sge/bin/lx-amd64:/usr/bin:/bin"
+
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution
+tmpDir=$(mktemp -d /fluidfs/smrtlink/smrtlink/userdata/tmp_dir/cromwell_tmp.XXXXXX)
+
+export _JAVA_OPTIONS=-Djava.io.tmpdir="$tmpDir"
+export TMPDIR="$tmpDir"
+export HOME="$HOME"
+(
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution
+
+)
+out638c9f17="${tmpDir}/out.$$" err638c9f17="${tmpDir}/err.$$"
+mkfifo "$out638c9f17" "$err638c9f17"
+trap 'rm "$out638c9f17" "$err638c9f17"' EXIT
+tee '/fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution/stdout' < "$out638c9f17" &
+tee '/fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution/stderr' < "$err638c9f17" >&2 &
+(
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution
+
+
+python3 \
+  -m pbcoretools.tasks.auto_ccs_outputs \
+  --log-level INFO \
+   \
+  --min-qv 20 \
+  fastq \
+  /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/inputs/-556361190/filtered.consensusreadset.xml \
+  fastq.datastore.json
+)  > "$out638c9f17" 2> "$err638c9f17"
+echo $? > /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution/rc.tmp
+(
+# add a .file in every empty directory to facilitate directory delocalization on the cloud
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution
+find . -type d -exec sh -c '[ -z "$(ls -A '"'"'{}'"'"')" ] && touch '"'"'{}'"'"'/.file' \;
+)
+(
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution
+
+
+
+)
+mv /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution/rc.tmp /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_fastq/execution/rc
+
+==> /lustre-gseg/pacbio/pacbio_projectqc/15940_Jacobs_Arne/refilter_tim/call-export_bam.script <==
+#!/bin/bash
+PATH="/fluidfs/smrtlink/smrtlink/install/smrtlink-release_10.0.0.108728/admin/bin/../../bundles/smrttools/current/private/otherbins/all/bin:/opt/sge/bin:/opt/sge/bin/lx-amd64:/usr/bin:/bin"
+
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution
+tmpDir=$(mktemp -d /fluidfs/smrtlink/smrtlink/userdata/tmp_dir/cromwell_tmp.XXXXXX)
+
+export _JAVA_OPTIONS=-Djava.io.tmpdir="$tmpDir"
+export TMPDIR="$tmpDir"
+export HOME="$HOME"
+(
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution
+
+)
+out638c9f17="${tmpDir}/out.$$" err638c9f17="${tmpDir}/err.$$"
+mkfifo "$out638c9f17" "$err638c9f17"
+trap 'rm "$out638c9f17" "$err638c9f17"' EXIT
+tee '/fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution/stdout' < "$out638c9f17" &
+tee '/fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution/stderr' < "$err638c9f17" >&2 &
+(
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution
+
+
+python3 \
+  -m pbcoretools.tasks.auto_ccs_outputs \
+  --log-level INFO \
+   \
+  --min-qv 20 \
+  consolidate \
+  /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/inputs/-556361190/filtered.consensusreadset.xml \
+  consolidate.datastore.json
+)  > "$out638c9f17" 2> "$err638c9f17"
+echo $? > /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution/rc.tmp
+(
+# add a .file in every empty directory to facilitate directory delocalization on the cloud
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution
+find . -type d -exec sh -c '[ -z "$(ls -A '"'"'{}'"'"')" ] && touch '"'"'{}'"'"'/.file' \;
+)
+(
+cd /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution
+
+
+
+)
+mv /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution/rc.tmp /fluidfs/smrtlink/smrtlink/userdata/jobs_root.default/cromwell-executions/pb_export_ccs/638c9f17-070f-4c5b-ad97-ba0be13c8f99/call-export_bam/execution/rc

@@ -167,6 +167,9 @@ def i_one_cell_info(wildcards):
     if 'reads' in scinfo['parts']:
         res['count'].append(cellbase + ".hifi_reads.fastq.count")
         res['md5'].append("md5sums/" + cellbase + ".hifi_reads.fastq.gz.md5")
+        # Javier confirms we want FASTA+FASTQ+BAM
+        res['md5'].append("md5sums/" + cellbase + ".hifi_reads.fasta.gz.md5")
+        res['md5'].append("md5sums/" + cellbase + ".hifi_reads.bam.md5")
 
     # Length histograms
     res['hplots'].append("histo/" + cellbase + ".plots.yml"),
@@ -277,23 +280,42 @@ rule histo_plot:
            {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
         '''
 
-# Export the HiFi reads and count them in a single pass.
-# Note the auto_ccs_outputs step should produce the .hifi_reads.fastq.gz file as the default output
-# name, it's not given explicitly.
-rule hifi_fastq:
+# Prepare to export the HiFi reads
+HIFI_FILTER_ARGS = "--min-qv 20"
+
+localrules: hifi_readset
+rule hifi_readset:
     output:
-        fastq = "{cell}.hifi_reads.fastq.gz",
-        xml   = "{cell}.hifireadset.xml",
-        json  = "{cell}.fastq.datastore.json"
+        xml = "{cell}.hifireadset.xml"
     input:
         xml = "{cell}.consensusreadset.xml",
         bam = "{cell}.reads.bam"
-    params:
-        filter_args = "--min-qv 20"
     shell:
-       r"""{PBCORETOOLS}.dataset_filter {params.filter_args} {input.xml} {output.xml} ''
-           {PBCORETOOLS}.auto_ccs_outputs --log-level INFO {params.filter_args} fastq {output.xml} {output.json}
-        """
+        "{PBCORETOOLS}.dataset_filter {HIFI_FILTER_ARGS} {input.xml} {output.xml} ''"
+
+# Note the auto_ccs_outputs step should produce the .hifi_reads.fastq.gz file as the default output
+# name, it's not given explicitly.
+rule hifi_fastx:
+    output:
+        fastq = "{cell}.hifi_reads.{x,fast.}.gz",
+        json  = "{cell}.{x,fast.}.datastore.json"
+    input:
+        xml = "{cell}.hifireadset.xml",
+        bam = "{cell}.reads.bam"
+    shell:
+        "{PBCORETOOLS}.auto_ccs_outputs --log-level INFO {HIFI_FILTER_ARGS} {wildcards.x} {input.xml} {output.json}"
+
+rule hifi_bam:
+    output:
+        bam   = "{cell}.hifi_reads.bam",
+        bai   = "{cell}.hifi_reads.bam.bai",
+        pbi   = "{cell}.hifi_reads.bam.pbi",
+        json  = "{cell}.consolidate.datastore.json"
+    input:
+        xml = "{cell}.hifireadset.xml",
+        bam = "{cell}.reads.bam"
+    shell:
+        "{PBCORETOOLS}.auto_ccs_outputs --log-level INFO {HIFI_FILTER_ARGS} consolidate {input.xml} {output.json}"
 
 # Make a .count file for the FASTQ file
 rule count_fastq:
