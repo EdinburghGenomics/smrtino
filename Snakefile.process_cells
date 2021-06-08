@@ -422,6 +422,7 @@ rule fasta_to_complexity:
         "{TOOLBOX} dustmasker -level {params.level} -in {input} -outfmt fasta 2>/dev/null | count_dust.py > {output}"
 
 # Combine all the 100 blast reports into one
+localrules: merge_blast_reports
 rule merge_blast_reports:
     output: "{foo}.blast"
     input: [ "{{foo}}.blast_part_{:04d}".format(n) for n in range(BLOB_CHUNKS) ]
