@@ -163,7 +163,7 @@ def i_one_cell_info(wildcards):
                 res['xml'].append(wildcards.cell + rsname)
 
     # If we have CCS reads then we also want to extract the HiFi reads and count
-    # the number of sequences. Maybe we should be running cstats on this??
+    # the number of sequences. Also be running cstats on this.
     if 'reads' in scinfo['parts']:
         res['cou'].append(cellbase + ".hifi_reads.fastq.count")
         res['md5'].append("md5sums/" + cellbase + ".hifi_reads.fastq.gz.md5")
