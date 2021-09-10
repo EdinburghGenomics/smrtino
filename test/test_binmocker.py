@@ -92,6 +92,7 @@ class T(unittest.TestCase):
         bm.add_mock('/bin/wibble',  side_effect="woo 456")
 
         res2 = bm.runscript('/bin/wibble 123')
+        self.assertEqual(res2, 0)
         self.assertEqual(bm.last_calls['/bin/wibble'], [ ['123'] ])
         self.assertEqual(bm.last_calls['woo'], [ ['456'] ])
         self.assertEqual(bm.last_calls['/bin/false'], [ ['789'] ])

@@ -74,9 +74,9 @@ def main(args):
     pversions = dict()
 
     # Scan all of the directories in quick mode, but only if they match the regex
-    for run in glob(environ['TO_LOCATION'] + '/*/'):
+    for arun in glob(environ['TO_LOCATION'] + '/*/'):
 
-        runid = os.path.basename(run)
+        runid = os.path.basename(arun)
 
         if not re.match(rnr, runid):
             debug("Ignoring {} - regex mismatch".format(runid))
@@ -85,7 +85,7 @@ def main(args):
         # We just need to know about the instrument and status, which
         # can be done quickly.
         # You can ask the same by running RunStatus.py -q ...
-        rs = RunStatus(run, 'q', stall_time=environ.get('STALL_TIME'))
+        rs = RunStatus(arun, 'q', stall_time=environ.get('STALL_TIME'))
 
         # Note I'm overwriting runid - this will prune any .extension
         runid = rs.get_run_id()
@@ -101,9 +101,9 @@ def main(args):
         # Normally, skip this. It's too slow.
         if debug():
             if rstatus == "complete":
-                for f in glob(run + "/pipeline/output/QC/run_info.*.yml"):
+                for f in glob(arun + "/pipeline/output/QC/run_info.*.yml"):
                     with open(f) as fh:
-                        fdata = yaml.safe_load(f)
+                        fdata = yaml.safe_load(fh)
                         for sect in fdata.values():
                             if 'Pipeline Version' in sect:
                                 pversions[runid] = fdata['Pipeline Version']

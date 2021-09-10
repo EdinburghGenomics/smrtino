@@ -15,9 +15,9 @@ def parse_args(*args):
                   """
     argparser = ArgumentParser( description=description,
                                 formatter_class = ArgumentDefaultsHelpFormatter )
-    argparser.add_argument("-f", "--foo", required=True, type=string, nargs=1,
+    argparser.add_argument("-f", "--foo", required=True, type=str, nargs=1,
                             help=" TODO ")
-    argparser.add_argument("-d", "--debug", action="set_true",
+    argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 
     return argparser.parse_args(*args)

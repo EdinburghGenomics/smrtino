@@ -73,7 +73,6 @@ def scan_fq(filename):
                      n_bases = 0       )
 
     try:
-        n = 0
         with gzip.open(filename, mode='rb') as fh:
             return scan_fh(fh)
     except OSError as e:

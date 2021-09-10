@@ -40,7 +40,7 @@ class T(unittest.TestCase):
             os.mkdir(os.path.join(self.temp_dir, d))
 
         # Touch .smrtino in the output dir
-        with open(os.path.join(self.temp_dir, 'pacbio_data', '.smrtino'), 'x') as xfh:
+        with open(os.path.join(self.temp_dir, 'pacbio_data', '.smrtino'), 'x'):
             pass
 
         self.bm = BinMocker()
