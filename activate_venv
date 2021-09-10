@@ -38,8 +38,8 @@ else
         pip_install --upgrade pip wheel
         pip_install PyYAML==5.4.1
         pip_install yamlloader==1.0.0
-        pip_install rt=2.1.1
-        pip_install pystache
+        pip_install rt==2.1.1
+        pip_install pystache==0.5.4
 
         # things needed for Blobtools - we are using
         # https://github.com/EdinburghGenomics/blobtools/tree/tims_patches
