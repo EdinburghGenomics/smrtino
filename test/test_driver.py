@@ -145,7 +145,8 @@ class T(unittest.TestCase):
     def shell(self, cmd):
         """Call to os.system in 'safe mode'
         """
-        status = os.system("set -euo pipefail ; " + cmd)
+        # Note this now uses subprocess.run since we can thus specify BASH
+        status = subprocess.call("set -euo pipefail ; " + cmd, shell=True, executable="/bin/bash")
         if status:
             raise ChildProcessError("Exit status was %s running command:\n%s" % (status, cmd))
 

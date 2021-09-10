@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # When running the tests, we need to ensure Python picks up the right environment.
 # For this reason ,it's worth having a test wrapper.
@@ -25,7 +26,7 @@ if [ "$*" == "" ] ; then
     if which pyflakes ; then
         for f in $files_to_flake ; do
             echo "### Running pyflakes $f"
-            pyflakes "$f"
+            pyflakes "$f" || true
         done
     else
         echo "Unable to run pyflakes!"
