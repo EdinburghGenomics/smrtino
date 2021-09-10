@@ -1,0 +1,5 @@
+PyYAML==5.4.1
+yamlloader==1.0.0
+rt==2.1.1
+python-dateutil==2.8.1
+pystache

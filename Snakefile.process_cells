@@ -195,7 +195,7 @@ rule one_cell_info:
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
 if os.environ.get('FILTER_LOCALLY', '1') != '0':
-    localrules: filter_control, copy_subreads, copy_reads, copy_xml
+    localrules: filter_control, copy_subreads, copy_reads
 
 def relativize_xml(xfile):
     """Munge an XML file to reflect new file paths.
