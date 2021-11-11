@@ -35,11 +35,11 @@ dest="${REPORT_DESTINATION}"
 
 # Allow overriding of RSYNC command. Needed for the setup on egcloud.
 # Any required SSH settings should go in ~/.ssh/config
-RSYNC_CMD="${RSYNC_CMD:-rsync}"
+RSYNC_CMD="echorun ${RSYNC_CMD:-rsync}"
 
 echo "Uploading report for $runname to $dest..." >&2
-echorun $RSYNC_CMD -drvlOt all_reports $dest/$runname/ >&2
-echorun $RSYNC_CMD -drvLOt all_reports/img $dest/$runname/all_reports/ >&2
+$RSYNC_CMD -drvlOt all_reports $dest/$runname/ >&2
+$RSYNC_CMD -drvLOt all_reports/img $dest/$runname/all_reports/ >&2
 
 # Add the index. We now have to make this a PHP script but at least the content is totally fixed.
 # This is very similar to what we have on Illuminatus (but not quite).
