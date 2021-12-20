@@ -1,0 +1,6 @@
+Test runs on 20th December 2021 show that, as with the other pipelines, empty data causes ugly
+crashing of the pipeline.
+
+It also revealed a bug in my strip_readset_resources.py that prevented non-HiFi runs being run at all.
+
+We should have clean failures, so I've addressed the bugs.

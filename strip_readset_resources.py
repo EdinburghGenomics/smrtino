@@ -18,12 +18,14 @@ nsmap = dict( pbbase   = "http://pacificbiosciences.com/PacBioBaseDataModel.xsd"
               pbsample = "http://pacificbiosciences.com/PacBioSampleInfo.xsd",
               pbds     = "http://pacificbiosciences.com/PacBioDatasets.xsd" )
 
-prune = "pbds:ConsensusReadSet/pbbase:ExternalResources/pbbase:ExternalResource/pbbase:ExternalResources"
+prune = [ "pbds:SubreadSet/pbbase:ExternalResources/pbbase:ExternalResource/pbbase:ExternalResources",
+          "pbds:ConsensusReadSet/pbbase:ExternalResources/pbbase:ExternalResource/pbbase:ExternalResources" ]
 
 def main(fh):
     tree = ET.parse(fh)
 
-    remove_path(tree, None, prune.split('/'))
+    for p in prune:
+        remove_path(tree, None, p.split('/'))
 
     tree.write(sys.stdout, "unicode")
     print()

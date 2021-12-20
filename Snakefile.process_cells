@@ -198,14 +198,15 @@ if os.environ.get('FILTER_LOCALLY', '1') != '0':
     localrules: filter_control, copy_subreads, copy_reads
 
 def relativize_xml(xfile):
-    """Munge an XML file to reflect new file paths.
+    """Munge an XML file to reflect new file paths and remove unused references
+       so that the file can be imported into another SMRTLink.
     """
     shell("mv -v {xfile} {xfile}.orig")
     shell("strip_readset_resources.py {xfile}.orig > {xfile}")
     shell("{TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {xfile}")
     shell("rm -v {xfile}.orig")
 
-# This copies the files, without applying any filter.
+# This copies the files, then fixes up the XML.
 rule copy_subreads:
     output:
         bam    = "{cell,[^./]+}.subreads.bam",
@@ -277,10 +278,15 @@ rule histo_plot:
         thumbsize = "480x480",
         bins = "1K,2K,3K,5K,10K,50K,100K"
     shell:
-        '''{TOOLBOX} plot_histo.R -f {input} -o {output.hplot} --bins {params.bins} \
-                --title `basename {input} .length_histo.tsv`
-           {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
-        '''
+       r"""if [ -s {input} ] ; then
+             {TOOLBOX} plot_histo.R -f {input} -o {output.hplot} --bins {params.bins} \
+                  --title `basename {input} .length_histo.tsv`
+             {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
+           else
+             {TOOLBOX} gm_label.sh "200x150" "No data to plot" {output.hplot}
+             cp {output.hplot} {output.thumb}
+           fi
+        """
 
 # Prepare to export the HiFi reads
 HIFI_FILTER_ARGS = "--min-qv 20"
@@ -363,9 +369,9 @@ rule list_blob_plots:
                                   size = [BLOB_SUBSAMPLE] )
     run:
         # We want to know how big the subsample actually was, so check the FASTQ
-        counts = dict(zip( SC[wildcards.cell]['parts'],
-                           [ l.split()[0] for l in
-                             shell("grep -o '^>' {input.subs} | uniq -c", iterable=True) ] ))
+        counts = dict()
+        for apart, asubfile in zip(SC[wildcards.cell]['parts'], input.subs):
+            counts[apart] = int(next(shell("grep -o '^>' {asubfile} | wc -l", iterable=True)))
 
         # I need to emit the plots in order in pairs. Unfortunately expand() won't quite
         # cut it here but I can make a nested list comprehension.
@@ -463,7 +469,7 @@ rule split_fasta_in_chunks:
                        print >> file; n_seq++; next; \
                   }} \
                   {{ print >> file; }}' {input}
-           touch {output.parts}
+           touch {output.list} {output.parts}
         """
 
 # Makes a blob db per FASTA using the complexity file as a COV file.
@@ -477,7 +483,8 @@ rule blob_db:
         cov           = "blob/{{foo}}+sub{}.complexity".format(BLOB_SUBSAMPLE)
     shadow: 'shallow'
     shell:
-       r"""mkdir blob_tmp
+       r"""if [ ! -s {input.reads_sample} ] ; then touch {output.json} ; exit 0 ; fi
+           mkdir blob_tmp
            {TOOLBOX} blobtools create -i {input.reads_sample} -o blob_tmp/{wildcards.foo} \
                -t {input.blast_results} -c {input.cov}
            ls -l blob_tmp
@@ -500,20 +507,24 @@ rule blob_plot_png:
     shadow: 'shallow'
     shell:
        r""" mkdir blob_tmp
-            export BLOB_COVERAGE_LABEL=Non-Dustiness
-            {TOOLBOX} blobtools plot -i {input.json} -o blob_tmp/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
-            ls -l blob_tmp
-            mv blob_tmp/{wildcards.foo}.*.stats.txt {output.stats}
+            if [ -s {input.json} ] ; then
+                export BLOB_COVERAGE_LABEL=Non-Dustiness
+                {TOOLBOX} blobtools plot -i {input.json} -o blob_tmp/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
+                ls -l blob_tmp
+                mv blob_tmp/{wildcards.foo}.*.stats.txt {output.stats}
 
-            {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png \
-                -resize {params.maxsize}'>' {output.plotc[0]}
-            {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png \
-                -resize {params.thumbsize}'>' {output.plotc[1]}
+                {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png \
+                    -resize {params.maxsize}'>' {output.plotc[0]}
 
-            {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png \
-                -resize {params.maxsize}'>' {output.plotr[0]}
-            {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png \
-                -resize {params.thumbsize}'>' {output.plotr[1]}
+                {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png \
+                    -resize {params.maxsize}'>' {output.plotr[0]}
+            else
+               echo "No data" > {output.stats}
+               {TOOLBOX} gm_label.sh {params.thumbsize} "No data to plot" {output.plotc[0]}
+               {TOOLBOX} gm_label.sh {params.thumbsize} "No data to plot" {output.plotr[0]}
+            fi
+            {TOOLBOX} convert {output.plotc[0]} -resize {params.thumbsize}'>' {output.plotc[1]}
+            {TOOLBOX} convert {output.plotr[0]} -resize {params.thumbsize}'>' {output.plotr[1]}
         """
 
 
