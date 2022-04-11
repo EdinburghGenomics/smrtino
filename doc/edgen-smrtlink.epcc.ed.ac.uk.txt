@@ -1,0 +1,35 @@
+Finally, in April 2022, we got the new SMRTLink server, running on edgen-services2, into action.
+
+On the instrument, the new connection address was set.
+
+Data transfer is via SSH, using the key copied from the old server. I recycled the 'smrtbackup'
+account which I had created for vault to be able to back up the SMRTLink database, because
+it allows key-only login. I limited this to an explicit host once again.
+
+The files are written to /lustre-gseg/smrtlink/sequel_seqdata. I wanted to leave /lustre-gseg/smrtlink
+mode 770 because we don't want non-edge people peering in here, but then the smrtbackup user
+can't get in, and I can't add smrtbackup to extra groups because the groups are in LDAP, and I can't
+make smrtbackup a SAFE-controlled user because then the PAM policy will madate an up-to-date password.
+
+Aaaanyway, I just did:
+
+$ sudo setfacl -m g:smrtanalysis:rx /lustre-gseg/smrtlink
+
+And that does it. Now the issue is that the files written by the instrument have mode 644, owner
+1200:smrtanalysis. The 'pipeline' user can read them but not hard-link to them. If I make
+symlinks instead, then the analysts still can't make hard-links, and so the delivery process
+will need to be a copy process which is bad.
+
+So I think, despite the fact it feels like a waste of time and space, I need to still copy the
+files as part of the SMRTino pipeline, then just worry about the permissions on the copies.
+
+(Note - the 5head solution here is https://wiki.lustre.org/Lreflink_High_Level_Design -- but reflink
+for Lustre is still a pipe dream).
+
+So I've set SMRTino to look for runs in the new location, and I'm done. If I need to revisit this,
+I'll need a way for the pipeline to force the permissions and/or ownership of the files which
+means probably a sudo rule - should be able to make this fairly specific.
+
+Or else maybe I can have an rsync shim like I use on egcloud. On there it is explicit, but maybe
+I can make it work implicitly? I think so - just override rsync in the path, right?
+

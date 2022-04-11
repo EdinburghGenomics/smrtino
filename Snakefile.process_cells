@@ -117,6 +117,8 @@ def find_source_file(extn):
 
 def copy_all_files(i, o):
     """ For rules that like to copy stuff
+        i and o are dicts of filenames with common keys, which
+        works for rule input/output with matched names
     """
     for (infile, outfile) in ( (i[k], o[k]) for k in o.keys() ):
         shell("cp --no-preserve=all -Lv {infile} {outfile}")

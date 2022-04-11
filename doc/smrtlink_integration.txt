@@ -1,0 +1,27 @@
+So as we are now ramping up the number of runs on the SequelIIe, it becomes worth
+taking a better look at the integration issue.
+
+Let's look at a recent run:
+
+https://egcloud.bio.ed.ac.uk/smrtino/r64175e_20220401_133539/all_reports/run_report.3cells.pan.html
+
+SMRTino knows that the run had three cells:
+
+m64175e_220401_135226
+m64175e_220402_224908
+m64175e_220404_060823
+
+And it can see the reads, and make it's own graphs etc. What I'd like is to get into the report on SMRTLink:
+
+(this was one of the last runs still using smrtlink.genepool.private)
+
+Just to view the link on SMRTLink, I need this link:
+
+https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/130fcef7-4c88-46aa-8026-016c1b9ee2e8?type=ccsreads
+
+The '?type=ccsreads' is mandatory - removing it gives an error - but that's OK I have that info.
+The UUID is... oh. It's in consensusreadset.xml. Well that makes things easy. And for non-HiFi?
+
+https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/fc816e69-8ebd-4905-9bd1-4678607869f2?type=subreads
+
+OK. Much easier than I thought. I'll write some demo code - see link_to_smrtlink.py
