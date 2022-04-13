@@ -12,127 +12,226 @@ L = logging.getLogger(__name__)
 
 class Wso2Constants(object):
     """ These client registration credentials are valid for every SMRT Link
-     server (and are also used by the SL UI)
+        server (and are also used by the SL UI)
     """
+    DEFAULT_PORT = "8243"
     SECRET = "KMLz5g7fbmx8RVFKKdu0NOrJic4a"
     CONSUMER_KEY = "6NjRXBcFfLZOwHc0Xlidiz4ywcsa"
     SCOPES = ("welcome", "run-design", "run-qc", "openid", "analysis",
               "sample-setup", "data-management", "userinfo")
 
-    @classmethod
-    def auth(cls):
-        # Returns auth header as bytes
-        return base64.b64encode(f"{cls.SECRET}:{cls.CONSUMER_KEY}".encode())
+class APIConnectioError(RuntimeError):
+    pass
 
-    @classmethod
-    def scope_str(cls):
-        return " ".join(cls.SCOPES)
+class OAUTHClient:
 
-#print(Wso2Constants.auth())
+    def __init__(self):
+        """No auto connecting.
+        """
+        self.host = None
+        self.verify_ssl = True
+        self.access_token = None
+        self.refresh_token = None
+        self.scopes = ()
 
-def get_access_token(url, user, password, constants, verify_ssl=False):
-    """Generic OATH token getter
-    """
-    headers = { "Authorization": b"Basic " + constants.auth(),
-                "Content-Type":  b"application/x-www-form-urlencoded" }
+    def get_auth(self, secret, key):
+        """ Returns auth header for token call as bytes
+        """
+        return base64.b64encode(f"{secret}:{key}".encode())
 
-    scope_str = constants.scope_str()
+    def get_access_token(self, url, user, password, scopes, auth):
+        """Generic OATH token getter
+        """
+        headers = { "Authorization": b"Basic " + auth,
+                    "Content-Type":  b"application/x-www-form-urlencoded" }
 
-    payload = dict( grant_type = "password",
-                    username = user,
-                    password = password,
-                    scope = scope_str )
+        scope_str = " ".join(scopes)
 
-    # set verify to false to disable the SSL cert verification
-    r = requests.post(url, payload, headers=headers, verify=verify_ssl)
+        payload = dict( grant_type = "password",
+                        username = user,
+                        password = password,
+                        scope = scope_str )
 
-    # Any other errors?
-    r.raise_for_status()
-    return r.json()
+        # If SSL verification has been turned off, we'll suppress these and future
+        # warnings.
+        if not self.verify_ssl:
+            import urllib3
+            urllib3.disable_warnings()
 
-def get_smrtlink_wso2_token(user, password, host, port=8243, verify_ssl=False):
-    """Token getter that uses Wso2Constants
-    """
-    token_url = f"https://{host}:{port}/token"
+        # set verify to false to disable the SSL cert verification
+        r = requests.post(url, payload, headers=headers, verify=self.verify_ssl)
 
-    try:
-        j = get_access_token(token_url, user, password, Wso2Constants, verify_ssl=verify_ssl)
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 400:
-            L.error("Error 400 when getting token normally indicates incorrect credentials")
-        raise
+        # Any other errors?
+        r.raise_for_status()
+        j = r.json()
 
-    # We should get back some yummy JSON
-    assert j['access_token']
-    assert j['refresh_token']
-    j['scopes'] = j['scope'].split()
+        self.access_token = j['access_token']
+        self.refresh_token = j.get('refresh_token')
+        self.scopes = tuple(j['scope'].split())
 
-    return j
+        self.api_base = self.get_api_base(self.host)
 
-def token_to_headers(access_token):
-    """ Once we have authenticated and have a token, we can use it for actual requests
-    """
-    return { "Authorization": f"Bearer {access_token}".encode(),
-             "Content-type":  b"application/json" }
+        return j
 
-def get_endpoint(api_path, host, access_token, verify_ssl):
-    """Having got a token, we probably want to wrap this in a Class to bake the last
-       three parameters in.
-       No point worrying about token expiry since we are authenticating when the script runs,
-       and not hanging around once our queries are complete. The notes say this is fine.
-    """
-    api_url = f"https://{host}:8243/SMRTLink/1.0.0/{api_path.lstrip('/')}"
-    headers = token_to_headers(access_token)
+    def get_api_base(self, host):
+        """ Subclass should override this to provide the right API base
+        """
+        return host
 
-    # verify=False disables SSL verification
-    response = requests.get(api_url, headers=headers, verify=verify_ssl)
-    response.raise_for_status()
+    def check_token(self):
+        """Check we are actually logged in
+        """
+        # TODO - we should take action if the token has expired, or is about to expire,
+        # but for now just check we hold a token.
+        if not self.access_token:
+            raise APIConnectionError("No token. You need to log in.")
 
-    return response.json()
+    def token_to_headers(self, overrides=None):
+        """ Once we have authenticated and have a token, we can use it for actual requests
+        """
+        self.check_token()
 
-def get_status(host, user, password, verify_ssl=False):
-    """This functions as a basic 'ping' test
-    """
-    token = get_smrtlink_wso2_token(user, password, host, verify_ssl=verify_ssl)['access_token']
-    return get_endpoint("/status", host, token, verify_ssl)
+        headers = { "Authorization": f"Bearer {self.access_token}".encode(),
+                    "Content-type":  b"application/json" }
 
-# So let's test this. Want to avoid typing the password or saving it in a file, so
-# let's make it a .ini file like .genologicsrc
+        if overrides:
+            headers.update(overrides)
 
-def get_rc_credentials(section="smrtlink"):
-    """Returns a dict with keys {'host', 'user', 'password'} and maybe
-       'verify_ssl'
-    """
-    config = configparser.SafeConfigParser()
-    conf_file = config.read(os.environ.get('SMRTLINKRCRC',
-                            [os.path.expanduser('~/.smrtlinkrc'), 'smrtlink.conf']))
+        return headers
 
-    assert conf_file, "No config file found for SMRTLink API credentials"
 
-    res = dict(host="smrtlink", user="guest")
-    for k in "host user password verify_ssl".split():
+    def get_endpoint(self, path):
+        """Having logged in and got a token, we can actually make calls.
+        """
+        headers = self.token_to_headers()
+
+        full_url = f"{self.api_base}/{path.lstrip('/')}"
+
+        # verify=False disables SSL verification
+        response = requests.get(full_url, headers=headers, verify=self.verify_ssl)
+        response.raise_for_status()
+
+        return response.json()
+
+
+class SMRTLinkClient(OAUTHClient):
+
+    def __init__(self, host, verify_ssl=False):
+        """Set up a client for a given host. Connection must be done explicitly.
+        """
+        assert not '/' in host, "Host should not include https:// part or any path info"
+
+        super().__init__()
+
+        self.constants = Wso2Constants
+
+        if ':' in host:
+            # Default port
+            self.host = f"https://{host}"
+        else:
+            self.host = f"https://{host}:{self.constants.DEFAULT_PORT}"
+
+        self.verify_ssl = bool(verify_ssl)
+
+    def login(self, user, password):
+        """Token getter that uses Wso2Constants
+           We're not worrying about token refresh just now. Tokens should be valid for ~2 hours
+        """
+        token_url = f"{self.host}/token"
+        auth = self.get_auth(secret = self.constants.SECRET,
+                             key    = self.constants.CONSUMER_KEY)
+
         try:
-            res[k] = config[section][k]
-        except KeyError:
-            pass
+            j = self.get_access_token( url = token_url,
+                                       user = user,
+                                       password = password,
+                                       auth = auth,
+                                       scopes = self.constants.SCOPES )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 400:
+                L.error("Error 400 when getting token normally indicates incorrect credentials")
+                raise APIConnectionError("Login failed")
+            else:
+                # Just raise the error as-is
+                raise
 
-    if 'verify_ssl' in res:
-        # Allow '0', 'n[o]', 'f[alse]'
-        res['verify_ssl'] = not(res['verify_ssl'][0] in '0nNFf')
+        # Save this just in case
+        self._access_json = j
 
-    # Special for password
-    if "password" not in res:
-        try:
-            res["password"] = config[section]["pass"]
-        except KeyError:
-            raise RuntimeError("No password found in file for {res['user']}@{res['host']}")
+    @classmethod
+    def connect_with_creds(cls, creds=None):
+        """Convenience method yields a connection with the credentials from get_rc_credentials()
+        """
+        if not creds:
+            creds = cls.get_rc_credentials()
 
-    # Host should not have 'https://' part.
-    assert not '/' in res['host']
+        if 'verify_ssl' in creds:
+            client = cls(creds['host'], creds['verify_ssl'])
+        else:
+            client = cls(creds['host'])
 
-    return res
+        client.login(creds['user'], creds['password'])
 
-creds = get_rc_credentials()
-pprint(creds)
+        return client
 
-pprint(get_status(**creds))
+    def get_api_base(self, host):
+        """Provide the API base needed for SMRTLink
+        """
+        return f"{host}/SMRTLink/1.0.0"
+
+    def get_status(self):
+        """This functions as a basic 'ping' test
+        """
+        return self.get_endpoint("/status")
+
+    @classmethod
+    def get_rc_credentials(cls, section="smrtlink"):
+        """Reads credentials from the standard .ini style file
+           Returns a dict with keys {'host', 'user', 'password'} and maybe
+           'verify_ssl'. 'host' may incorporate a port number (default is 8243)
+        """
+        config = configparser.SafeConfigParser()
+        conf_file = config.read(os.environ.get('SMRTLINKRCRC',
+                                [os.path.expanduser('~/.smrtlinkrc'), 'smrtlink.conf']))
+
+        assert conf_file, "No config file found for SMRTLink API credentials"
+
+        res = dict(host="smrtlink", user="guest")
+        for k in "host user password verify_ssl".split():
+            try:
+                res[k] = config[section][k]
+            except KeyError:
+                pass
+
+        if 'verify_ssl' in res:
+            # Allow '0', 'n[o]', 'f[alse]'
+            res['verify_ssl'] = not(res['verify_ssl'][0] in '0nNFf')
+
+        # Special for password
+        if "password" not in res:
+            try:
+                res["password"] = config[section]["pass"]
+            except KeyError:
+                raise RuntimeError("No password found in file for {res['user']}@{res['host']}")
+
+        # Host should not have 'https://' part.
+        assert not '/' in res['host']
+
+        return res
+
+def main():
+    creds = SMRTLinkClient.get_rc_credentials()
+
+    creds_copy = creds.copy()
+    creds_copy["password"] = '*' * len(creds_copy["password"])
+    pprint(creds_copy)
+
+    # Construct connection and connect
+    conn = SMRTLinkClient.connect_with_creds(creds)
+
+    pprint(conn.get_status())
+
+# If script is run directly, test connect with default creds.
+if __name__ == '__main__':
+    main()
+
