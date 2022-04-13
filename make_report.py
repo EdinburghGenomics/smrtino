@@ -4,7 +4,7 @@ import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pprint import pformat
 from datetime import datetime
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 import yaml
 import base64
 

@@ -2,7 +2,7 @@
 # for the original.
 import os, sys, re
 import base64
-from pprint import pprint, pformat
+from pprint import pprint
 
 import configparser
 import requests
@@ -20,7 +20,7 @@ class Wso2Constants(object):
     SCOPES = ("welcome", "run-design", "run-qc", "openid", "analysis",
               "sample-setup", "data-management", "userinfo")
 
-class APIConnectioError(RuntimeError):
+class APIConnectionError(RuntimeError):
     pass
 
 class OAUTHClient:
@@ -221,7 +221,7 @@ class SMRTLinkClient(OAUTHClient):
         return res
 
 def test_connect():
-    creds = SMRTLinkClient.get_rc_credentials("smrtlink_new")
+    creds = SMRTLinkClient.get_rc_credentials()
 
     creds_copy = creds.copy()
     creds_copy["password"] = '*' * len(creds_copy["password"])
