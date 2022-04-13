@@ -73,10 +73,10 @@ class OAUTHClient:
 
         return j
 
-    def get_api_base(self, host):
+    def get_api_base(self, host=None):
         """ Subclass should override this to provide the right API base
         """
-        return host
+        return host or self.host
 
     def check_token(self):
         """Check we are actually logged in
@@ -174,9 +174,10 @@ class SMRTLinkClient(OAUTHClient):
 
         return client
 
-    def get_api_base(self, host):
+    def get_api_base(self, host=None):
         """Provide the API base needed for SMRTLink
         """
+        host = host or self.host
         return f"{host}/SMRTLink/1.0.0"
 
     def get_status(self):
@@ -219,8 +220,8 @@ class SMRTLinkClient(OAUTHClient):
 
         return res
 
-def main():
-    creds = SMRTLinkClient.get_rc_credentials()
+def test_connect():
+    creds = SMRTLinkClient.get_rc_credentials("smrtlink_new")
 
     creds_copy = creds.copy()
     creds_copy["password"] = '*' * len(creds_copy["password"])
@@ -233,5 +234,5 @@ def main():
 
 # If script is run directly, test connect with default creds.
 if __name__ == '__main__':
-    main()
+    test_connect()
 
