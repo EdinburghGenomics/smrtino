@@ -25,3 +25,80 @@ The UUID is... oh. It's in consensusreadset.xml. Well that makes things easy. An
 https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/fc816e69-8ebd-4905-9bd1-4678607869f2?type=subreads
 
 OK. Much easier than I thought. I'll write some demo code - see link_to_smrtlink.py
+And tests too. Done.
+
+Next question - is there any way to pull the graphs out of SMRTLink? Bear in mind I can now see the file system as well
+as the web interface.
+
+So looking at the CCS example above, and picking the graph under "Base Yield Density", I can see the URL for that page is:
+
+https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/260e6336-6ab3-4476-92d7-492bd2348249?type=ccsreads&show=plot-raw_data_report-raw_data_report.base_yield_plot_group
+
+and for the actual graph? It's embedded in the HTML. OK, wonder if I can pull that out. I'll try. OK, it's actually loaded from:
+
+https://smrtlink.genepool.private:8243/SMRTLink/1.0.0/smrt-link/job-manager/jobs/analysis/1329/reports/6462b72d-cf80-43cd-86bf-1c8a59f44dce/resources?relpath=base_yield_plot.png
+
+But this wants an OAuth token. I could try something like...
+https://developer.byu.edu/docs/consume-api/use-api/oauth-20/oauth-20-python-sample-code
+But maybe I can just dig into the file system?
+
+For CCS data that gets sucked into smrtlink, I can find it under:
+/fluidfs/smrtlink/smrtlink/userdata/jobs_root/cromwell-executions/sl_import_ccs/
+
+The UUIDs here are not related to the run IDs, but I can infer by date that my CCS run from above is
+b57d7bc3-914a-4441-b1fa-f48dde478f96
+
+Then:
+
+cd call-sl_dataset_reports/sl_dataset_reports/*/call-import_dataset_reports/execution
+
+I guess for robustness I should glob that, then if there are multiple options pick the latest.
+
+Now, how do I determine that this is the right dataset, aside from matching timestamps?
+
+[root@smrtlink execution]# grep 130fcef7 *.json
+adapter.report.json:        "130fcef7-4c88-46aa-8026-016c1b9ee2e8"
+ccs.report.json:        "130fcef7-4c88-46aa-8026-016c1b9ee2e8"
+control.report.json:        "130fcef7-4c88-46aa-8026-016c1b9ee2e8"
+loading.report.json:        "130fcef7-4c88-46aa-8026-016c1b9ee2e8"
+raw_data.report.json:        "130fcef7-4c88-46aa-8026-016c1b9ee2e8"
+
+Aha. Great. The UUID is all over the JSON files. OK, so I think we have a plan for some code:
+
+1) Given a dataset type (ccs or subreads), list $SMRT_ROOT/userdata/jobs_root/cromwell-executions/sl_import_{dstype}
+and order by date. The cromwell job can't be older than the CreatedAt value on the ReadSet root, but it might be rather
+later. If we start scanning at the time found in the XML and then look forward we should find it very rapidly.
+
+2) glob("call-sl_dataset_reports/sl_dataset_reports/*/call-import_dataset_reports/execution") - works for both types
+
+3) Look in loading.report.json to see if this is our report. If not, proceed to check later jobs until we find the report or
+give up.
+
+This looks very implement-able, and avoids any OAUTH BS. And while there is scope for cases where we can't find a report,
+the matck on dataset_uuids would seem to eliminate the possibility of assigning the wrong figures/graphs to the wrong
+flowcell. Great :-)
+
+---
+
+Robert has just pointed out he reviews runs in the "Run QC" tab, not the "Data Management" tab. There is a link from the
+former to the latter, and for our CCS run it is:
+
+https://smrtlink.genepool.private:8243/sl/run-qc/dfb8647e-eb3e-4b6c-9351-92930fb6f058
+
+So this is yet another ID. This is probably what confused me last time, because I was maybe looking to link this number.
+If we have to go via the Data Management link it's OK, but hopefully we can extract this one too? Well it's not
+in the filenames or any of the JSON files. I guess we have to go via the database? OK, so let's do that as well.
+
+Of course, the problem with the database query is that PostgreSQL is on the SMRTLink server (services2) and SMRTino is
+on the login0 server. So we have some options for making the query:
+
+1) Find a way to do it with the SMRT Link API - requires auth, (and poorly documented??)
+    Actually this looks OK - see https://www.pacb.com/wp-content/uploads/Sequel-SMRT-Link-Web-Services-API-Use-Cases-v8.0.pdf
+2) SSH that runs psql. Should be fairly easy. pipeline user should have password-less SSH access
+3) Expose postgres to gseg-login0. Maybe a port forward? Hmmm.
+4) Write a little web service, and have it as a shim
+
+Let's try 1 first. If it works, we maybe don't need to implement the data searching option above, since we can probably find
+the cromwell job id directly
+
+

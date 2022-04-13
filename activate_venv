@@ -12,7 +12,7 @@ fi
 
 activate_venv() {
     #We need to ensure -u is not set but then put the old value back.
-    reset=`set +o | grep -w nounset` ; set +o nounset
+    local reset=`set +o | grep -w nounset` ; set +o nounset
     source ./_smrtino_venv/bin/activate
     $reset
 }
@@ -28,17 +28,25 @@ if [ -e ./_smrtino_venv/bin/activate ] ; then
     activate_venv
 
 else
-    _py3="${TOOLBOX:-`dirname $BASH_SOURCE`/toolbox}"/bootstrap_python3
-    _py3_real="$(readlink -f "$_py3")"
-    echo "Bootstrapping new VEnv from $_py3 ($_py3_real)"
-    ( set -e ;
+    (   _toolbox="${TOOLBOX:-`dirname $BASH_SOURCE`/toolbox}"
+        _py3="$_toolbox"/bootstrap_python3
+        _py3_real="$(readlink -f "$_py3")"
+        echo "Bootstrapping new VEnv from $_py3 ($_py3_real)"
+
+        set -e
         "$_py3_real" -mvenv ./_smrtino_venv
         activate_venv
 
-        pip_install --upgrade pip wheel
-        pip_install PyYAML==5.4.1
-        pip_install yamlloader==1.0.0
-        pip_install rt==2.1.1
+        pip_install --upgrade 'pip<22'
+        pip_install wheel
+
+        pip_install pyyaml==5.4.1
+        pip_install 'yamlloader<2'
+        pip_install rt==2.2.2
+
+        # For access the Clarity
+        #pip_install pyclarity_lims==0.4.8
+        #pip_install psycopg2-binary
 
         # things needed for Blobtools - we are using
         # https://github.com/EdinburghGenomics/blobtools/tree/tims_patches
@@ -51,15 +59,14 @@ else
         pip_install snakemake==5.5.3
         pip_install drmaa==0.7.9
 
-        # For access the Clarity
-        #pip_install pyclarity_lims==0.4.8
-        #pip_install psycopg2-binary==2.8.3
-
     )
+
     if [ $? = 0 ] ; then
+        echo "VEnv provisioned OK"
         # We need this since we quit the subshell
         activate_venv
     else
+        unset -f pip_install
         echo "Provisioning VEnv Failed!"
         false
     fi

@@ -55,10 +55,10 @@ class T(unittest.TestCase):
         """ I added the ability to generate a link to SMRTLINK
         """
         self.assertEqual( get_readset_info( self.xmlfiles[0],  smrtlink_base='XXX')['_link'],
-                          'XXX/data-management/dataset-detail/f341ca37-cca4-4fd6-9232-50cef558f75f?type=subreads' )
+                          'XXX/sl/data-management/dataset-detail/f341ca37-cca4-4fd6-9232-50cef558f75f?type=subreads' )
 
         self.assertEqual( get_readset_info( self.xmlfiles[1],  smrtlink_base='XXX')['_link'],
-                          'XXX/data-management/dataset-detail/37220870-92af-4d9b-9ca8-ce4699e0ffbe?type=ccsreads' )
+                          'XXX/sl/data-management/dataset-detail/37220870-92af-4d9b-9ca8-ce4699e0ffbe?type=ccsreads' )
 
 if __name__ == '__main__':
     unittest.main()

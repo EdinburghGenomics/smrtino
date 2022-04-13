@@ -62,7 +62,7 @@ def get_smrtlink_link(root, base_url):
 
        https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/fc816e69-8ebd-4905-9bd1-4678607869f2?type=subreads
 
-       In which case, base_url would be https://smrtlink.genepool.private:8243/sl
+       In which case, base_url would be https://smrtlink.genepool.private:8243
     """
     # The dstype parameter needs to be 'ccsreads' or 'subreads'
     rs_types  = dict( ConsensusReadSet = 'ccsreads',
@@ -74,5 +74,5 @@ def get_smrtlink_link(root, base_url):
     # The UniqueId is just an attrib of the root element (though it is also found elsewhere)
     uniqueid = root.attrib.get('UniqueId', 'no_UniqueId_in_xml')
 
-    return f"{base_url}/data-management/dataset-detail/{uniqueid}?type={rstype}"
+    return f"{base_url}/sl/data-management/dataset-detail/{uniqueid}?type={rstype}"
 
