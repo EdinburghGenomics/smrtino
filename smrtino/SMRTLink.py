@@ -100,15 +100,19 @@ class OAUTHClient:
         return headers
 
 
-    def get_endpoint(self, path):
+    def get_endpoint(self, _path, **params):
         """Having logged in and got a token, we can actually make calls.
+           Any keyword args will be quoted and added as args - eg. name='My Run 123'
         """
         headers = self.token_to_headers()
 
-        full_url = f"{self.api_base}/{path.lstrip('/')}"
+        full_url = f"{self.api_base}/{_path.lstrip('/')}"
 
         # verify=False disables SSL verification
-        response = requests.get(full_url, headers=headers, verify=self.verify_ssl)
+        response = requests.get( full_url,
+                                 params = params,
+                                 headers = headers,
+                                 verify = self.verify_ssl)
         response.raise_for_status()
 
         return response.json()
