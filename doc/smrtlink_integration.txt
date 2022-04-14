@@ -101,4 +101,8 @@ on the login0 server. So we have some options for making the query:
 Let's try 1 first. If it works, we maybe don't need to implement the data searching option above, since we can probably find
 the cromwell job id directly
 
+---
 
+I now have "from smrtino.SMRTLink import SMRTLinkClient" so let's wield that bad boy. First job is that I want to work out how
+to extract that dfb8647e-eb3e-4b6c-9351-92930fb6f058 UUID from the run ID r64175e_20220401_133539. I'll try in
+scratch/run_id_to_qc_link.py

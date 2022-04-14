@@ -1,4 +1,4 @@
-# See https://www.pacb.com/wp-content/uploads/Sequel-SMRT-Link-Web-Services-API-Use-Cases-v8.0.pdf
+# See https://www.pacb.com/wp-content/uploads/Sequel_SMRT_Link_Web_Services_API_Use_Cases_v10.2.pdf
 # for the original.
 import os, sys, re
 import base64
