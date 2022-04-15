@@ -123,6 +123,10 @@ def copy_all_files(i, o):
     for (infile, outfile) in ( (i[k], o[k]) for k in o.keys() ):
         shell("cp --no-preserve=all -Lv {infile} {outfile}")
 
+wildcard_constraints:
+    cell = r"\w+",
+    filter = r"\.[a-z]+|",
+
 # Main target is one yml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
 localrules: main, one_cell_info
@@ -211,10 +215,10 @@ def relativize_xml(xfile):
 # This copies the files, then fixes up the XML.
 rule copy_subreads:
     output:
-        bam    = "{cell,[^./]+}.subreads.bam",
-        pbi    = "{cell,[^./]+}.subreads.bam.pbi",
-        scraps = "{cell,[^./]+}.scraps.bam",
-        xml    = "{cell,[^./]+}.subreadset.xml"
+        bam    = "{cell}.subreads.bam",
+        pbi    = "{cell}.subreads.bam.pbi",
+        scraps = "{cell}.scraps.bam",
+        xml    = "{cell}.subreadset.xml"
     input:
         bam    = find_source_file(".subreads.bam"),
         pbi    = find_source_file(".subreads.bam.pbi"),
@@ -229,9 +233,9 @@ rule copy_subreads:
 # Ditto for reads.bam
 rule copy_reads:
     output:
-        bam    = "{cell,[^./]+}.reads.bam",
-        pbi    = "{cell,[^./]+}.reads.bam.pbi",
-        xml    = "{cell,[^./]+}.consensusreadset.xml"
+        bam    = "{cell}.reads.bam",
+        pbi    = "{cell}.reads.bam.pbi",
+        xml    = "{cell}.consensusreadset.xml"
     input:
         bam    = find_source_file(".reads.bam"),
         pbi    = find_source_file(".reads.bam.pbi"),
@@ -248,10 +252,10 @@ rule copy_reads:
 # Note that bam2bam is very much deprecated - nee note in toolbox!
 rule filter_control:
     output:
-        bam    = "{cell,[^./]+}.nocontrol.subreads.bam",
-        pbi    = "{cell,[^./]+}.nocontrol.subreads.bam.pbi",
-        scraps = "{cell,[^./]+}.nocontrol.scraps.bam",
-        xml    = "{cell,[^./]+}.nocontrol.subreadset.xml"
+        bam    = "{cell}.nocontrol.subreads.bam",
+        pbi    = "{cell}.nocontrol.subreads.bam.pbi",
+        scraps = "{cell}.nocontrol.scraps.bam",
+        xml    = "{cell}.nocontrol.subreadset.xml"
     input:
         bam    = find_source_file(".subreads.bam"),
         scraps = find_source_file(".scraps.bam"),
@@ -357,7 +361,7 @@ BLOB_LEVELS = "phylum order species".split()
 # display them.
 localrules: list_blob_plots
 rule list_blob_plots:
-    output: r"blob/{cell,\w+}{filter,\.[a-z]+|}.plots.yml"
+    output: r"blob/{cell}{filter}.plots.yml"
     input:
         png = lambda wc: expand( "blob/{cell}.{s}.{taxlevel}.{extn}{thumb}.png",
                                  cell = [wc.cell + wc.filter],
@@ -397,7 +401,7 @@ rule list_blob_plots:
 # As there is only one heading this returns a singleton list.
 localrules: list_histo_plots
 rule list_histo_plots:
-    output: r"histo/{cell,\w+}{filter,\.[a-z]+|}.plots.yml"
+    output: r"histo/{cell}{filter}.plots.yml"
     input:
         png = lambda wc: expand( "histo/{cell}.{s}.length_histo{thumb}.png",
                                  cell = [wc.cell + wc.filter],

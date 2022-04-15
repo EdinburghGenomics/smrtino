@@ -38,9 +38,11 @@ glob = glob()
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
 """ Report will be made based upon all the .info.yml files found. There may be none.
+    For every .info.yml we need to generate a corresponding .link.yml
     Also we may or may not have some plots to add.
 """
 INFO_YML = glob("*.info.yml")
+LINK_YML = [ re.sub(r'\.info\.yml$', r'.link.yml', f) for f in INFO_YML ]
 
 # We shall make a single report for the whole run. This is supposed to be fairly simple.
 # If it gets complex we might need a more sophisticated report making strategy.
@@ -79,6 +81,14 @@ rule list_projects:
         with open(output[0], "w") as ofh:
             print( *sorted(plist), file=ofh, sep='\n' )
 
+# Note this script relies on ~/.smrtlinkrc for connection deets.
+localrules: link_to_smrtlink
+rule link_to_smrtlink:
+    input:  "{cell}.info.yml"
+    output: "{cell}.link.yml"
+    shell:
+        "link_to_smrtlink.py {input} > {output}"
+
 # This rule marshalls all the .png images and makes the report in PanDoc format.
 # Note - the run_status is now fudged so that the report says 'complete' when
 # the run is complete, even though it's not complete (according to pb_run_status.py)
@@ -87,6 +97,7 @@ rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
     input:
         yaml = INFO_YML,
+        links = INFO_LINKS,
         blob_plots = glob("blob/*.png"),
         histo_plots = glob("histo/*.png"),
         plist = "projects_ready.txt",
@@ -98,6 +109,6 @@ rule make_report:
            mkdir all_reports/img
            ln -srnt all_reports/img blob/*.png || true
            ln -srnt all_reports/img histo/*.png || true
-           make_report.py -o {output} {params.fudge} -s <(pb_run_status.py) {input.yaml}
+           make_report.py -o {output} {params.fudge} -s <(pb_run_status.py) {input.yaml} {input.links}
         '''
 

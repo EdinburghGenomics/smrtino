@@ -27,17 +27,28 @@ def main(args):
 
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
 
-    all_info = dict()
-    # Basic basic basic
+    # Collect the infos from the files into keyed-alike dicts.
+    all_yamls = dict( info  = dict(),
+                      link = dict() )
+
     for y in args.yamls:
+
+        yaml_type = y.split('.')[-1]
+        if yaml_type not in all_yamls:
+            exit(f"The file {y} is not something I know hot to process - I know about {set(all_yamls)}")
 
         with open(y) as yfh:
             yaml_info = yaml.safe_load(yfh)
 
-            # Sort by cell ID - all YAML must have this.
-            assert yaml_info.get('cell_id'), "All yamls must have a cell ID"
+            # All YAML files have a 'cell_id' or 'cell_dir' which will be a common key
+            cell_dir = yaml_info.get('cell_dir', yaml_info.get('cell_id'))
+            if not cell_dir:
+                exit("All yamls must indlude a cell ID - eg. m54321_200211_123456")
 
-        all_info[yaml_info['cell_id']] = yaml_info
+        # Push it into the dict
+        if cell_dir in all_yamls[yaml_type]:
+            exit(f"Cell {cell_dir} was already in all_yamls[{yaml_type}]. Will not overwrite it.")
+        all_yamls[yaml_type][cell_dir] = yaml_info
 
     # Glean some pipeline metadata
     if args.pbpipeline:
@@ -48,7 +59,7 @@ def main(args):
     # And some more of that
     status_info = load_status_info(args.status, fudge=args.fudge_status)
 
-    rep = format_report(all_info,
+    rep = format_report(all_yamls['info'],
                         pipedata = pipedata,
                         run_status = status_info,
                         aborted_list = status_info.get('CellsAborted'))
@@ -231,7 +242,7 @@ def parse_args(*args):
     argparser = ArgumentParser( description=description,
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("yamls", nargs='*',
-                            help="Supply a list of info.yml files to compile into a report.")
+                            help="Supply a list of info.yml and link.yml files to compile into a report.")
     argparser.add_argument("-p", "--pbpipeline", default="pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
     argparser.add_argument("-s", "--status", default=None,
