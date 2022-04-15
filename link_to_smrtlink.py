@@ -1,21 +1,150 @@
 #!/usr/bin/env python3
 
-""" Small shell wrapper to discover links to SMRTLink
+""" API caller wrapper to discover links to SMRTLink
 """
+
 import os, sys
-from smrtino.ParseXML import get_readset_info
+import logging as L
+import yaml
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-# We need to know the base URL for smrtlink. Rather than pulling in ARgumentParser, just make it an
-# env var.
-sb = os.environ.get('SMRTLINK_BASE')
-if not sb:
-    exit(f"You need to set $SMRTLINK_BASE - try 'env SMRTLINK_BASE=https://smrtlink/sl {sys.argv[0]} ...' or so")
+from smrtino.SMRTLink import SMRTLinkClient
 
-if not sys.argv[1:]:
-    exit(f"Usage: {sys.argv[0]} <xml_file> [...]")
+""" I want to return something like...
 
-for xmlfile in sys.argv[1:]:
+'run_dir': 'r64175e_20220401_133539',
+'smrtlink_run_uuid': 'dfb8647e-eb3e-4b6c-9351-92930fb6f058',
+'smrtlink_run_name': 'Run 04.01.2022 12:28',
+'smrtlink_run_link': 'https://smrtlink.genepool.private:8243/sl/run-qc/dfb8647e-eb3e-4b6c-9351-92930fb6f058',
+'cell_dir' : 'm64175e_220401_135226',
+'cell_uuid' : 'x-x-x-x',
+'cell_type' : 'ccsreads',
+'smrtlink_cell_link' : 'https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/130fcef7-4c88-46aa-8026-016c1b9ee2e8?type=ccsreads'
 
-    ri = get_readset_info(xmlfile, smrtlink_base=sb)
+"""
+conn = None
 
-    print(ri['_link'])
+def main(args):
+
+    L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
+
+    # Load that YAML file
+    with open(args.info_yml) as yfh:
+        info_yml = yaml.safe_load(yfh)
+
+    # Simplest connection with ~/.smrtlinkrc defaults
+    global conn
+    conn = SMRTLinkClient.connect_with_creds(section=args.rc_section)
+
+    res = dict( run_dir = info_yml['run_id'],
+                cell_dir = info_yml['cell_id'],
+                cell_uuid = info_yml.get('cell_uuid'),
+                cell_type = info_yml.get('_readset_type') )
+
+    # We need to query the API for the 'smrtlink_run_name' so may as well get the 'cell_uuid'
+    # and 'cell_type' as well, even though we already have them in the XML.
+    L.debug("Querying the API for cell type and UUID")
+    cell_res = get_cell_id_and_type(res['cell_dir'])
+
+    # If we do have 'cell_uuid' and '_readset_type' in the info.yml then sanity check that
+    # everything matches.
+    for k, v in cell_res.items():
+        info_v = res.get(k)
+        if info_v and (info_v != v):
+            raise RuntimeError(f"Value for {k} in info.yml is {info_v} but SMRTLink says {v}")
+    # Once happy, fold in the new values
+    res.update(cell_res)
+
+    # Having sorted that out, get the run UUID which we always have to go to the API for as
+    # it's not in the XML at all.
+    res['smrtlink_run_uuid'] = get_run_uuid(res['run_dir'], res['smrtlink_run_name'])
+
+    # Now we have to fill in smrtlink_run_link and smrtlink_cell_link
+    host_for_links = args.link_host or conn.link_host
+    res.update(make_links(res, host_for_links))
+
+    # And print the result
+    yaml.safe_dump(res, sys.stdout)
+
+def make_links(res, host):
+    """Make some links. Pretty simple
+    """
+    return dict( smrtlink_cell_link = f"{host}/sl/data-management/dataset-detail/{res['cell_uuid']}?type={res['cell_type']}",
+                 smrtlink_run_link  = f"{host}/sl/run-qc/{res['smrtlink_run_uuid']}", )
+
+def get_cell_id_and_type(cell_dir):
+    """We can do this without fetching every cell because the datasets endpoint supports search
+       by 'metadataContextId'.
+       Return a dict with keys {'cell_uuid', 'cell_type', 'smrtlink_run_name'}
+    """
+    # TODO - check this works for CLR reads, I only tested it for CCS.
+    all_cells = []
+    for dstype in ['ccsreads', 'subreads']:
+        dsets = conn.get_endpoint(f"/smrt-link/datasets/{dstype}", metadataContextId=cell_dir)
+        L.debug(f"Found {len(dsets)} matching cells in {dstype}")
+        for c in dsets:
+            c['_dstype'] = dstype
+            all_cells.append(c)
+
+    L.debug(f"Fetched total of {len(all_cells)} cells")
+
+    # If the filter failed, we may have more than one?
+    all_cells = [ c for c in all_cells if c['metadataContextId'] == cell_dir ]
+
+    if not all_cells:
+        raise RuntimeError(f"No cell found for {cell_dir}")
+    elif len(all_cells) > 1:
+        raise RuntimeError(f"Multiple records found for cell {cell_dir}")
+
+    cell, = all_cells
+    return dict( cell_uuid = cell['uuid'],
+                 cell_type = cell['_dstype'],
+                 smrtlink_run_name = cell['runName'] )
+
+def get_run_uuid(run_dir, run_name=None):
+    """Get the UUID associated with a run (and thus the QC report) by the run directory name.
+       You also should provide the run name, as returned by get_cell_id_and_type(), because
+       the API does not support a direct search by 'context' so without this we need to fetch
+       all runs and filter.
+    """
+    if run_name:
+        all_runs = conn.get_endpoint("/smrt-link/runs", name=run_name)
+    else:
+        # OK fetch them all
+        all_runs = conn.get_endpoint("/smrt-link/runs")
+    L.debug(f"Fetched all {len(all_runs)} runs")
+
+    # Filter the results, in any case
+    my_run = [ r for r in all_runs if r['context'] == run_dir ]
+
+    if not my_run:
+        raise RuntimeError(f"No run found for {run_dir}")
+    elif len(my_run) > 1:
+        raise RuntimeError(f"Multiple records found for {run_dir}")
+
+    return my_run[0]['uniqueId']
+
+
+def parse_args(*args):
+    description = """Takes a .info.yml file and call the SMRTLink API to discover
+                     appropriate links to the Run QC and Dataset. Dumps the result
+                     in YAML format.
+                     Connection to the API is as per ~/.smrtlinkrc
+                  """
+    argparser = ArgumentParser( description=description,
+                                formatter_class = ArgumentDefaultsHelpFormatter )
+    argparser.add_argument("--link_host",
+                            help="Force hostname on links to be different from that in .smrtlinkrc")
+    argparser.add_argument("--rc_section", default="smrtlink",
+                            help="Read specified section in .smrtlinkrc for connection details")
+
+    argparser.add_argument("info_yml",
+                           help=".info.yml file produced by compile_cell_info.py")
+
+    argparser.add_argument("-d", "--debug", action="store_true",
+                            help="Print more verbose debugging messages.")
+
+    return argparser.parse_args(*args)
+
+if __name__ == "__main__":
+    main(parse_args())

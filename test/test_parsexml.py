@@ -25,14 +25,16 @@ class T(unittest.TestCase):
         info = get_readset_info( self.xmlfiles[0] )
 
         self.assertEqual(info, {
-                        'cell_id':    'm54041_180613_132945',
-                        '_parts':     ['subreads', 'scraps'],
-                        'readset_type': 'SubreadSet (CLR)',
-                        'run_id':     'r54041_20180613_132039',
-                        'run_slot':   '1_A01',
-                        'ws_desc':    '',
-                        'ws_name':    '10978PJ0005L05_2.5pM',
-                        'ws_project': '10978',
+                        'cell_id':       'm54041_180613_132945',
+                        'cell_uuid':     'f341ca37-cca4-4fd6-9232-50cef558f75f',
+                        '_parts':        ['subreads', 'scraps'],
+                        'readset_type':  'SubreadSet (CLR)',
+                        '_readset_type': 'subreads',
+                        'run_id':        'r54041_20180613_132039',
+                        'run_slot':      '1_A01',
+                        'ws_desc':       '',
+                        'ws_name':       '10978PJ0005L05_2.5pM',
+                        'ws_project':    '10978',
                          })
 
     def test_consensusreadset(self):
@@ -41,14 +43,16 @@ class T(unittest.TestCase):
         info = get_readset_info( self.xmlfiles[1] )
 
         self.assertEqual(info, {
-                        'cell_id':      'm64175e_201211_164938',
-                        '_parts':       ['reads'],
-                        'readset_type': 'ConsensusReadSet (HiFi)',
-                        'run_id':       'r64175e_20201211_163702',
-                        'run_slot':     '1_A01',
-                        'ws_desc':      '',
-                        'ws_name':      '16160CT0001L01',
-                        'ws_project':   '16160',
+                        'cell_id':       'm64175e_201211_164938',
+                        'cell_uuid':     '37220870-92af-4d9b-9ca8-ce4699e0ffbe',
+                        '_parts':        ['reads'],
+                        'readset_type':  'ConsensusReadSet (HiFi)',
+                        '_readset_type': 'ccsreads',
+                        'run_id':        'r64175e_20201211_163702',
+                        'run_slot':      '1_A01',
+                        'ws_desc':       '',
+                        'ws_name':       '16160CT0001L01',
+                        'ws_project':    '16160',
                          })
 
     def test_smrtlink_link(self):

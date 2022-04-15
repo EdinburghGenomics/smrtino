@@ -75,7 +75,7 @@ later. If we start scanning at the time found in the XML and then look forward w
 give up.
 
 This looks very implement-able, and avoids any OAUTH BS. And while there is scope for cases where we can't find a report,
-the matck on dataset_uuids would seem to eliminate the possibility of assigning the wrong figures/graphs to the wrong
+the match on dataset_uuids would seem to eliminate the possibility of assigning the wrong figures/graphs to the wrong
 flowcell. Great :-)
 
 ---
@@ -106,3 +106,37 @@ the cromwell job id directly
 I now have "from smrtino.SMRTLink import SMRTLinkClient" so let's wield that bad boy. First job is that I want to work out how
 to extract that dfb8647e-eb3e-4b6c-9351-92930fb6f058 UUID from the run ID r64175e_20220401_133539. I'll try in
 scratch/run_id_to_qc_link.py
+
+Done. So to actually implement this, I need a data structure like:
+
+{ 'run_dir': 'r64175e_20220401_133539'
+  'smrtlink_run_uuid': 'dfb8647e-eb3e-4b6c-9351-92930fb6f058'
+  'smrtlink_run_link': 'https://smrtlink.genepool.private:8243/sl/run-qc/dfb8647e-eb3e-4b6c-9351-92930fb6f058'
+  'cells' : { 'm64175e_220401_135226' : {
+                'cell_uuid' : 'x-x-x-x',
+                'smrtlink_cell_link' : 'https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/130fcef7-4c88-46aa-8026-016c1b9ee2e8?type=ccsreads'
+              },
+              ...
+            }
+}
+
+I should be able to generate this as soon as any XML files are available, but then it will gain cells as new ones complete. Not
+very Snakemake-y. Instead, let's flatten it and make a file per cell.
+
+{ 'run_dir': 'r64175e_20220401_133539',
+  'smrtlink_run_uuid': 'dfb8647e-eb3e-4b6c-9351-92930fb6f058',
+  'smrtlink_run_name': 'Run 04.01.2022 12:28',
+  'smrtlink_run_link': 'https://smrtlink.genepool.private:8243/sl/run-qc/dfb8647e-eb3e-4b6c-9351-92930fb6f058',
+  'cells_dir' : 'm64175e_220401_135226',
+  'cell_uuid' : 'x-x-x-x',
+  'cell_type' : 'ccsreads',
+  'smrtlink_cell_link' : 'https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/130fcef7-4c88-46aa-8026-016c1b9ee2e8?type=ccsreads'
+}
+
+Then when making the reports, I'll generate these files (.links.yml) as part of Snakefile.report. I could use the XML as input but actually I have
+all the info I need in the .info.yml. I just need to add "_readset_type" which will be 'ccsreads' or 'subreads'.
+- Actually, turns out I don't need this info, but I'll add it anyway and check that the info in the API corresponds.
+
+And ./link_to_smrtlink.py is done, and it works. Cool.
+
+

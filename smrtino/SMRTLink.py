@@ -137,6 +137,9 @@ class SMRTLinkClient(OAUTHClient):
 
         self.verify_ssl = bool(verify_ssl)
 
+        # This will be set after login and after that the caller may set it to whatever.
+        self.link_host = None
+
     def login(self, user, password):
         """Token getter that uses Wso2Constants
            We're not worrying about token refresh just now. Tokens should be valid for ~2 hours
@@ -159,15 +162,18 @@ class SMRTLinkClient(OAUTHClient):
                 # Just raise the error as-is
                 raise
 
+        self.link_host = self.host
+
         # Save this just in case
         self._access_json = j
 
     @classmethod
-    def connect_with_creds(cls, creds=None):
+    def connect_with_creds(cls, creds=None, **kwargs):
         """Convenience method yields a connection with the credentials from get_rc_credentials()
         """
         if not creds:
-            creds = cls.get_rc_credentials()
+            # If 'section' is passed we can pass this on,
+            creds = cls.get_rc_credentials(**kwargs)
 
         if 'verify_ssl' in creds:
             client = cls(creds['host'], creds['verify_ssl'])
@@ -175,6 +181,12 @@ class SMRTLinkClient(OAUTHClient):
             client = cls(creds['host'])
 
         client.login(creds['user'], creds['password'])
+
+        if creds.get('link_host'):
+            # When for some reason the web links need to use a different path.
+            # We don't deal with making links in this library, so it's up to the
+            # caller to decide what to do with client.link_host.
+            client.link_host = creds['link_host']
 
         return client
 
@@ -194,6 +206,8 @@ class SMRTLinkClient(OAUTHClient):
         """Reads credentials from the standard .ini style file
            Returns a dict with keys {'host', 'user', 'password'} and maybe
            'verify_ssl'. 'host' may incorporate a port number (default is 8243)
+           'link_host' may be supplied, and if so should be the full host name, ie.
+           https://hostname:8243
         """
         config = configparser.SafeConfigParser()
         conf_file = config.read(os.environ.get('SMRTLINKRCRC',
@@ -202,7 +216,7 @@ class SMRTLinkClient(OAUTHClient):
         assert conf_file, "No config file found for SMRTLink API credentials"
 
         res = dict(host="smrtlink", user="guest")
-        for k in "host user password verify_ssl".split():
+        for k in "host user password verify_ssl link_host".split():
             try:
                 res[k] = config[section][k]
             except KeyError:

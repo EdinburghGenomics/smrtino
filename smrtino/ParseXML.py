@@ -12,10 +12,14 @@ import xml.etree.ElementTree as ET
 _ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
             pb     = 'http://pacificbiosciences.com/PacBioDatasets.xsd' )
 
-rs_labels = dict( ConsensusReadSet = 'ConsensusReadSet (HiFi)',
-                  SubreadSet       = 'SubreadSet (CLR)' )
-rs_parts  = dict( ConsensusReadSet = ['reads'],
-                  SubreadSet       = ['subreads', 'scraps'] )
+rs_constants = dict( ConsensusReadSet = \
+                        dict( label = 'ConsensusReadSet (HiFi)',
+                              shortname = 'ccsreads',
+                              parts = ['reads'] ),
+                     SubreadSet       = \
+                        dict( label = 'SubreadSet (CLR)',
+                              shortname = 'subreads',
+                              parts = ['subreads', 'scraps'] ) )
 
 def get_readset_info(xmlfile, smrtlink_base=None):
     """ Glean info from the file as per scan_for_smrt_cells in get_pacbio_yml.py
@@ -31,12 +35,18 @@ def get_readset_info(xmlfile, smrtlink_base=None):
 
     info = { 'run_id': rf.split('/')[-2],
              'run_slot': rf.split('/')[-1], # Also could get this from TimeStampedName
-             'cell_id': cmd.get('Context') }
+             'cell_id': cmd.get('Context'),
+             'cell_uuid' : root.attrib.get('UniqueId', 'no-uuid') }
 
     # See if this is a ConsensusReadSet (HiFi) or SubreadSet (CLR)
     root_tag = re.sub(r'{.*}', '', root.tag)
-    info['readset_type'] = rs_labels.get(root_tag, root_tag)
-    info['_parts'] = rs_parts.get(root_tag, [])
+    constants = rs_constants.get(root_tag, {})
+
+    # FIXME - I should probably fail if the root_tag is unrecongised, rather than emitting
+    # plausible junk.
+    info['readset_type'] = constants.get('label', root_tag)
+    info['_readset_type'] = constants.get('shortname', root_tag.lower())
+    info['_parts'] = constants.get('parts', [])
 
     well_samples = root.findall('.//pbmeta:WellSample', _ns)
     # There should be 1!
@@ -63,13 +73,16 @@ def get_smrtlink_link(root, base_url):
        https://smrtlink.genepool.private:8243/sl/data-management/dataset-detail/fc816e69-8ebd-4905-9bd1-4678607869f2?type=subreads
 
        In which case, base_url would be https://smrtlink.genepool.private:8243
+
+       This does work, but I'm actually going to construct these links in the link_to_smrtlink.py script which will
+       read in the info.yml, rather than going back to the XML.
     """
     # The dstype parameter needs to be 'ccsreads' or 'subreads'
     rs_types  = dict( ConsensusReadSet = 'ccsreads',
                       SubreadSet       = 'subreads' )
 
     root_tag = re.sub(r'{.*}', '', root.tag)
-    rstype = rs_types.get(root_tag, 'unknown')
+    rstype = rs_constants[root_tag]['shortname']
 
     # The UniqueId is just an attrib of the root element (though it is also found elsewhere)
     uniqueid = root.attrib.get('UniqueId', 'no_UniqueId_in_xml')
