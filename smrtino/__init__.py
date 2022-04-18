@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 import os, re
 
+# Currently provides the "glob" function and the "smrtino_version" constant.
+from glob import glob as _glob
+
+def glob(pattern):
+    """Improves on the regular glob function by supporting tilde expansion,
+       sorting the result, and stripping off '/' if you end the pattern with '/'
+       in order to only match directories.
+    """
+    return sorted( (f.rstrip('/') for f in _glob(os.path.expanduser(pattern))) )
+
 def _determine_version():
     """Report the version of SMRTino being used. Normally this is in version.txt
        but we can factor in GIT commits in the dev environment.

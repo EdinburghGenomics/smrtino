@@ -77,10 +77,6 @@ def get_smrtlink_link(root, base_url):
        This does work, but I'm actually going to construct these links in the link_to_smrtlink.py script which will
        read in the info.yml, rather than going back to the XML.
     """
-    # The dstype parameter needs to be 'ccsreads' or 'subreads'
-    rs_types  = dict( ConsensusReadSet = 'ccsreads',
-                      SubreadSet       = 'subreads' )
-
     root_tag = re.sub(r'{.*}', '', root.tag)
     rstype = rs_constants[root_tag]['shortname']
 

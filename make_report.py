@@ -8,12 +8,7 @@ from collections import OrderedDict
 import yaml
 import base64
 
-def glob():
-    """Regular glob() is useful but it can be improved like so.
-    """
-    from glob import glob
-    return lambda p: sorted( (f.rstrip('/') for f in glob(os.path.expanduser(p))) )
-glob = glob()
+from smrtino import glob
 
 """ Makes a report (in PanDoc format) for a run. We will only report on
     processed SMRT cells where the info.yml has been generated - so no
@@ -59,7 +54,7 @@ def main(args):
     # And some more of that
     status_info = load_status_info(args.status, fudge=args.fudge_status)
 
-    rep = format_report(all_yamls['info'],
+    rep = format_report(all_yamls,
                         pipedata = pipedata,
                         run_status = status_info,
                         aborted_list = status_info.get('CellsAborted'))
@@ -71,7 +66,7 @@ def main(args):
         with open(args.out, "w") as ofh:
             print(*rep, sep="\n", file=ofh)
 
-def escape(in_txt, backwhack=re.compile(r'([][\`*_{}()#+-.!])')):
+def escape_md(in_txt, backwhack=re.compile(r'([][\\`*_{}()#+-.!])')):
     """ HTML escaping is not the same as markdown escaping
     """
     return re.sub(backwhack, r'\\\1', str(in_txt))
@@ -114,20 +109,23 @@ def get_pipeline_metadata(pipe_dir):
         versions.add('unknown')
 
     # Get the name of the directory what pipe_dir is in
+    # Should be the same as the run name.
     rundir = os.path.basename( os.path.realpath(pipe_dir + '/..') )
 
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_info, pipedata, run_status, aborted_list=None):
+def format_report(all_yamls, pipedata, run_status, aborted_list=None, rep_time=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
     """
+    time_header = (rep_time or datetime.now()).strftime("%A, %d %b %Y %H:%M")
+
     # Add title and author (ie. this pipeline) and date at the top of the report
     replines = []
     replines.append( "% PacBio run {}".format(pipedata.get('rundir')) )
     replines.append( "% SMRTino version {}".format(pipedata.get('version')) )
-    replines.append( "% {}".format(datetime.now().strftime("%A, %d %b %Y %H:%M")) )
+    replines.append( "% {}\n".format(time_header) )
 
     # Add the meta-data
     if run_status:
@@ -136,9 +134,10 @@ def format_report(all_info, pipedata, run_status, aborted_list=None):
         for k, v in run_status.items():
             if not(k.startswith('_')) and (k != 'CellsReady'):
                 replines.append("<dt>{}</dt>".format(k))
-                replines.append("<dd>{}</dd>".format(escape(v)))
+                replines.append("<dd>{}</dd>".format(escape_md(v)))
         replines.append('</dl>')
 
+    all_info = all_yamls['info']
     if not all_info:
         replines.append("**No SMRT Cells have been processed for this run yet.**")
 
@@ -167,14 +166,6 @@ def blockquote(txt):
     """
     return [''] + [ "> " + t for t in txt.split('\n') ] + ['']
 
-def embed_image(filename):
-    """ Convert an image into base64 suitable for embedding in HTML (and/or PanDoc).
-    """
-    # FIXME - delete this unused function.
-    with open(filename, 'rb') as fh:
-        img_as_b64 = base64.b64encode(fh.read()).decode()
-    return "<img src='data:image/png;base64,{}'>".format(img_as_b64)
-
 def format_cell(cdict):
     """ Format the cell infos as some sort of PanDoc output
     """
@@ -184,7 +175,7 @@ def format_cell(cdict):
     for k, v in sorted(cdict.items()):
         if not(k.startswith('_')):
             res.append("<dt>{}</dt>".format(k))
-            res.append("<dd>{}</dd>".format(escape(v)))
+            res.append("<dd>{}</dd>".format(escape_md(v)))
     # If there is no project, we should make this explicit
     if not 'ws_project' in cdict:
         res.append("<dt>{}</dt>".format('ws_project'))
@@ -228,10 +219,11 @@ def make_table(rows):
             return "{}".format(v)
 
     res = []
-    res.append('|' + '|'.join(escape(h) for h in headings)  + '|')
-    res.append('|' + '|'.join(('-' * len(h)) for h in headings)  + '|')
+    res.append('|' + '|'.join(escape_md(h) for h in headings)  + '|')
+    res.append('|' + '|'.join(('-' * len(escape_md(h))) for h in headings)  + '|')
     for r in rows:
-        res.append('|' + '|'.join(fmt(r.get(h)) for h in headings)  + '|')
+        res.append('|' + '|'.join(escape_md(fmt(r.get(h))) for h in headings)  + '|')
+    res.append('')
 
     return res
 

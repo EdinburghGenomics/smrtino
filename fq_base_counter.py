@@ -2,7 +2,6 @@
 
 import os, sys, re
 import gzip
-import json
 import collections
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 

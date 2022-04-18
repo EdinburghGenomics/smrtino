@@ -28,12 +28,7 @@ snakerun_single "$0" "$@"
 #!/usr/bin/env snakemake
 import yaml
 from snakemake.utils import format
-def glob():
-    """Regular glob() is useful but it can be improved like so.
-    """
-    from glob import glob
-    return lambda p: sorted( (f.rstrip('/') for f in glob(os.path.expanduser(p))) )
-glob = glob()
+from smrtino import glob
 
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 
@@ -97,7 +92,7 @@ rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
     input:
         yaml = INFO_YML,
-        links = INFO_LINKS,
+        links = LINK_YML,
         blob_plots = glob("blob/*.png"),
         histo_plots = glob("histo/*.png"),
         plist = "projects_ready.txt",

@@ -3,13 +3,8 @@ import os, sys, re
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pprint import pformat
-def glob():
-    """Regular glob() is useful but it can be improved like so.
-    """
-    from glob import glob
-    return lambda p: sorted( (f.rstrip('/') for f in glob(os.path.expanduser(p))) )
-glob = glob()
 
+from smrtino import glob
 from smrtino.ParseXML import get_readset_info
 
 """ Makes a summary (in text format) for a run.
