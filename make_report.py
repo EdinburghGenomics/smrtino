@@ -18,19 +18,17 @@ from smrtino import glob
     Run metadata can also be obtained from the pbpipeline directory.
 """
 
-def main(args):
+def load_all_yamls(list_of_yamls, yaml_types=("info", "link")):
+    """Read the provided YAML files into a dict of dicts.
+       The sub-dicts are both keyed on the cell filename.
+    """
+    all_yamls = { k: dict() for k in yaml_types }
 
-    L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
+    for y in list_of_yamls:
 
-    # Collect the infos from the files into keyed-alike dicts.
-    all_yamls = dict( info  = dict(),
-                      link = dict() )
-
-    for y in args.yamls:
-
-        yaml_type = y.split('.')[-1]
+        yaml_type = y.split('.')[-2]
         if yaml_type not in all_yamls:
-            exit(f"The file {y} is not something I know hot to process - I know about {set(all_yamls)}")
+            exit(f"The file {y} is not something I know how to process - I know about {yaml_types}")
 
         with open(y) as yfh:
             yaml_info = yaml.safe_load(yfh)
@@ -38,12 +36,20 @@ def main(args):
             # All YAML files have a 'cell_id' or 'cell_dir' which will be a common key
             cell_dir = yaml_info.get('cell_dir', yaml_info.get('cell_id'))
             if not cell_dir:
-                exit("All yamls must indlude a cell ID - eg. m54321_200211_123456")
+                exit("All yamls must include a cell ID - eg. m54321_200211_123456")
 
         # Push it into the dict
         if cell_dir in all_yamls[yaml_type]:
             exit(f"Cell {cell_dir} was already in all_yamls[{yaml_type}]. Will not overwrite it.")
         all_yamls[yaml_type][cell_dir] = yaml_info
+
+    return all_yamls
+
+def main(args):
+
+    L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
+
+    all_yamls = load_all_yamls(args.yamls)
 
     # Glean some pipeline metadata
     if args.pbpipeline:
@@ -54,10 +60,14 @@ def main(args):
     # And some more of that
     status_info = load_status_info(args.status, fudge=args.fudge_status)
 
+    # Work out the smrtlink_qc_link from all_yamls['link']
+    smrtlink_qc_link = get_qc_link(all_yamls)
+
     rep = format_report(all_yamls,
                         pipedata = pipedata,
                         run_status = status_info,
-                        aborted_list = status_info.get('CellsAborted'))
+                        aborted_list = status_info.get('CellsAborted'),
+                        smrtlink_qc_link = smrtlink_qc_link )
 
     if (not args.out) or (args.out == '-'):
         print(*rep, sep="\n")
@@ -65,6 +75,30 @@ def main(args):
         L.info("Writing to {}.".format(args.out))
         with open(args.out, "w") as ofh:
             print(*rep, sep="\n", file=ofh)
+
+def get_qc_link(all_yamls):
+    """ Get the smrtlink_run_uuid and smrtlink_run_link which should be common
+        to all the link yaml files
+    """
+    if not all_yamls.get('link'):
+        return None
+
+    link_yamls = all_yamls['link'].values()
+    uuid_vals = set([ y['smrtlink_run_uuid'] for y in link_yamls ])
+    link_vals = set([ y['smrtlink_run_link'] for y in link_yamls ])
+
+    errors = 0
+    if len(uuid_vals) != 1:
+        L.error(f"Could not get a common Run UUID from {len(link_yamls)} link files")
+        errors += 1
+    if len(link_vals) != 1:
+        L.error(f"Could not get a common Run link from {len(link_yamls)} link files")
+        errors += 2
+
+    if errors:
+        return None
+    else:
+        return uuid_vals.pop(), link_vals.pop()
 
 def escape_md(in_txt, backwhack=re.compile(r'([][\\`*_{}()#+-.!])')):
     """ HTML escaping is not the same as markdown escaping
@@ -115,9 +149,16 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = rundir )
 
-def format_report(all_yamls, pipedata, run_status, aborted_list=None, rep_time=None):
+def format_report(all_yamls, pipedata, run_status, aborted_list=None, rep_time=None, smrtlink_qc_link=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
+
+          * all_yamls should be a dict with 'info' and 'link' sub-dicts
+          * pipedata is a dict from get_pipeline_metadata()
+          * run_status is a dict from load_status_info()
+          * aborted_list is a string (nor a list!) listing aborted cells,
+          * rep_time is a datetime but normally not needed as the current time will be used
+          * smrtlink_qc_link is a pair of (link_text, link)
     """
     time_header = (rep_time or datetime.now()).strftime("%A, %d %b %Y %H:%M")
 
@@ -128,9 +169,18 @@ def format_report(all_yamls, pipedata, run_status, aborted_list=None, rep_time=N
     replines.append( "% {}\n".format(time_header) )
 
     # Add the meta-data
-    if run_status:
+    run_status = run_status or {}
+    if run_status or smrtlink_qc_link:
         replines.append("\n# About this run\n")
         replines.append('\n<dl class="dl-horizontal">')
+
+        # TODO - add the link to the run in SMRTLink here
+        # smrtlink_qc_link is a pair of (uuid, hyperlink)
+        if smrtlink_qc_link:
+            replines.append("<dt>{}</dt>".format("SMRTLink Run QC"))
+            replines.append("<dd>[{}]({})</dd>".format( escape_md(smrtlink_qc_link[0]),
+                                                        smrtlink_qc_link[1] ))
+
         for k, v in run_status.items():
             if not(k.startswith('_')) and (k != 'CellsReady'):
                 replines.append("<dt>{}</dt>".format(k))
@@ -145,7 +195,13 @@ def format_report(all_yamls, pipedata, run_status, aborted_list=None, rep_time=N
     if all_info:
         replines.append("\n# SMRT Cells\n")
     for k, v in sorted(all_info.items()):
-        replines.append("\n## {}\n".format(k))
+        # See if we can link this cell
+        cell_link = all_yamls['link'].get(k, {}).get('smrtlink_cell_link')
+        if cell_link:
+            replines.append("\n## [{}]({})\n".format(escape_md(k), cell_link))
+        else:
+            # No link found
+            replines.append("\n## {}\n".format(escape_md(k)))
         replines.extend(format_cell(v))
 
     if aborted_list and aborted_list.split():

@@ -17,8 +17,8 @@ VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 # from lib_or_script import functions
 from make_report import ( make_table, format_cell, blockquote, format_report,
+                          load_all_yamls, get_qc_link,
                           get_pipeline_metadata, load_status_info, escape_md )
-
 
 class T(unittest.TestCase):
 
@@ -153,6 +153,29 @@ class T(unittest.TestCase):
             expected['PipelineStatus'] = 'imterminably_waiting'
             self.assertEqual( dict(load_status_info("xxx", fudge='imterminably_waiting')),
                               expected )
+
+    def test_get_qc_link(self):
+        """Find the Run QC link from multiple YAMLs
+           This also serves as a test of load_all_yamls.
+        """
+        # When the files are good and the links all match
+        examples1 = [ f"{DATA_DIR}/{c}.link.yml" for c in [ "m64175e_220401_135226",
+                                                            "m64175e_220402_224908",
+                                                            "m64175e_220404_060823" ] ]
+        all_yamls1 = load_all_yamls(examples1)
+
+        if VERBOSE:
+            pprint(all_yamls1)
+
+        self.assertEqual( get_qc_link(all_yamls1),
+                          ('dfb8647e-eb3e-4b6c-9351-92930fb6f058',
+                           'https://smrtlink.genepool.private:8243/sl/run-qc/dfb8647e-eb3e-4b6c-9351-92930fb6f058') )
+
+        # Add another bad yml and it should break
+        examples2 = examples1 + [ f"{DATA_DIR}/m64175e_220406_123456.link.yml" ]
+        all_yamls2 = load_all_yamls(examples2)
+
+        self.assertEqual( get_qc_link(all_yamls2), None )
 
     def test_escape_md(self):
         # Double backslash is the most confusing.
