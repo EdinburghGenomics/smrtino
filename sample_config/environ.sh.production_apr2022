@@ -1,0 +1,41 @@
+# Configuration for SMRTino (production mode). This file will be source'd in BASH
+# so you can include arbitrary shell logic.
+
+# These are the locations for GSEG production mode. The sequencer writes
+# to the JCMB system (on /fluidfs, was /ifs) which is visible via NFS mount on gseg-login0.
+
+# LOG_DIR will collect daily logs, or you can set MAINLOG directly. For testing,
+# set MAINLOG=/dev/stdout to see progress in the terminal.
+LOG_DIR=~pipeline/smrtino/logs
+FROM_LOCATION=/lustre-gseg/smrtlink/sequel_seqdata
+TO_LOCATION=/lustre-gseg/pacbio/pacbio_data
+
+# Only consider runs on our IIe (though compatibility with the Sequel 1 is retained)
+RUN_NAME_REGEX='r64175e_20......_.*'
+
+# Runs are declared dead after 72 hours of inactivity (HiFi processing can take >24 hours)
+STALL_TIME=72
+
+# Slurm queue to use. This will be passed to Snakemake, as all cluster jobs are
+# controlled by Snakemake.
+# TODO - probably add another queue?
+CLUSTER_QUEUE=edgen-casava
+BLOBS=1
+
+# Where to SCP the reports and how to make the links. (Neither should end with
+# a slash).
+REPORT_DESTINATION=edgenom1@egcloud.bio.ed.ac.uk:smrtino
+REPORT_LINK=https://egcloud.bio.ed.ac.uk/smrtino
+RSYNC_CMD="rsync --rsync-path=bin/rsync_reports"
+
+# RT systems as defined in ~/.rt_settings. Set RT_SYSTEM=none to disable RT.
+RT_SYSTEM='production-rt'
+# And for some annoying reason we still need this?? Works for RT and Clarity just now.
+export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+
+# Link to project pages for use in summary e-mails and (at some point) reports.
+# This can either include a {} placeholder or else the project name will just be
+# appended, so you do need to include the slash on the end here.
+PROJECT_PAGE_URL=https://www.wiki.ed.ac.uk/display/GenePool/
+
+

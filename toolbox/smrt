@@ -6,7 +6,7 @@
 # smrt dataset ---help
 # smrt python3 -m pbcoretools.tasks.dataset_filter --help
 
-smrt_bin=/lustre-gseg/software/pacbio_smrttools/smrttools_10.1.0.119588/smrtcmds/bin
+smrt_bin=/lustre-gseg/software/pacbio_smrttools/smrttools_11.0.0.146107/smrtcmds/bin
 
 if [ -z "$*" ] ; then
     echo

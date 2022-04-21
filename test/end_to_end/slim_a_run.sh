@@ -3,15 +3,21 @@ set -ue
 shopt -s nullglob
 
 # Takes a PacBio run folder and makes a mini version of it for you to test on.
-# eg:
-# $ test/end_to_end/slim_a_run.sh r54041_20180518_131155 ~/test_sequel
+#  slim_a_run.sh <run_name_or_path> [dest]
+# eg, to copy to the CWD:
+# $ test/end_to_end/slim_a_run.sh /lustre-gseg/smrtlink/sequel_seqdata/r64175e_20220412_154747
 
 RUN_PATH="${1:?Give me a PacBio run to slim}"
 DEST="${2:-.}"
 
-# If RUN_ID contains no /, assume /ifs/sequel
+# Use the TOOLBOX
+EXEC_DIR="${EXEC_DIR:-`dirname $BASH_SOURCE`/../..}"
+TOOLBOX="$( cd $EXEC_DIR && readlink -f ${TOOLBOX:-toolbox} )"
+PATH="${TOOLBOX}:${PATH}"
+
+# If RUN_ID contains no /, assume the normal location (FROM_LOCATION in environ.sh)
 if [[ ! "$RUN_PATH" =~ / ]] ; then
-    RUN_PATH=/ifs/sequel/"$RUN_PATH"
+    RUN_PATH=/lustre-gseg/smrtlink/sequel_seqdata/"$RUN_PATH"
 fi
 RUN_ID="`basename $RUN_PATH`"
 
@@ -34,7 +40,12 @@ for cell in $CELLS ; do
     # Copy files for all cells
     for bam in "$RUN_PATH/$cell"/*.bam ; do
         echo "Slimming down `basename $bam` from $RUN_PATH/$cell"
+        # Note this leaves less than 1000 reads because there are some header lines, but it will do
         samtools view -h  "$bam" | head -n 1000 | samtools view -b > "$DEST/$cell/`basename $bam`"
+
+        # And re-index
+        echo "Running pbindex on `basename $bam`"
+        ( cd "$DEST/$cell" && smrt pbindex "`basename $bam`" )
     done
 
     echo "Copying all other files from $RUN_PATH/$cell"
