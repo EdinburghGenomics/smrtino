@@ -44,24 +44,28 @@ def main(args):
     # We need to query the API for the 'smrtlink_run_name' so may as well get the 'cell_uuid'
     # and 'cell_type' as well, even though we already have them in the XML.
     L.debug("Querying the API for cell type and UUID")
-    cell_res = get_cell_id_and_type(res['cell_dir'])
+    try:
+        cell_res = get_cell_id_and_type(res['cell_dir'])
 
-    # If we do have 'cell_uuid' and '_readset_type' in the info.yml then sanity check that
-    # everything matches.
-    for k, v in cell_res.items():
-        info_v = res.get(k)
-        if info_v and (info_v != v):
-            raise RuntimeError(f"Value for {k} in info.yml is {info_v} but SMRTLink says {v}")
-    # Once happy, fold in the new values
-    res.update(cell_res)
+        # If we do have 'cell_uuid' and '_readset_type' in the info.yml then sanity check that
+        # everything matches.
+        for k, v in cell_res.items():
+            info_v = res.get(k)
+            if info_v and (info_v != v):
+                raise RuntimeError(f"Value for {k} in info.yml is {info_v} but SMRTLink says {v}")
+        # Once happy, fold in the new values
+        res.update(cell_res)
 
-    # Having sorted that out, get the run UUID which we always have to go to the API for as
-    # it's not in the XML at all.
-    res['smrtlink_run_uuid'] = get_run_uuid(res['run_dir'], res['smrtlink_run_name'])
+        # Having sorted that out, get the run UUID which we always have to go to the API for as
+        # it's not in the XML at all.
+        res['smrtlink_run_uuid'] = get_run_uuid(res['run_dir'], res['smrtlink_run_name'])
 
-    # Now we have to fill in smrtlink_run_link and smrtlink_cell_link
-    host_for_links = args.link_host or conn.link_host
-    res.update(make_links(res, host_for_links))
+        # Now we have to fill in smrtlink_run_link and smrtlink_cell_link
+        host_for_links = args.link_host or conn.link_host
+        res.update(make_links(res, host_for_links))
+    except RuntimeError:
+        L.exception("Failed to get all the info from SMRTLink")
+        # But we still dump what we have
 
     # And print the result
     yaml.safe_dump(res, sys.stdout)

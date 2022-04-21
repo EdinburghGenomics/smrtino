@@ -84,8 +84,8 @@ def get_qc_link(all_yamls):
         return None
 
     link_yamls = all_yamls['link'].values()
-    uuid_vals = set([ y['smrtlink_run_uuid'] for y in link_yamls ])
-    link_vals = set([ y['smrtlink_run_link'] for y in link_yamls ])
+    uuid_vals = set(filter(None, ( y.get('smrtlink_run_uuid') for y in link_yamls )))
+    link_vals = set(filter(None, ( y.get('smrtlink_run_link') for y in link_yamls )))
 
     errors = 0
     if len(uuid_vals) != 1:
@@ -197,12 +197,9 @@ def format_report(all_yamls, pipedata, run_status, aborted_list=None, rep_time=N
     for k, v in sorted(all_info.items()):
         # See if we can link this cell
         cell_link = all_yamls['link'].get(k, {}).get('smrtlink_cell_link')
-        if cell_link:
-            replines.append("\n## [{}]({})\n".format(escape_md(k), cell_link))
-        else:
-            # No link found
-            replines.append("\n## {}\n".format(escape_md(k)))
-        replines.extend(format_cell(v))
+
+        replines.append("\n## {}\n".format(escape_md(k)))
+        replines.extend(format_cell(v, cell_link))
 
     if aborted_list and aborted_list.split():
         # Specifically note incomplete cells
@@ -222,14 +219,18 @@ def blockquote(txt):
     """
     return [''] + [ "> " + t for t in txt.split('\n') ] + ['']
 
-def format_cell(cdict):
+def format_cell(cdict, cell_link=None):
     """ Format the cell infos as some sort of PanDoc output
     """
     res = [':::::: {.bs-callout}']
 
     res.append('<dl class="dl-horizontal">')
     for k, v in sorted(cdict.items()):
-        if not(k.startswith('_')):
+        if k == 'cell_uuid' and cell_link:
+            # Add the hyperlink
+            res.append("<dt>{}</dt>".format(k))
+            res.append("<dd>[{}]({})</dd>".format(escape_md(v), cell_link))
+        elif not(k.startswith('_')):
             res.append("<dt>{}</dt>".format(k))
             res.append("<dd>{}</dd>".format(escape_md(v)))
     # If there is no project, we should make this explicit

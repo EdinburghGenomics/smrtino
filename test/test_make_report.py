@@ -177,6 +177,23 @@ class T(unittest.TestCase):
 
         self.assertEqual( get_qc_link(all_yamls2), None )
 
+    def test_get_qc_link_missing(self):
+        """If we couldn't get any links from the API we should still be able to make a report,
+           just without the links.
+        """
+        examples3 = [ f"{DATA_DIR}/m64175e_220406_000000.link.yml" ]
+        all_yamls3 = load_all_yamls(examples3)
+
+        # Missing links mean no result
+        self.assertEqual( get_qc_link(all_yamls3), None )
+
+        # But partially missing links are OK, I guess
+        examples4 = examples3 + [ f"{DATA_DIR}/m64175e_220406_123456.link.yml" ]
+        all_yamls4 = load_all_yamls(examples4)
+        self.assertEqual( get_qc_link(all_yamls4),
+                          ('dfb8647e-eb3e-4b6c-9351-92930fb6f666',
+                           'https://smrtlink.genepool.private:8243/sl/run-qc/dfb8647e-eb3e-4b6c-9351-92930fb6f666') )
+
     def test_escape_md(self):
         # Double backslash is the most confusing.
         self.assertEqual( escape_md(r'\ '), r'\\ ')
