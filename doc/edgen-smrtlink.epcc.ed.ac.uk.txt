@@ -7,9 +7,9 @@ account which I had created for vault to be able to back up the SMRTLink databas
 it allows key-only login. I limited this to an explicit host once again.
 
 The files are written to /lustre-gseg/smrtlink/sequel_seqdata. I wanted to leave /lustre-gseg/smrtlink
-mode 770 because we don't want non-edge people peering in here, but then the smrtbackup user
+mode 770, group eg-bioinfo, because we don't want non-edge people peering in here, but then the smrtbackup user
 can't get in, and I can't add smrtbackup to extra groups because the groups are in LDAP, and I can't
-make smrtbackup a SAFE-controlled user because then the PAM policy will madate an up-to-date password.
+make smrtbackup a SAFE-controlled user because then the PAM policy will mandate an up-to-date password.
 
 Aaaanyway, I just did:
 
@@ -32,4 +32,13 @@ means probably a sudo rule - should be able to make this fairly specific.
 
 Or else maybe I can have an rsync shim like I use on egcloud. On there it is explicit, but maybe
 I can make it work implicitly? I think so - just override rsync in the path, right?
+
+---
+
+On 22nd April. More thoughts. Since most of our runs are now HiFi runs, if we stopped delivering the
+un-filtered BAM then we could explicitly symlink that, and save some space and time.
+
+But more important for now is that the pipeline is not setting g+w on all the output files, so I need
+to fix a umask somewhere. Oh - same fix I already did for Illuminatus and Hesiod; just take out the
+'-l' from the jobscript. Cool.
 
