@@ -198,8 +198,9 @@ class T(unittest.TestCase):
         # Double backslash is the most confusing.
         self.assertEqual( escape_md(r'\ '), r'\\ ')
 
-        self.assertEqual( escape_md(r'[][\`*_{}()#+-.!'),
-                          r'\[\]\[\\\`\*\_\{\}\(\)\#\+\-\.\!' )
+        # And all the rest
+        self.assertEqual( escape_md(r'<[][\`*_{}()#+-.!>'),
+                          r'\<\[\]\[\\\`\*\_\{\}\(\)\#\+\-\.\!\>' )
 
 if __name__ == '__main__':
     unittest.main()

@@ -100,7 +100,7 @@ def get_qc_link(all_yamls):
     else:
         return uuid_vals.pop(), link_vals.pop()
 
-def escape_md(in_txt, backwhack=re.compile(r'([][\\`*_{}()#+-.!])')):
+def escape_md(in_txt, backwhack=re.compile(r'([][\\`*_{}()#+-.!<>])')):
     """ HTML escaping is not the same as markdown escaping
     """
     return re.sub(backwhack, r'\\\1', str(in_txt))
