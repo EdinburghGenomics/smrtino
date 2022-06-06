@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os, re
+import yamlloader
 
 # Currently provides the "glob" function and the "smrtino_version" constant.
 from glob import glob as _glob
@@ -52,5 +53,21 @@ def _determine_version():
         pass
 
     return vers
+
+# YAML convenience functions that use the ordered loader/saver
+# yamlloader is basically the same as my yaml_ordered hack. It will go away with Py3.7.
+def load_yaml(filename):
+    """Load YAML from a file (not a file handle).
+    """
+    with open(filename) as yfh:
+        return yaml.load(yfh, Loader=yamlloader.ordereddict.CSafeLoader)
+
+def dump_yaml(foo, filename=None):
+    """Return YAML string and optionally dump to a file (not a file handle)."""
+    ydoc = yaml.dump(foo, Dumper=yamlloader.ordereddict.CSafeDumper, default_flow_style=False)
+    if filename:
+        with open(filename, 'w') as yfh:
+            print(ydoc, file=yfh, end='')
+    return ydoc
 
 smrtino_version = _determine_version()

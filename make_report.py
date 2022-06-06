@@ -18,13 +18,20 @@ from smrtino import glob
     Run metadata can also be obtained from the pbpipeline directory.
 """
 
-def load_all_yamls(list_of_yamls, yaml_types=("info", "link")):
-    """Read the provided YAML files into a dict of dicts.
+def load_all_inputs(list_of_yamls, yaml_types=("info", "link", "pdf")):
+    """Read the provided YAML and PDF files into a dict of dicts.
        The sub-dicts are both keyed on the cell filename.
     """
     all_yamls = { k: dict() for k in yaml_types }
 
     for y in list_of_yamls:
+
+        # We should probably put the PDF files in a separate dict.
+        if y.endswith('.pdf'):
+            # Oh it's a PDF not a YAML
+            cell_dir = y.split("/")[-1][:-len('.pdf')]
+            all_yamls['pdf'][cell_dir] = y
+            continue
 
         yaml_type = y.split('.')[-2]
         if yaml_type not in all_yamls:
@@ -49,7 +56,7 @@ def main(args):
 
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
 
-    all_yamls = load_all_yamls(args.yamls)
+    all_yamls = load_all_inputs(args.yamls)
 
     # Glean some pipeline metadata
     if args.pbpipeline:
@@ -201,6 +208,11 @@ def format_report(all_yamls, pipedata, run_status, aborted_list=None, rep_time=N
         replines.append("\n## {}\n".format(escape_md(k)))
         replines.extend(format_cell(v, cell_link))
 
+        # See if we have a PDF report from SMRTLink for this cell
+        if all_yamls['pdf'].get(k):
+            replines.append( "\n[View the SMRTLink PDF report for this SMRT cell]({})".format(
+                                                                                  all_yamls['pdf'][k]) )
+
     if aborted_list and aborted_list.split():
         # Specifically note incomplete cells
         replines.append("\n# Aborted cells\n")
@@ -291,7 +303,7 @@ def parse_args(*args):
     argparser = ArgumentParser( description=description,
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("yamls", nargs='*',
-                            help="Supply a list of info.yml and link.yml files to compile into a report.")
+                            help="Supply a list of info.yml, link.yml and .pdf files to compile into a report.")
     argparser.add_argument("-p", "--pbpipeline", default="pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
     argparser.add_argument("-s", "--status", default=None,

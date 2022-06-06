@@ -76,3 +76,17 @@ or fileTypeId. I think we just do this:
 >>> conn.get_endpoint('/smrt-link/job-manager/jobs/make-dataset-reports/c892a8b3-d8a4-412d-b036-5f2808bb8315/datastore/629ef8cc-1ea3-4093-b67e-291dcaeab815/download')
 
 Yes this fetched the PDF. Only problem is we don't want to just get the whole thing in memory, so let's have a new 'download_endpoint' function.
+Done. And. Tested.
+
+So this is all great, but is there a way to see if the PDF is already generated? So I'd not trigger making a new one on each download?
+
+See, the job doesn't identify the dataset that was being reported, and in fact each job could report on multiple (up to 10) cells.
+Hmmm. No there's no easy way to do it. No worries - it's not a big problem re-generating these reports, and we probably want to
+regenerate after any SMRTLink upgrade as the format may be altered.
+
+OK so let's code up "smrtlink_pdf_report.py". Done. Seems to take around 30 secs so a 5 minute timeout seems reasonable.
+And I'll add it to the Snakefile.
+
+I'll put this in Snakefile.report because that's where I query the API already.
+Note that upt to now, Snakefile.report is being run with -F, but I don't want to regenerate the PDF reports each time.
+

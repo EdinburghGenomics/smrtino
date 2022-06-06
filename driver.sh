@@ -395,7 +395,8 @@ run_report() {
     plog </dev/null
     _plog="${per_run_log}"
 
-    ( cd "$RUN_OUTPUT" ; Snakefile.report -F --config rep_status="$_rep_status" -- report_main ) 2>&1
+    ( cd "$RUN_OUTPUT" ;
+      Snakefile.report -R list_projects make_report --config rep_status="$_rep_status" -- report_main ) 2>&1
 
     # Snag that return value
     _retval=$(( $? + ${_retval:-0} ))
