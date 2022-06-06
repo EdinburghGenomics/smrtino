@@ -2,6 +2,7 @@
 # for the original.
 import os, sys, re
 import base64
+import json
 from pprint import pprint
 
 import configparser
@@ -100,19 +101,74 @@ class OAUTHClient:
         return headers
 
 
-    def get_endpoint(self, _path, **params):
+    def get_endpoint(self, ep_path, **params):
         """Having logged in and got a token, we can actually make calls.
            Any keyword args will be quoted and added as args - eg. name='My Run 123'
         """
         headers = self.token_to_headers()
 
-        full_url = f"{self.api_base}/{_path.lstrip('/')}"
+        full_url = f"{self.api_base}/{ep_path.lstrip('/')}"
 
         # verify=False disables SSL verification
         response = requests.get( full_url,
                                  params = params,
                                  headers = headers,
                                  verify = self.verify_ssl)
+        response.raise_for_status()
+
+        return response.json()
+
+    def download_endpoint(self, ep_path, dest_file, **params):
+        """Like get_endpoint but the raw content will be saved to dest_file,
+           which may be a string or a file-like object, opened for writing in
+           binary mode.
+           Returns a dict with 'Filename', 'Content-Type', 'Content-Length' entries,
+           if these are known.
+        """
+        if type(dest_file) == str:
+            with open(dest_file, 'wb') as dfh:
+                return self.download_endpoint(ep_path, dfh, **params)
+
+        # With that out of the way, let's go...
+        headers = self.token_to_headers()
+        full_url = f"{self.api_base}/{ep_path.lstrip('/')}"
+
+        response = requests.get( full_url,
+                                 params = params,
+                                 headers = headers,
+                                 stream = True,
+                                 verify = self.verify_ssl)
+        response.raise_for_status()
+
+        res = { 'Content-Length' : 0 }
+
+        for chunk in response.iter_content(chunk_size=None):
+            dest_file.write(chunk)
+            res['Content-Length'] += len(chunk)
+
+        resp_info = response.raw.info()
+        res['Content-Type'] = resp_info['Content-Type']
+
+        if resp_info.get('Content-Disposition','').startswith('attachment;'):
+            # This is not a fully robust way to parse the header but it should do for us.
+            mo = re.search(r'''filename=(["'])(.*)\1''', resp_info['Content-Disposition'])
+            res['Filename'] = mo.group(2)
+        return res
+
+    def post_endpoint(self, ep_path, body, **params):
+        """Much like get_endpoint() but makes a JSON post. The body should be a Python dict
+           which will be converted to JSON and posted to the endpoint.
+        """
+        headers = self.token_to_headers()
+        headers['Content-Type'] = 'application/json'
+
+        full_url = f"{self.api_base}/{ep_path.lstrip('/')}"
+
+        response = requests.post( full_url,
+                                  data = json.dumps(body),
+                                  params = params,
+                                  headers = headers,
+                                  verify = self.verify_ssl)
         response.raise_for_status()
 
         return response.json()

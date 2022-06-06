@@ -1,0 +1,78 @@
+Javier asked if I can generate and attach the standard PDF report to the SMRTino report.
+
+This would normally be done from the export button on the flowcell page.
+
+It seems likely I can trigger it via the API. Is there an endpoint for that?
+
+
+Maybe:
+
+/smrt-link/datasets/{datasetType}/{dataset-id}/reports
+
+Let's see what I can get for: sl/data-management/dataset-detail/b5d1b19d-e7be-42f1-a23b-c168faa2e46b?type=ccsreads
+
+Let's remind myself how to use the API from the Python console...
+
+>>> from smrtino.SMRTLink import SMRTLinkClient
+>>> conn = SMRTLinkClient.connect_with_creds(section='smrtlink')
+>>> rep1 = conn.get_endpoint(f"/smrt-link/datasets/ccsreads/b5d1b19d-e7be-42f1-a23b-c168faa2e46b/reports")
+>>> pprint(rep1)
+
+Nope that is just the JSON reports. We want a PDF. How about:
+
+/smrt-link/job-manager/jobs/make-dataset-reports
+
+It looks like I have to post a request to this endpoint, and I should get back a reference to a job. Then
+I can pool the job until it completes, and retrieve the output file. Hmmm. Does my client support posts yet?
+
+Nope. I tried to add it but I keep getting 500 errors. I think I need to override the default requests idea
+about URLencoding the body and pass JSON directly. I'll get back to it next week.
+...OK, done. EZ.
+
+>>> from smrtino.SMRTLink import SMRTLinkClient
+>>> conn = SMRTLinkClient.connect_with_creds(section='smrtlink')
+>>> body = dict(ids=['b5d1b19d-e7be-42f1-a23b-c168faa2e46b'])
+>>> conn.post_endpoint('/smrt-link/job-manager/jobs/make-dataset-reports', body)
+{ 'name': 'make-dataset-reports',
+  'updatedAt': '2022-06-06T10:36:15.896+01:00',
+  'workflow': '{}',
+  'path': '/mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000000/0000000261',
+  'state': 'SUBMITTED',
+  'tags': '',
+  'uuid': 'c892a8b3-d8a4-412d-b036-5f2808bb8315',
+  'projectId': 1,
+  'childJobsCount': 0,
+  'jobTypeId': 'make-dataset-reports',
+  'id': 261,
+  'smrtlinkVersion': '11.0.0.146107',
+  'comment': 'Description for job DataSet PDF report export',
+  'isNested': False,
+  'createdAt': '2022-06-06T10:36:15.896+01:00',
+  'isActive': True,
+  'createdBy': 'pbicsuser',
+  'isMultiJob': False,
+  'jsonSettings': '{"ids":["b5d1b19d-e7be-42f1-a23b-c168faa2e46b"]}',
+  'jobUpdatedAt': '2022-06-06T10:36:15.896+01:00' }
+
+So now I should be able to poll and see when the job is complete. Use 'jobTypeId' and 'uuid' to identify the job.
+
+>>> conn.get_endpoint('/smrt-link/job-manager/jobs/make-dataset-reports/c892a8b3-d8a4-412d-b036-5f2808bb8315')
+{ 'name': 'make-dataset-reports',
+  'updatedAt': '2022-06-06T09:38:46.682Z',
+  'workflow': '{}',
+  'path': '/mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000000/0000000261',
+  'state': 'SUCCESSFUL',
+...
+
+Coolio, now I should be able to get that PDF...
+
+We fetch the 'datastore' endpoint. That gives us the log (don't care) and the PDF. We could identify it by sourceId
+or fileTypeId. I think we just do this:
+
+>>> datastore =  conn.get_endpoint('/smrt-link/job-manager/jobs/make-dataset-reports/c892a8b3-d8a4-412d-b036-5f2808bb8315/datastore')
+>>> pdf_uuid = [d['uuid'] for d in datastore if d['fileTypeId'] == 'PacBio.FileTypes.pdf' ][0]
+>>> pdf_uuid
+'629ef8cc-1ea3-4093-b67e-291dcaeab815'
+>>> conn.get_endpoint('/smrt-link/job-manager/jobs/make-dataset-reports/c892a8b3-d8a4-412d-b036-5f2808bb8315/datastore/629ef8cc-1ea3-4093-b67e-291dcaeab815/download')
+
+Yes this fetched the PDF. Only problem is we don't want to just get the whole thing in memory, so let's have a new 'download_endpoint' function.
