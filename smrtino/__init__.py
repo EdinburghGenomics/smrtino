@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os, re
-import yamlloader
+import yaml, yamlloader
 
 # Currently provides the "glob" function and the "smrtino_version" constant.
 from glob import glob as _glob
