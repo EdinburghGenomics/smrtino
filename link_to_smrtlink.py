@@ -45,7 +45,7 @@ def main(args):
     # and 'cell_type' as well, even though we already have them in the XML.
     L.debug("Querying the API for cell type and UUID")
     try:
-        cell_res = get_cell_id_and_type(res['cell_dir'])
+        cell_res = get_cell_id_and_type(res['cell_dir'], uuid=res['cell_uuid'])
 
         # If we do have 'cell_uuid' and '_readset_type' in the info.yml then sanity check that
         # everything matches.
@@ -76,9 +76,11 @@ def make_links(res, host):
     return dict( smrtlink_cell_link = f"{host}/sl/data-management/dataset-detail/{res['cell_uuid']}?type={res['cell_type']}",
                  smrtlink_run_link  = f"{host}/sl/run-qc/{res['smrtlink_run_uuid']}", )
 
-def get_cell_id_and_type(cell_dir):
+def get_cell_id_and_type(cell_dir, uuid=None):
     """We can do this without fetching every cell because the datasets endpoint supports search
        by 'metadataContextId'.
+       However, this will also see derived datasets, so you can provide uuid as a hint to
+       find the right one.
        Return a dict with keys {'cell_uuid', 'cell_type', 'smrtlink_run_name'}
     """
     # TODO - check this works for CLR reads, I only tested it for CCS.
@@ -92,12 +94,15 @@ def get_cell_id_and_type(cell_dir):
 
     L.debug(f"Fetched total of {len(all_cells)} cells")
 
-    # If the filter failed, we may have more than one?
+    # If the filter failed, we may have records we don't want?
     all_cells = [ c for c in all_cells if c['metadataContextId'] == cell_dir ]
 
-    # Remove anything with the 'barcoded' tag
-    # FIXME - we should have proper barcode support in SMRTino
-    all_cells = [ c for c in all_cells if 'barcoded' not in c['tags'].split(',') ]
+    # Remove anything with the 'barcoded' tag??
+    #all_cells = [ c for c in all_cells if 'barcoded' not in c['tags'].split(',') ]
+
+    # If a uuid is supplied then also filter on that
+    if uuid:
+        all_cells = [ c for c in all_cells if c['uuid'] == uuid ]
 
     if not all_cells:
         raise RuntimeError(f"No cell found for {cell_dir}")
