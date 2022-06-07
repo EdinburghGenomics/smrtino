@@ -95,12 +95,19 @@ def get_cell_id_and_type(cell_dir):
     # If the filter failed, we may have more than one?
     all_cells = [ c for c in all_cells if c['metadataContextId'] == cell_dir ]
 
+    # Remove anything with the 'barcoded' tag
+    # FIXME - we should have proper barcode support in SMRTino
+    all_cells = [ c for c in all_cells if 'barcoded' not in c['tags'].split(',') ]
+
     if not all_cells:
         raise RuntimeError(f"No cell found for {cell_dir}")
     elif len(all_cells) > 1:
-        raise RuntimeError(f"Multiple records found for cell {cell_dir}")
+        # We see this for cells like 'm64175e_220527_152717' which are demultiplexed into
+        # separate CCS sub-datasets. The filter on c['tags'] should sort this but for now I'll
+        # also take the last in the list, which is the first record.
+        L.warning(f"Multiple records found for cell {cell_dir}")
 
-    cell, = all_cells
+    cell = all_cells[-1]
     return dict( cell_uuid = cell['uuid'],
                  cell_type = cell['_dstype'],
                  smrtlink_run_name = cell['runName'] )
