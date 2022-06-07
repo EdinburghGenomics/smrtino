@@ -319,17 +319,37 @@ rule hifi_fastx:
     shell:
         "{PBCORETOOLS}.auto_ccs_outputs --log-level INFO {HIFI_FILTER_ARGS} {wildcards.x} {input.xml} {output.json}"
 
-rule hifi_bam:
+# The old hifi_bam rule just filtered the reads, but now we want to run primrose too
+# Primrose is fussy about filenames, but let's see how it goes.
+# FIXME - some sort of munging to fix the final xml, or do we not care?
+rule primrose_bam:
     output:
+        xml   = "{cell}.primrose_consensusreadset.xml",
         bam   = "{cell}.hifi_reads.bam",
         bai   = "{cell}.hifi_reads.bam.bai",
         pbi   = "{cell}.hifi_reads.bam.pbi",
-        json  = "{cell}.consolidate.datastore.json"
+        rep   = "{cell}.primrose_report.json"
     input:
         xml = "{cell}.hifireadset.xml",
         bam = "{cell}.reads.bam"
+    params:
+        log_level = "DEBUG"
+    shadow: "shallow"
+    threads: 8
     shell:
-        "{PBCORETOOLS}.auto_ccs_outputs --log-level INFO {HIFI_FILTER_ARGS} consolidate {input.xml} {output.json}"
+       r"""cp -vP {input.xml} in.consensusreadset.xml
+           {TOOLBOX} smrt primrose \
+             --log-level {params.log_level} \
+             --num-threads {threads} \
+             --append-dataset-name ' (5mC)' \
+             --qv-histogram-report {output.rep} \
+             in.consensusreadset.xml out.consensusreadset.xml
+           ls -latrR >&2
+           mv -v out.consensusreadset.xml {output.xml}
+           mv -v out.bam {output.bam}
+           mv -v out.bam.pbi {output.pbi}
+           {TOOLBOX} samtools index -b {output.bam}
+        """
 
 # Make a .count file for the FASTQ file
 rule count_fastq:
@@ -347,13 +367,15 @@ rule md5sum_file:
 
 # I'll copy the logic from Snakefile.common_denovo here
 
-# I'm going to hard-code that there will be 10000 sequences subsampled
+# Default is that there will be 10000 sequences subsampled
 # and they will be blasted in 100 chunks.
+# To override set, eg., EXTRA_SNAKE_FLAGS="--config blob_subsample=1234"
 
 # BLAST S sequences in C chunks
-BLOB_SUBSAMPLE = 10000
-BLOB_CHUNKS = 100
-BLOB_LEVELS = "phylum order species".split()
+BLOB_SUBSAMPLE = int(config.get('blob_subsample', 10000))
+BLOB_CHUNKS    = int(config.get('blob_chunks', 100))
+BLOB_LEVELS    = config.get('blob_levels', "phylum order species".split())
+BLAST_SCRIPT   = config.get('blast_script', "blast_nt")
 
 # This is how I want to pass my plots into compile_cell_info.py
 # Serves as the driver by depending on the 6 blob plots and thumbnails for
@@ -452,7 +474,7 @@ rule blast_chunk:
         evalue = '1e-50',
         outfmt = '6 qseqid staxid bitscore'
     shell:
-        """{TOOLBOX} blast_nt -query {input} -outfmt '{params.outfmt}' \
+        """{TOOLBOX} {BLAST_SCRIPT} -query {input} -outfmt '{params.outfmt}' \
            -evalue {params.evalue} -max_target_seqs 1 -out {output}.tmp -num_threads {threads}
            mv {output}.tmp {output}
         """

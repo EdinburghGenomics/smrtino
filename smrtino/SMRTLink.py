@@ -119,7 +119,7 @@ class OAUTHClient:
         return response.json()
 
     def download_endpoint(self, ep_path, dest_file, **params):
-        """Like get_endpoint but the raw content will be saved to dest_file,
+        """Like get_endpoint() but the raw content will be saved to dest_file,
            which may be a string or a file-like object, opened for writing in
            binary mode.
            Returns a dict with 'Filename', 'Content-Type', 'Content-Length' entries,

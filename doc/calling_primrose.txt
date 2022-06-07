@@ -1,0 +1,30 @@
+In SMRTLink v11, we have the option to do on-instrument 5mC calls with primrose.
+
+But this discards the kinetics data, so we don't.
+
+But then this step has to be done by manually starting a "5mC CpG Detection" job
+in SMRTLink for each flowcell. Boo.
+
+So let's adapt the existing hifi_bam job to call Primrose instead of just the dataset filter.
+The FASTQ and FASTA outputs can stay as they were. We can decide if we care about these or not.
+
+So the Primrose command line is, according to
+/lustre-gseg/smrtlink/data/cromwell-executions/pb_detect_methyl/fd887dad-6057-44ec-ad10-823d0522595c/call-pbprimrose/execution/script
+
+primrose \
+  --log-level DEBUG \
+  --log-file primrose.log \
+  --alarms alarms.json \
+  --num-threads 9 \
+  --append-dataset-name " (5mC)" \
+  --qv-histogram-report primrose.report.json \
+  filtered.consensusreadset.xml \
+  with_5mC.consensusreadset.xml
+
+I need to find out what --alarms is about. Other than that, it seems to be pretty much a drop-in replacement for the existing
+BAM creation. No splitting of chunks or anything like that, which is good.
+
+The above command will (I believe) yield a file named "with_5mC.bam" as well as a .pbi file for the same. We'll need to rename this.
+
+Not quite, but I got it done. The output looks great. And the Q>20 filtering just seems to work. Nice.
+

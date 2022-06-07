@@ -43,9 +43,11 @@ if [ -e "$ENVIRON_SH" ] ; then
     popd >/dev/null
 
     # Saves having to put 'export' on every line in the config.
-    export CLUSTER_QUEUE FROM_LOCATION TO_LOCATION GENOLOGICSRC \
-           PROJECT_NAME_LIST PROJECT_PAGE_URL REPORT_DESTINATION REPORT_LINK RSYNC_CMD \
-           RT_SYSTEM STALL_TIME TO_LOCATION VERBOSE BLOBS FILTER_LOCALLY
+    export CLUSTER_QUEUE      FROM_LOCATION     TO_LOCATION \
+           RT_SYSTEM          RT_SETTINGS       GENOLOGICSRC \
+           PROJECT_NAME_LIST  PROJECT_PAGE_URL  REPORT_DESTINATION  REPORT_LINK \
+           RSYNC_CMD          STALL_TIME        VERBOSE             FILTER_LOCALLY \
+           BLOBS              EXTRA_SNAKE_FLAGS EXTRA_SLURM_FLAGS
 fi
 
 # LOG_DIR is ignored if MAINLOG is set explicitly.

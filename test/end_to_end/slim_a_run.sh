@@ -19,7 +19,14 @@ PATH="${TOOLBOX}:${PATH}"
 if [[ ! "$RUN_PATH" =~ / ]] ; then
     RUN_PATH=/lustre-gseg/smrtlink/sequel_seqdata/"$RUN_PATH"
 fi
-RUN_ID="`basename $RUN_PATH`"
+# If $RUN_PATH is a symlink do we follow or do we use the name as-is?
+if [[ "$(basename $RUN_PATH)" =~ _.*_ ]] ; then
+    RUN_ID="$(basename $RUN_PATH)"
+    RUN_PATH="$(readlink -f "$RUN_PATH")"
+else
+    RUN_PATH="$(readlink -f "$RUN_PATH")"
+    RUN_ID="$(basename $RUN_PATH)"
+fi
 
 # Now DEST...
 DEST="$DEST/$RUN_ID"
