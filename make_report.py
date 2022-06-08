@@ -206,12 +206,18 @@ def format_report(all_yamls, pipedata, run_status, aborted_list=None, rep_time=N
         cell_link = all_yamls['link'].get(k, {}).get('smrtlink_cell_link')
 
         replines.append("\n## {}\n".format(escape_md(k)))
-        replines.extend(format_cell(v, cell_link))
 
-        # See if we have a PDF report from SMRTLink for this cell
+        # See if we have a PDF and/or link to SMRTLink for this cell
+        smrt_links = []
         if all_yamls['pdf'].get(k):
-            replines.append( "\n[View the SMRTLink PDF report for this SMRT cell]({})".format(
-                                                                                  all_yamls['pdf'][k]) )
+            # \U0001F5BA is a document emoji
+            smrt_links.append("[\U0001F5BA SMRTLink PDF report]({}) ".format( all_yamls['pdf'][k] ))
+        if cell_link:
+            smrt_links.append("[SMRTLink Dataset]({}) ".format( cell_link ))
+        if smrt_links:
+            replines.extend([ "", " \| ".join(smrt_links), "" ])
+
+        replines.extend(format_cell(v, cell_link))
 
     if aborted_list and aborted_list.split():
         # Specifically note incomplete cells
