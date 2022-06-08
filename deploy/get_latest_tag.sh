@@ -8,7 +8,7 @@
 # To prep for first release:
 #  mkdir ~/smrtino ; cd ~/smrtino
 #  git init --bare --shared git_repo
-#  git --git-dir=git_repo remote add origin git@gitlab.genepool.private:production-team/smrtino.git
+#  git --git-dir=git_repo remote add origin git@github.com:EdinburghGenomics/smrtino.git
 #  git --git-dir=git_repo fetch --all
 
 die(){ echo $@ ; exit 1 ; }
@@ -16,7 +16,7 @@ runcmd(){ echo "RUNNING: $@" ; "$@" ; }
 
 # Sanity checking stage...
 [ -d git_repo ] || die "No git_repo folder."\
-    "This script should normally be run in /lustre/home/pipeline/smrtino/"
+    "This script should normally be run in ~pipeline/smrtino/"
 
 # Update the git_repo.  This doesn't affect any actual working files.
 # Note - if the tag doesn't appear to be fetched then make sure you
@@ -53,6 +53,13 @@ done
 runcmd mkdir "$latest_tag"
 runcmd git --git-dir=git_repo --work-tree="$latest_tag" checkout -f tags/"$latest_tag"
 
+# Copy the config file
+cp -vn -t $latest_tag $latest_checked_out/environ.sh
+
+# Bootstrap the VEnv
+echo "Bootstrapping the VirtualEnv in $latest_tag/_hesiod_venv"
+(cd $latest_tag && source ./activate_venv )
+
 # Finally, alert the user if there were local changes in $latest_checked_out
 
 # Sanity check
@@ -66,8 +73,7 @@ if git --git-dir=git_repo --work-tree="$latest_checked_out" diff tags/"$latest_c
     echo
 fi
 
-echo "Checked out version $latest_tag.  If you are happy, copy the config and bootstrap the virtualenv now:"
+echo "Checked out version $latest_tag.  If you are happy, check the config and repoint the symlink now:"
 echo "  cd `pwd`"
-echo "  (cd $latest_tag && source ./activate_venv )"
-echo "  cp -i $latest_checked_out/environ.sh $latest_tag/"
+echo "  cat $latest_tag/environ.sh"
 echo "  ln -snf $latest_tag current"
