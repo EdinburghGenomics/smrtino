@@ -361,7 +361,7 @@ rule count_fastq:
 rule md5sum_file:
     output: "md5sums/{foo}.md5"
     input: "{foo}"
-    shell: "( cd `dirname {input}` && md5sum `basename {input}` ) > {output}"
+    shell: '( cd "$(dirname {input:q})" && md5sum -- "$(basename {input:q})" ) > {output:q}'
 
 ## BLOB plotter rules ##
 
