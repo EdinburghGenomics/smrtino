@@ -9,7 +9,7 @@ import logging as L
 from time import sleep, time
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-from smrtino.SMRTLink import SMRTLinkClient
+from smrtino.SMRTLink import SMRTLinkClient, HTTPError
 
 class StopWatch:
     """A class that tells you how long since it was initiated.
@@ -31,7 +31,20 @@ def main(args):
     conn = SMRTLinkClient.connect_with_creds(section=args.rc_section)
     post_body = dict(ids=[args.cell_uuid])
     L.debug(f"Requesting job-manager/jobs/make-dataset-reports with body {post_body}")
-    post_res = conn.post_endpoint('/smrt-link/job-manager/jobs/make-dataset-reports', post_body)
+    try:
+        post_res = conn.post_endpoint('/smrt-link/job-manager/jobs/make-dataset-reports', post_body)
+    except HTTPError as e:
+        if e.response.status_code == 422:
+            L.exception("Status 422 normally indicates that the cell_uuid is not in SMRTLink")
+            if args.empty_on_missing:
+                L.warning("Saving empty report as --empty_on_missing is set")
+                with open(out_file, 'wb') as empty_fh:
+                    pass
+                return
+            else:
+                raise
+        else:
+            raise
 
     # From this we can build an endpoint prefix for the following calls
     job_endpoint = f"/smrt-link/job-manager/jobs/{post_res['jobTypeId']}/{post_res['uuid']}"
@@ -78,6 +91,10 @@ def parse_args(*args):
                             help="Number of seconds to wait between polls to the API")
     argparser.add_argument("-o", "--out_file", default="{cell_uuid}.pdf",
                            help="Name of the PDF file to be saved")
+    argparser.add_argument("--empty_on_missing", action="store_true",
+                            help="Save an empty file if SMRTLink does not recognise the run."
+                                 " Only really useful within Snakemake to avoid halting the workflow.")
+
 
     argparser.add_argument("cell_uuid",
                            help="UUID of the cell to report on")

@@ -7,6 +7,7 @@ from pprint import pprint
 
 import configparser
 import requests
+from requests.exceptions import HTTPError
 
 import logging
 L = logging.getLogger(__name__)
@@ -210,7 +211,7 @@ class SMRTLinkClient(OAUTHClient):
                                        password = password,
                                        auth = auth,
                                        scopes = self.constants.SCOPES )
-        except requests.exceptions.HTTPError as e:
+        except HTTPError as e:
             if e.response.status_code == 400:
                 L.error("Error 400 when getting token normally indicates incorrect credentials")
                 raise APIConnectionError("Login failed")

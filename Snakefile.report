@@ -87,12 +87,14 @@ rule link_to_smrtlink:
 
 # As does this, which will trigger generation of a new report, poll until ready, then
 # download it.
+# Modified to proceed even if report generation fails, since some datasets don't get
+# properly imported in SMRTLink.
 rule smrtlink_pdf_report:
     output: "all_reports/pdf/{cell}.pdf"
     input:  "{cell}.link.yml"
     run:
         cell_uuid = load_yaml(str(input))['cell_uuid']
-        shell("smrtlink_pdf_report.py -o {output} {cell_uuid}")
+        shell("smrtlink_pdf_report.py -o {output} --empty_on_missing {cell_uuid}")
 
 # This rule marshalls all the .png images and makes the report in PanDoc format.
 # Note - the run_status is now fudged so that the report says 'complete' when
