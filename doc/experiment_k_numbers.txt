@@ -1,0 +1,23 @@
+Runs from now on are going to be given K123 numbers which tie in to the Access database
+and will be entered into the "ExperimentId" field. This has some consequences for SMRTino:
+
+1) The run as saved in /lustre-gseg/smrtlink/sequel_seqdata/ will be in a subdirectory,
+so at present SMRTino can't find it unless we make a symlink manually.
+
+2) The K number wants to appear in the report. It gets saved explicitly to
+.m64175e_221012_112607.run.metadata.xml (note: it's a hidden file) but we don't currently
+read this (I think?) so we need to either read it or else get the K number implictly
+from the consensusreadset.xml.
+
+First question, does the syntax:
+
+X="${X:-y}"
+
+work if the original X is a list? Yes it does. Cool. With or without the "". We can
+use this for $RUN_NAME_REGEX. The idea is that we'll allow RUN_NAME_REGEX to be a list,
+and allow any match. We'll also allow it to have / chars to trigger drilling into subdirs.
+
+But how? I could glob for * and */* but this gets inefficient and only supports 1 level down.
+How about a recursive strategy? If the directory matches a regex, then process that directory.
+Else if it matches a partial regex, list the subdirs and push them on the stack, then
+proceed. Let's make a test script.
