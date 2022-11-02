@@ -517,31 +517,69 @@ get_run_status() { # run_dir
 
 ###--->>> SCANNING LOOP <<<---###
 
-log "Looking for run directories matching regex $FROM_LOCATION/$RUN_NAME_REGEX/"
+log "Looking for run directories in $FROM_LOCATION matching (${RUN_NAME_REGEX[@]})"
 log "Output will be created in $TO_LOCATION/"
 
-# 6) Scan through each run until we find something that needs dealing with.
-for run in "$FROM_LOCATION"/*/ ; do
+# Generate a list of prefixes from $RUN_NAME_REGEX and store the list
+# to PREFIX_RUN_NAME_REGEX for use in the search logic.
+for rnregex in "${RUN_NAME_REGEX[@]}" ; do
+    # Loop through prefixes up to the first / seen, for which
+    # we can use a regex on the regex (or maybe dirname?).
+    while [[ "$rnregex" =~ (.+)/(.+) ]] ; do
+        rnregex="${BASH_REMATCH[1]}"
+        PREFIX_RUN_NAME_REGEX+=($rnregex)
+    done
+done
+debug "PREFIX_RUN_NAME_REGEX is (${PREFIX_RUN_NAME_REGEX[@]})"
 
-  if ! [[ "`basename $run`" =~ ^${RUN_NAME_REGEX}$ ]] ; then
-    debug "Ignoring `basename $run`"
+# 6) Scan through each run until we find something that needs dealing with.
+pushd "$FROM_LOCATION" >/dev/null
+candidate_run_list=(*/)
+
+while [[ "${#candidate_run_list[@]}" > 0 ]] ; do
+
+  # Shift the first item off the list
+  run_basename="${candidate_run_list[0]%/}"
+  run_dir="$FROM_LOCATION/$run_basename"
+  candidate_run_list=("${candidate_run_list[@]:1}")
+
+  # Scan for full matches, indicating we have a run
+  match_found=0
+  for rnregex in "${RUN_NAME_REGEX[@]}" ; do
+    if [[ "$run_basename" =~ ^${rnregex}$ ]] ; then
+      match_found=$(( $match_found + 1 ))
+    fi
+  done
+
+  if [[ $match_found = 0 ]] ; then
+    for prnregex in "${PREFIX_RUN_NAME_REGEX[@]}" ; do
+      if [[ "$run_basename" =~ ^${prnregex}$ ]] ; then
+        # Add the directory contents to the front of the candidate list for consideration,
+        # then continue the main loop.
+        candidate_run_list=("$run_basename"/*/ "${candidate_run_list[@]}")
+        continue 2
+      fi
+    done
+
+    # We can prune this directory from further searching
+    echo "Ignoring $run_basename"
     continue
   fi
 
   # invoke runinfo and collect some meta-information about the run. We're passing this info
   # to the state functions via global variables. RUNID INSTRUMENT CELLS etc.
-  get_run_status "$run"
+  get_run_status "$run_dir"
 
   if [ "$STATUS" = complete ] || [ "$STATUS" = aborted ] ; then _log=debug ; else _log=log ; fi
-  $_log "$run has $RUNID from $INSTRUMENT with cell(s) [$CELLS] and status=$STATUS"
+  $_log "$run_dir has $RUNID from $INSTRUMENT with cell(s) [$CELLS] and status=$STATUS"
 
   #Call the appropriate function in the appropriate directory.
   BREAK=0
-  pushd "$run" >/dev/null ; eval action_"$STATUS"
+  pushd "$run_dir" >/dev/null ; eval action_"$STATUS"
 
   # Even though 'set -e' is in effect this next line is reachable if the called function turns
   # it off...
-  [ $? = 0 ] || log "Error while trying to run action_$STATUS on $run"
+  [ $? = 0 ] || log "Error while trying to run action_$STATUS on $run_basename"
   # So in case this setting got clobbered...
   set -e
   popd >/dev/null

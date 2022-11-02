@@ -38,7 +38,7 @@ def main(args):
             L.exception("Status 422 normally indicates that the cell_uuid is not in SMRTLink")
             if args.empty_on_missing:
                 L.warning("Saving empty report as --empty_on_missing is set")
-                with open(out_file, 'wb') as empty_fh:
+                with open(out_file, 'wb') as _:
                     pass
                 return
             else:

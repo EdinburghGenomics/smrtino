@@ -10,6 +10,9 @@ LOG_DIR=~pipeline/smrtino/logs
 FROM_LOCATION=/ifs/sequel
 TO_LOCATION=/lustre/pacbio/pacbio_data
 
+# This regex setting allows us to see runs in K... subdirectories
+RUN_NAME_REGEX=('r64175e_.+_.+' 'K[0-9]+/r64175e_.+_.+')
+
 # Slurm queue to use. This will be passed to Snakemake, as all cluster jobs are
 # controlled by Snakemake.
 # TODO - probably add another queue.

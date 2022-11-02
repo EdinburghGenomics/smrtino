@@ -68,7 +68,7 @@ while [[ "${#candidate_run_list[@]}" > 0 ]] ; do
       if [[ "$run_basename" =~ ^${prnregex}$ ]] ; then
         # Add the directory contents to the stack for consideration,
         # then continue the main loop.
-        candidate_run_list=("$run_basename"/* "${candidate_run_list[@]}")
+        candidate_run_list=("$run_basename"/*/ "${candidate_run_list[@]}")
         continue 2
       fi
     done
