@@ -102,17 +102,20 @@ try:
 except NameError:
     pass
 
-def find_source_file(extn):
+def find_source_file(extn, prefix=''):
     """ Shim to get me the source file by adding in the cell slot directory as discovered
         by scan_cells()
         I had a different workaround involving linking files but this is more direct.
         This returns a function which can be used as an input function.
+        prefix is useful for finding the XML files that start with a '.'
     """
     def _ff(wildcards):
-        return "{}/{}/{}{}".format( RUNDIR,
-                                    SC[wildcards.cell]['slot'],
-                                    wildcards.cell,
-                                    extn.format(**vars(wildcards)) )
+        # allowing wildcards in the extension isn't actually used. Hmmm.
+        return "{}/{}/{}{}{}".format( RUNDIR,
+                                      SC[wildcards.cell]['slot'],
+                                      prefix,
+                                      wildcards.cell,
+                                      extn.format(**vars(wildcards)) )
     return _ff
 
 def copy_all_files(i, o):
@@ -165,8 +168,11 @@ def i_one_cell_info(wildcards):
             # this was input.xml2
             res['xml'].append(cellbase + rsname)
             if scinfo['filter']:
-                # this was input.xml1
+                # this was input.xml1 - the unfiltered xml
                 res['xml'].append(wildcards.cell + rsname)
+
+    # Also the .m64175e_221012_112607.run.metadata.xml file which we copy without the '.'
+    res['runxml'] = wildcards.cell + '.run.metadata.xml'
 
     # If we have CCS reads then we also want to extract the HiFi reads and count
     # the number of sequences. Also be running cstats on this.
@@ -192,9 +198,10 @@ rule one_cell_info:
     output: "{cell}.info.yml"
     input:  unpack(i_one_cell_info)
     shell:
-        # What needs to go into the YML? Stuff from the XML and also some stuff from the
-        # stats, maybe? At present the script will discover extra files automagically.
-        r'''compile_cell_info.py {input.xml[0]} \
+       # What needs to go into the YML? Stuff from the XML and also some stuff from the
+       # stats, maybe? At present the script will discover extra files automagically.
+       r'''compile_cell_info.py {input.xml[0]} \
+             -r {input.runxml}
              -s {input.cstats} \
              -p {input.hplots} {input.blobs} > {output}
         '''
@@ -218,12 +225,14 @@ rule copy_subreads:
         bam    = "{cell}.subreads.bam",
         pbi    = "{cell}.subreads.bam.pbi",
         scraps = "{cell}.scraps.bam",
-        xml    = "{cell}.subreadset.xml"
+        xml    = "{cell}.subreadset.xml",
+        runxml = "{cell}.run.metadata.xml"
     input:
         bam    = find_source_file(".subreads.bam"),
         pbi    = find_source_file(".subreads.bam.pbi"),
         scraps = find_source_file(".scraps.bam"),
-        xml    = find_source_file(".subreadset.xml")
+        xml    = find_source_file(".subreadset.xml"),
+        runxml = find_source_file(".run.metadata.xml", prefix='.')
     resources:
         nfscopy=1
     run:
@@ -235,11 +244,13 @@ rule copy_reads:
     output:
         bam    = "{cell}.reads.bam",
         pbi    = "{cell}.reads.bam.pbi",
-        xml    = "{cell}.consensusreadset.xml"
+        xml    = "{cell}.consensusreadset.xml",
+        runxml = "{cell}.run.metadata.xml"
     input:
         bam    = find_source_file(".reads.bam"),
         pbi    = find_source_file(".reads.bam.pbi"),
-        xml    = find_source_file(".consensusreadset.xml")
+        xml    = find_source_file(".consensusreadset.xml"),
+        runxml = find_source_file(".run.metadata.xml", prefix='.')
     resources:
         nfscopy=1
     run:

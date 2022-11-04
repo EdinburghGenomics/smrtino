@@ -21,3 +21,24 @@ But how? I could glob for * and */* but this gets inefficient and only supports 
 How about a recursive strategy? If the directory matches a regex, then process that directory.
 Else if it matches a partial regex, list the subdirs and push them on the stack, then
 proceed. Let's make a test script.
+
+test/scratch/list_runs_test.sh
+
+Done. And it works nicely, even though it's added a fair amount of code to what was a simple
+loop. Folded into driver.sh. Note that when I deploy the new code I should clear up the
+symlink(s) in /lustre-gseg/smrtlink/sequel_seqdata/ because there is no mechanism to
+detect dupes. On the other hand, since the run is complete it will just be scanned twice and
+skipped so maybe it's not a problem.
+
+OK, final part is to report the K number in the report and the e-mail.
+
+In the make_report rule of Snakefile.report, pb_run_status.py is called and the output is fed to
+the make_report.py script in order to get the "About this run" section at the top. I could get
+pb_run_status.py to read from XML files but I don't think that's the best idea, especially since
+the files do not appear until a cell is complete.
+
+I think I need to treat this like the get_qc_link() function which scans for the info in the info.yml
+files. So the actual extraction would need to be by compile_cell_info.py, which currently reads
+m64175e_221028_133532.consensusreadset.xml. What does it get from there?
+
+OK I added the run info - see test/compile_cell_info/m64175e_221028_133532.info2.yml for an example.

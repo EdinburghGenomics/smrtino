@@ -9,8 +9,9 @@ import xml.etree.ElementTree as ET
         info = get_readset_info(filename)
 """
 
-_ns = dict( pbmeta = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
-            pb     = 'http://pacificbiosciences.com/PacBioDatasets.xsd' )
+_ns = dict( pbmeta  = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
+            pb      = 'http://pacificbiosciences.com/PacBioDatasets.xsd',
+            pbmodel = 'http://pacificbiosciences.com/PacBioDataModel.xsd' )
 
 rs_constants = dict( ConsensusReadSet = \
                         dict( label = 'ConsensusReadSet (HiFi)',
@@ -21,8 +22,29 @@ rs_constants = dict( ConsensusReadSet = \
                               shortname = 'subreads',
                               parts = ['subreads', 'scraps'] ) )
 
+def get_runmetadata_info(xmlfile):
+    """ Read some stuff from the run.metadata.xml file
+    """
+    res = dict(ExperimentId = 'unknown')
+
+    root = ET.parse(xmlfile).getroot()
+
+    # attribute if one was set.
+    ec = root.find('pbmodel:ExperimentContainer', _ns)
+    if ec:
+        res['ExperimentId'] = ec.attrib.get('ExperimentId', 'none set')
+
+    # And there should be a Run element which provides us, eg.
+    # ChipType="8mChip" InstrumentType="Sequel2e" CreatedBy="rfoster2"
+    run = root.find('.//pbmodel:Run', _ns)
+    if run:
+        for i in "ChipType InstrumentType CreatedBy TimeStampedName".split():
+            res[i] = run.attrib.get(i, 'unknown')
+
+    return res
+
 def get_readset_info(xmlfile, smrtlink_base=None):
-    """ Glean info from the file as per scan_for_smrt_cells in get_pacbio_yml.py
+    """ Glean info from a readset file for a SMRT cell
     """
     root = ET.parse(xmlfile).getroot()
 
@@ -50,7 +72,7 @@ def get_readset_info(xmlfile, smrtlink_base=None):
 
     well_samples = root.findall('.//pbmeta:WellSample', _ns)
     # There should be 1!
-    L.debug("Found {} WellSample records".format(len(well_samples)))
+    L.debug(f"Found {len(well_samples)} WellSample records")
 
     if len(well_samples) == 1:
         ws, = well_samples

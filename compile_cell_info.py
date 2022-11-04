@@ -4,7 +4,7 @@ import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import yaml
 
-from smrtino.ParseXML import get_readset_info
+from smrtino.ParseXML import get_readset_info, get_runmetadata_info
 
 """ Emits .info.yml files for SMRT cells by parsing the xml files from
     SMRT link, among other things. This script, along with make_report.py,
@@ -17,6 +17,11 @@ def main(args):
 
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING), stream=sys.stderr)
 
+    info = gen_info(args)
+
+    print(yaml.safe_dump(info, default_flow_style=False), end='')
+
+def gen_info(args):
     # If a filter was applied then we actually want to look at the unfiltered version
     # Splitting paths is always fiddly...
     pbits = args.xmlfile[0].split('/')
@@ -24,7 +29,7 @@ def main(args):
     if len(fbits) == 4:
         L.debug("File was filtered. Loading unfiltered version.")
         filtername = fbits[1]
-        pbits[-1] = '{}.{}.{}'.format( fbits[0], *fbits[2:] )
+        pbits[-1] = f"{fbits[0]}.{fbits[2]}.{fbits[3]}"
     else:
         filtername = None
     # Reconstruct path...
@@ -34,11 +39,14 @@ def main(args):
     # get this info from the XML instead.
 
     # Load the file then...
-    L.debug("Reading from {}".format(xmlfile))
+    L.debug(f"Reading from {xmlfile}")
     info = get_readset_info(xmlfile)
+    if args.runxml:
+        L.debug(f"Also reading from {args.runxml}")
+        info['_run'] = get_runmetadata_info(args.runxml)
 
     info['filter_added'] = filtername
-    info['_filename'] = xmlfile
+    info['_filename'] = os.path.basename(xmlfile)
 
     # Add plots if we have them
     for p in args.plots or []:
@@ -57,8 +65,8 @@ def main(args):
             stats['_headings'] = ['File'] + stats['_headings']
             info.setdefault('_cstats', []).append(stats)
 
-    # Print the result
-    print(yaml.safe_dump(info, default_flow_style=False))
+    # Return the info dictionary
+    return info
 
 def parse_args(*args):
     description = """ Provide an XML file to digest. YAML will be printed on
@@ -67,7 +75,9 @@ def parse_args(*args):
     argparser = ArgumentParser( description=description,
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("xmlfile", nargs=1,
-                            help="XML to be loaded")
+                            help="Readset XML to be loaded")
+    argparser.add_argument("-r", "--runxml", nargs="?",
+                            help="Optional run.metadata XML to be loaded")
     argparser.add_argument("-p", "--plots", nargs="*",
                             help="Plots generated for this cell (YAML files)")
     argparser.add_argument("-s", "--stats", nargs="*",

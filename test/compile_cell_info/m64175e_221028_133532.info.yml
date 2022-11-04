@@ -1,0 +1,56 @@
+_cstats:
+- File: Reads
+  GC %: 58.41320451989805
+  Max read length: 356691
+  Mean length: 5714.027579896195
+  N50: 42166
+  Reads: 6482693
+  Total bases: 37042286594
+  _headings:
+  - File
+  - Max read length
+  - Reads
+  - Total bases
+  - N50
+  - GC %
+  - Mean length
+- File: Hifi_reads
+  GC %: 41.451156915931506
+  Max read length: 6831
+  Mean length: 1273.6169079816625
+  N50: 1285
+  Reads: 3996160
+  Total bases: 5089576943
+  _headings:
+  - File
+  - Max read length
+  - Reads
+  - Total bases
+  - N50
+  - GC %
+  - Mean length
+_filename: m64175e_221028_133532.consensusreadset.xml
+_parts:
+- reads
+_plots:
+- - files:
+    - - m64175e_221028_133532.reads.length_histo.png
+    title: Binned sequence lengths
+- - files:
+    - - m64175e_221028_133532.reads.phylum.read_cov.cov0.png
+      - m64175e_221028_133532.reads.order.read_cov.cov0.png
+      - m64175e_221028_133532.reads.species.read_cov.cov0.png
+    - - m64175e_221028_133532.reads.phylum.cov0.png
+      - m64175e_221028_133532.reads.order.cov0.png
+      - m64175e_221028_133532.reads.species.cov0.png
+    title: Taxonomy for reads (10000 sequences) by phylum, order, species
+_readset_type: ccsreads
+cell_id: m64175e_221028_133532
+cell_uuid: 2cc09585-7912-45bc-a63a-aa6822c0bc5d
+filter_added: null
+readset_type: ConsensusReadSet (HiFi)
+run_id: r64175e_20221028_131705
+run_slot: 1_A01
+ws_desc: ''
+ws_name: 22381KRpool01
+ws_project: '22381'

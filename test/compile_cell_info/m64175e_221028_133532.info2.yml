@@ -1,0 +1,19 @@
+_filename: m64175e_221028_133532.consensusreadset.xml
+_parts:
+- reads
+_readset_type: ccsreads
+cell_id: m64175e_221028_133532
+cell_uuid: 2cc09585-7912-45bc-a63a-aa6822c0bc5d
+filter_added: null
+readset_type: ConsensusReadSet (HiFi)
+run_id: r64175e_20221028_131705
+run_slot: 1_A01
+ws_desc: ''
+ws_name: 22381KRpool01
+ws_project: '22381'
+_run:
+  ExperimentId: K123
+  CreatedBy: joschmoe
+  ChipType: '8mChip'
+  InstrumentType: 'Sequel2e'
+  TimeStampedName: r64175e_20221028_131705

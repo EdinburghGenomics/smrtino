@@ -1,0 +1,9 @@
+- files:
+  - - m64175e_221028_133532.reads.phylum.read_cov.cov0.png
+    - m64175e_221028_133532.reads.order.read_cov.cov0.png
+    - m64175e_221028_133532.reads.species.read_cov.cov0.png
+  - - m64175e_221028_133532.reads.phylum.cov0.png
+    - m64175e_221028_133532.reads.order.cov0.png
+    - m64175e_221028_133532.reads.species.cov0.png
+  title: Taxonomy for reads (10000 sequences) by phylum, order, species
+

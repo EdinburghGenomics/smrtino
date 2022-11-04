@@ -62,7 +62,7 @@ class RunStatus:
             raise Exception("Location {} does not look like an output directory and no TO_LOCATION is set.".format(
                                       pbrun_dir) )
 
-        # This is redundant as we never parse the XML anyway.
+        # In quick mode we don't parse the XML. But we don't parse it anyway so this is redundant.
         self.quick_mode = 'q' in opts
 
         self._clear_cache()
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     #Very cursory option parsing
     optind = 1 ; opts = ''
     if sys.argv[optind:] and sys.argv[optind].startswith('-'):
-        opts = sys.argv[optind][1:]
+        opts += sys.argv[optind][1:]
         optind += 1
 
     L.basicConfig(level=L.WARNING, stream=sys.stderr)
