@@ -42,3 +42,6 @@ files. So the actual extraction would need to be by compile_cell_info.py, which 
 m64175e_221028_133532.consensusreadset.xml. What does it get from there?
 
 OK I added the run info - see test/compile_cell_info/m64175e_221028_133532.info2.yml for an example.
+
+And I've fixed it to appear in the report. For the e-mail, I realise it should happen automatically
+because it shows the full directory path for the run - so that's cool.
