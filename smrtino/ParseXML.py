@@ -41,6 +41,15 @@ def get_runmetadata_info(xmlfile):
         for i in "ChipType InstrumentType CreatedBy TimeStampedName".split():
             res[i] = run.attrib.get(i, 'unknown')
 
+    # And there should be a CollectionMetadata element which gives us the InstrumentId
+    cmd = root.find('.//pbmeta:CollectionMetadata', _ns)
+    if cmd:
+        for i in ["InstrumentId"]:
+            res[i] = cmd.attrib.get(i, 'unknown')
+
+        if "InstrumentType" in res:
+            res["Instrument"] = f"{res['InstrumentType']}_{res['InstrumentId']}"
+
     return res
 
 def get_readset_info(xmlfile, smrtlink_base=None):

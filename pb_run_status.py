@@ -264,10 +264,11 @@ class RunStatus:
 
     def get_instrument(self):
         """ We have only one and the serial number is in the run ID
+            We get a more definitive version from the run.metadata.xml file later
         """
         foo = self.get_run_id().split('_')[0]
         if foo.startswith('r') and len(foo) > 1:
-            return "Sequel_" + foo[1:]
+            return foo[1:]
         else:
             return 'unknown'
 

@@ -15,5 +15,7 @@ _run:
   ExperimentId: K123
   CreatedBy: joschmoe
   ChipType: '8mChip'
+  InstrumentId: '64175e'
   InstrumentType: 'Sequel2e'
+  Instrument: 'Sequel2e_64175e'
   TimeStampedName: r64175e_20221028_131705
