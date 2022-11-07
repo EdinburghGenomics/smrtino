@@ -1,12 +1,13 @@
 #!/bin/bash
 set -euo pipefail
+shopt -sq failglob
 
 FROM_LOCATION=${FROM_LOCATION:-/lustre-gseg/smrtlink/sequel_seqdata}
 TO_LOCATION=${TO_LOCATION:-~/test_pacbio_data}
 
 RUN_NAME_REGEX="${RUN_NAME_REGEX:-r.*_[0-9]{8\}_.*}"
 
-RUN_NAME_REGEX=('r64175e_.+_.+' '2.*/.*' 'trash/foo/bar' 'K[0-9]+/r64175e_.+_.+' 'r64175e_.+_.+')
+RUN_NAME_REGEX=('r64175e_.+_.+' '2.*/.*' 'trash*/foo/bar' 'K[0-9]+/r64175e_.+_.+' 'r64175e_.+_.+')
 
 for d in "$FROM_LOCATION" "$TO_LOCATION" ; do
     if ! [ -d "$d" ] ; then
@@ -40,7 +41,7 @@ for rnregex in "${RUN_NAME_REGEX[@]}" ; do
     # we can use a regex on a regex.
     while [[ "$rnregex" =~ (.+)/(.+) ]] ; do
         rnregex="${BASH_REMATCH[1]}"
-        PREFIX_RUN_NAME_REGEX+=($rnregex)
+        PREFIX_RUN_NAME_REGEX+=("$rnregex")
     done
 done
 echo "PREFIX_RUN_NAME_REGEX is (${PREFIX_RUN_NAME_REGEX[@]})"

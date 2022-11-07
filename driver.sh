@@ -527,7 +527,7 @@ for rnregex in "${RUN_NAME_REGEX[@]}" ; do
     # we can use a regex on the regex (or maybe dirname?).
     while [[ "$rnregex" =~ (.+)/(.+) ]] ; do
         rnregex="${BASH_REMATCH[1]}"
-        PREFIX_RUN_NAME_REGEX+=($rnregex)
+        PREFIX_RUN_NAME_REGEX+=("$rnregex")
     done
 done
 debug "PREFIX_RUN_NAME_REGEX is (${PREFIX_RUN_NAME_REGEX[@]})"

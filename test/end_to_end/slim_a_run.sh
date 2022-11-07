@@ -57,8 +57,9 @@ for cell in $CELLS ; do
 
     echo "Copying all other files from $RUN_PATH/$cell"
     cp -v -n -t "$DEST/$cell" "$RUN_PATH/$cell"/*  2>/dev/null || true
+    cp -v -n -t "$DEST/$cell" "$RUN_PATH/$cell"/.*.xml  2>/dev/null || true
 done
 
 # Yep it's much simpler than an Illumina run!
-tree "$DEST"
+tree -hsa "$DEST"
 echo DONE

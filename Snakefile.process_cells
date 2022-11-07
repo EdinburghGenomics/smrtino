@@ -201,7 +201,7 @@ rule one_cell_info:
        # What needs to go into the YML? Stuff from the XML and also some stuff from the
        # stats, maybe? At present the script will discover extra files automagically.
        r'''compile_cell_info.py {input.xml[0]} \
-             -r {input.runxml}
+             -r {input.runxml} \
              -s {input.cstats} \
              -p {input.hplots} {input.blobs} > {output}
         '''
