@@ -57,7 +57,7 @@ runcmd git --git-dir=git_repo --work-tree="$latest_tag" checkout -f tags/"$lates
 cp -vn -t $latest_tag $latest_checked_out/environ.sh
 
 # Bootstrap the VEnv
-echo "Bootstrapping the VirtualEnv in $latest_tag/_hesiod_venv"
+echo "Bootstrapping the VirtualEnv in $latest_tag/_smrtino_venv"
 (cd $latest_tag && source ./activate_venv )
 
 # Finally, alert the user if there were local changes in $latest_checked_out
