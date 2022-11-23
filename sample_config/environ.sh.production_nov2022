@@ -38,4 +38,5 @@ export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
 # appended, so you do need to include the slash on the end here.
 PROJECT_PAGE_URL=https://www.wiki.ed.ac.uk/display/GenePool/
 
-
+# For rsync_backup
+BACKUP_LOCATION=/fluidfs/sequel/lustre_backup/
