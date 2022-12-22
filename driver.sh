@@ -43,7 +43,7 @@ if [ -e "$ENVIRON_SH" ] ; then
     popd >/dev/null
 
     # Saves having to put 'export' on every line in the config.
-    export CLUSTER_QUEUE      FROM_LOCATION     TO_LOCATION \
+    export CLUSTER_PARTITION  FROM_LOCATION     TO_LOCATION \
            RT_SYSTEM          RT_SETTINGS       GENOLOGICSRC \
            PROJECT_NAME_LIST  PROJECT_PAGE_URL  REPORT_DESTINATION  REPORT_LINK \
            RSYNC_CMD          STALL_TIME        VERBOSE             FILTER_LOCALLY \

@@ -28,3 +28,8 @@ The above command will (I believe) yield a file named "with_5mC.bam" as well as 
 
 Not quite, but I got it done. The output looks great. And the Q>20 filtering just seems to work. Nice.
 
+---
+
+For an analysis of how the kinetics and 5mC calls look in the BAM file, see:
+
+~/Documents/sequel_v11_data.odt - I've now added a copy in this doc directory.
