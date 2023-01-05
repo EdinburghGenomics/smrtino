@@ -3,22 +3,29 @@
 # Log to the terminal
 MAINLOG=/dev/stdout
 
-# Where find runs to process and where to put results
-FROM_LOCATION=~/test_sequel TO_LOCATION=~/test_pacbio_data
+# Where to find runs to process and where to put results
+FROM_LOCATION=~/test_sequel
+TO_LOCATION=~/test_pacbio_data
+
+# As we never write to the input dir we can test process live data:
+#FROM_LOCATION=/fluidfs/sequel
 
 # Bypass RT and use the global partition on SLURM
-RT_SYSTEM=none
+RT_SYSTEM='none'
 CLUSTER_PARTITION=standard
+EXTRA_SLURM_FLAGS="--time=24:00:00 --qos=edgen --account=edg01"
 
-# Process all runs on our IIe instrument
-RUN_NAME_REGEX='r64175e_.*'
-
-# Runs are declared dead after 24 hours of inactivity
-STALL_TIME=24
+# Process all runs on our Sequel IIe
+RUN_NAME_REGEX=('K[0-9]+/r64175e_.+_.+' 'r64175e_.+_.+')
+# Or just a specific one
+#RUN_NAME_REGEX='r64175e_20220418_151848'
 
 # Allow caller to set VERBOSE=0 but otherwise force it to 1
 VERBOSE=${VERBOSE:-1}
 
-# Send reports to ~/test_fastqdata. There won't be a valid http:// link obviously.
-REPORT_DESTINATION='localhost:test_pacbio_data/uploaded_reports'
-REPORT_LINK=
+# Send reports to web1.
+#REPORT_DESTINATION='localhost:test_pacbio_data/uploaded_reports'
+#REPORT_LINK=
+REPORT_DESTINATION=edgenom1@egcloud.bio.ed.ac.uk:smrtino/test
+REPORT_LINK=https://egcloud.bio.ed.ac.uk/smrtino/test
+RSYNC_CMD="rsync --rsync-path=bin/rsync_reports"
