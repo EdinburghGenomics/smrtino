@@ -1,0 +1,36 @@
+See https://github.com/EdinburghGenomics/smrtino/issues/2
+
+Javier's been asking for individual reports for a while.
+
+I'll still have the pipeline logic as before, I think, but I'll
+make a report per cell. And add all the separate links to the
+RT messages.
+
+What will this actully look like?
+
+Title changes to "SMRT Cell <cellid>"
+
+SMRTino version should be 2 if I get barcode support in there.
+
+The "About this run" can stay. Change "Cells" to "Number of cells" and just print the count.
+
+Remove PipelineStatus because now there will only ever be a complete report for a cell.
+
+Change Heading from "SMRT Cells" to "Cell Info" and then "Cell QC"
+
+Kill the "Binned Sequence Lengths". Do we want any other type of plot? Like can
+we get a length/quality plot like we get from NanoPlot?
+Can we run NanoPlot on PacBio input??
+
+Anyway let's leave this for now as the SMRT Link QC is really what we look at.
+
+For file names, remove the index.php and have the HTML report be something like:
+
+1_m64175e_230221_122140.pan.html
+
+The cells should sort anyway, but this makes it explicit.
+
+---
+
+OK so my first job is to look at the Snakefile and tell it to make three PanDoc reports
+and 3 HTML reports, then work from there.

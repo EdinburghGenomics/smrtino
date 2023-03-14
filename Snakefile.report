@@ -97,9 +97,6 @@ rule smrtlink_pdf_report:
         shell("smrtlink_pdf_report.py -o {output} --empty_on_missing {cell_uuid}")
 
 # This rule marshalls all the .png images and makes the report in PanDoc format.
-# Note - the run_status is now fudged so that the report says 'complete' when
-# the run is complete, even though it's not complete (according to pb_run_status.py)
-# as this script runs.
 rule make_report:
     output: "all_reports/run_report.{cc}cells.pan"
     input:
@@ -110,7 +107,6 @@ rule make_report:
         histo_plots = glob("histo/*.png"),
         plist       = "projects_ready.txt",
     params:
-        fudge = "--fudge {rep_status}".format(**config) if config.get('rep_status') else "",
         pdf   = [ f[len('all_reports/'):] for f in SMRTLINK_PDF],
     shell:
         '''shopt -s nullglob
@@ -118,8 +114,7 @@ rule make_report:
            mkdir all_reports/img
            ln -srnt all_reports/img blob/*.png || true
            ln -srnt all_reports/img histo/*.png || true
-           make_report.py -o {output} {params.fudge} \
+           make_report.py -o {output} \
                 -s <(pb_run_status.py) \
                 {input.yaml} {input.links} {params.pdf}
         '''
-

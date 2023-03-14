@@ -52,7 +52,7 @@ def load_all_inputs(list_of_yamls, yaml_types=("info", "link", "pdf")):
 
     return all_yamls
 
-def rejig_status_info(status_info, fudge=None, smrtlink_qc_link=None, experiment=None, instrument=None):
+def rejig_status_info(status_info, smrtlink_qc_link=None, experiment=None, instrument=None):
     """Re-jig the status_info into the format we want to display in the
        'About this run' section.
        This was previously done within format_report() but I broke it out.
@@ -61,10 +61,6 @@ def rejig_status_info(status_info, fudge=None, smrtlink_qc_link=None, experiment
     new_info = OrderedDict([ (k, v) for k, v in status_info.items()
                               if not(k.startswith('_'))
                               and (k != 'CellsReady') ])
-
-    # Now fudge the run status if requested
-    if fudge:
-        new_info['PipelineStatus'] = fudge
 
     # And the instrument, once we get a definitive report from the XML
     if instrument:
@@ -106,7 +102,6 @@ def main(args):
     # Re-jig the status_info into the format we want to display in the
     # "About this run" section.
     run_status = rejig_status_info( status_info,
-                                    fudge = args.fudge_status,
                                     smrtlink_qc_link = get_qc_link(all_yamls),
                                     experiment = get_run_metadata(all_yamls, 'ExperimentId'),
                                     instrument = get_run_metadata(all_yamls, 'Instrument') )
@@ -368,8 +363,6 @@ def parse_args(*args):
                             help="Directory to scan for pipeline meta-data.")
     argparser.add_argument("-s", "--status", default=None,
                             help="File containing status info on this run.")
-    argparser.add_argument("-f", "--fudge_status", default=None,
-                            help="Override the PipelineStatus shown in the report.")
     argparser.add_argument("-o", "--out",
                             help="Where to save the report. Defaults to stdout.")
     argparser.add_argument("-d", "--debug", action="store_true",
