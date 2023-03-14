@@ -13,13 +13,13 @@ cd "${1:-.}"
 runname="`basename $PWD`"
 
 function echorun(){
-    printf $'%q ' "$@" ; printf '\n'
+    printf '%q ' "$@" ; printf '\n'
     "$@"
 }
 
-# Confirm we do have all_reports/run_report.html
-if [ ! -L all_reports/run_report.html ] || [ ! -e all_reports/run_report.html ] ; then
-    echo "No such file all_reports/run_report.html or it is not a link."
+# Confirm we do have at least one HTML report
+if ! compgen -G "all_reports/*.html" >/dev/null ; then
+    echo 'No HTML files found in ./all_reports!'
     false
 fi
 
@@ -41,16 +41,10 @@ echo "Uploading report for $runname to $dest..." >&2
 $RSYNC_CMD -drvlOt all_reports $dest/$runname/ >&2
 $RSYNC_CMD -drvLOt all_reports/img $dest/$runname/all_reports/ >&2
 
-# Add the index. We now have to make this a PHP script but at least the content is totally fixed.
-# This is very similar to what we have on Illuminatus (but not quite).
-index_php="$(dirname $BASH_SOURCE)/templates/index.php"
-if $RSYNC_CMD -vp "$index_php" $dest/$runname/ >&2 ; then
-    echo "...done. Report uploaded and index.php written to ${dest#*:}/$runname/." >&2
-else
-    echo "...done. Report uploaded but failed to write index.php to ${dest#*:}/$runname/." >&2
-fi
+# I think we no longer need the index.php
 
-# Say where to find it:
 # eg. https://egcloud.bio.ed.ac.uk/smrtino/...
-echo "Link to report is: ${REPORT_LINK:-$REPORT_DESTINATION}/$runname" >&2
-echo "${REPORT_LINK:-$REPORT_DESTINATION}/$runname"
+echo "Link to reports is: ${REPORT_LINK:-$REPORT_DESTINATION}/$runname" >&2
+for htmlrep in all_reports/*.html ; do
+    echo "${REPORT_LINK:-$REPORT_DESTINATION}/$runname/$(basename "$htmlrep")"
+done

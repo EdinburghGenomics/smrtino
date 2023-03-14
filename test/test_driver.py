@@ -228,7 +228,7 @@ class T(unittest.TestCase):
         # Initial report should be made
         expected_calls = self.bm.empty_calls()
         expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun --subject new --comment @???'.split()]
-        expected_calls['Snakefile.report'] = ['-R list_projects make_report --config rep_status=new -- report_main'.split()]
+        expected_calls['Snakefile.report'] = ['-R list_projects make_report -- report_main'.split()]
         expected_calls['upload_report.sh'] = [[self.to_path]]
 
         # The call to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
@@ -339,7 +339,7 @@ class T(unittest.TestCase):
                                     r'@\S+$', '@???', self.bm.last_calls['rt_runticket_manager.py'][1][-1] )
 
         expected_calls = self.bm.empty_calls()
-        expected_calls['Snakefile.report'] = ['-R list_projects make_report --config rep_status=complete -- report_main'.split()]
+        expected_calls['Snakefile.report'] = ['-R list_projects make_report -- report_main'.split()]
         expected_calls['upload_report.sh'] = [[self.to_path]]
         expected_calls['rt_runticket_manager.py'] = [[ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--subject', 'processing',
                                                        '--reply', '2 SMRT cells have run. 5 were aborted. Final report will follow soon.' ],

@@ -38,26 +38,22 @@ TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
     Also we may or may not have some plots to add.
 """
 INFO_YML = glob("*.info.yml")
-LINK_YML = [ re.sub(r'\.info\.yml$', r'.link.yml', f) for f in INFO_YML ]
-SMRTLINK_PDF = [ "all_reports/pdf/" + re.sub(r'\.info\.yml$', r'.pdf', f) for f in INFO_YML ]
+CELL_NAMES   = [ re.sub(r"\.info\.yml$", "", f) for f in INFO_YML ]
 
-# We shall make a single report for the whole run. This is supposed to be fairly simple.
-# If it gets complex we might need a more sophisticated report making strategy.
+# The report filenames are to be of the form:
+#   {cellnum}_{cellid}.pan.html
+REP_NAMES  = [ f"{n}_{c}" for n, c in enumerate(CELL_NAMES, start=1) ]
+
+# Global wildcard patterns
+wildcard_constraints:
+    cellidx    = r"\d+",
+    cell       = r"m\w+_\w+_\w+",
+
+# We shall make a single report per cell (used to be one per run).
 rule report_main:
-    output: "all_reports/run_report.html"
     input:
-        pan   = "all_reports/run_report.{cc}cells.pan".format(cc=len(INFO_YML))
-    params:
-        templates = os.environ.get('TEMPLATES', '.')
-    shell:
-        '''{TOOLBOX} pandoc -f markdown \
-                                --template={params.templates}/template.html \
-                                --include-in-header={params.templates}/javascript.js.html \
-                                --include-in-header={params.templates}/local.css.html \
-                                --toc --toc-depth=4 \
-                                -o {input.pan}.html {input.pan}
-           ln -sr {input.pan}.html {output}
-        '''
+        pan   = expand("all_reports/{r}.pan.html", r=REP_NAMES),
+        plist = "projects_ready.txt",
 
 # A list of projects, like with Illuminatus. Used to quickly scan for runs that have data related to
 # a project. If there is no valid project name we still want a report but it should be clear there is
@@ -96,25 +92,38 @@ rule smrtlink_pdf_report:
         cell_uuid = load_yaml(str(input))['cell_uuid']
         shell("smrtlink_pdf_report.py -o {output} --empty_on_missing {cell_uuid}")
 
-# This rule marshalls all the .png images and makes the report in PanDoc format.
-rule make_report:
-    output: "all_reports/run_report.{cc}cells.pan"
-    input:
-        yaml        = INFO_YML,
-        links       = LINK_YML,
-        pdf         = SMRTLINK_PDF,
-        blob_plots  = glob("blob/*.png"),
-        histo_plots = glob("histo/*.png"),
-        plist       = "projects_ready.txt",
+# Invokes PanDoc with the template stuff
+localrules: pan_to_html
+rule pan_to_html:
+    output: "{report}.pan.html"
+    input:  "{report}.pan"
     params:
-        pdf   = [ f[len('all_reports/'):] for f in SMRTLINK_PDF],
+        templates = os.environ.get('TEMPLATES', '.')
     shell:
-        '''shopt -s nullglob
-           rm -rf all_reports/img
-           mkdir all_reports/img
-           ln -srnt all_reports/img blob/*.png || true
-           ln -srnt all_reports/img histo/*.png || true
-           make_report.py -o {output} \
-                -s <(pb_run_status.py) \
-                {input.yaml} {input.links} {params.pdf}
-        '''
+       r"""{TOOLBOX} pandoc -f markdown \
+                                --template={params.templates}/template.html \
+                                --include-in-header={params.templates}/javascript.js.html \
+                                --include-in-header={params.templates}/local.css.html \
+                                --toc --toc-depth=2 \
+                                -o {output} {input}
+        """
+
+# This rule marshalls all the .png images and makes one report in PanDoc format.
+rule make_report:
+    output:
+        pan     = "all_reports/{cellidx}_{cell}.pan",
+        imglist = "all_reports/img/{cellidx}_{cell}.list",
+    input:
+        yaml       = "{cell}.info.yml",
+        links      = "{cell}.link.yml",
+        pdf        = "all_reports/pdf/{cell}.pdf",
+        blob_plots = lambda wc: glob("blob/{wc.cell}.*.png"),
+    params:
+        pdflink    = "pdf/{cell}.pdf",
+    shell:
+       r"""printf '%s\n' {input.blob_plots} > {output.imglist}
+           ln -srnt all_reports/img {input.blob_plots}
+           make_report.py -o {output.pan} \
+                {input.yaml} {input.links} {params.pdflink} \
+                -s <(pb_run_status.py)
+        """

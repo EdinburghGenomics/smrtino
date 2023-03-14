@@ -189,9 +189,8 @@ class T(unittest.TestCase):
                                   ( "Instrument",      'Sequel2e_64175e' ),
                                   ( "Cells",           '1_A01 2_B01 3_C01 4_D01' ),
                                   ( "StartTime",       'Fri Oct 19 13:31:59 2018' ),
-                                  ( "PipelineStatus",  'interminably_waiting' ) ])
+                                  ( "PipelineStatus",  'complete' ) ])
         rejig2 = rejig_status_info( some_info,
-                                    fudge = 'interminably_waiting',
                                     smrtlink_qc_link = ('label', 'link'),
                                     experiment = 'K123',
                                     instrument = 'Sequel2e_64175e' )
