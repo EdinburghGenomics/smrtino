@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys, os, re
 import unittest
-from collections import OrderedDict, Hashable, defaultdict
+from collections import OrderedDict, defaultdict
 
 from smrtino.yaml_ordered import yaml
 
