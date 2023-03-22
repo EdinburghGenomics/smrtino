@@ -111,8 +111,7 @@ rule pan_to_html:
 # This rule marshalls all the .png images and makes one report in PanDoc format.
 rule make_report:
     output:
-        pan     = "all_reports/{cellidx}_{cell}.pan",
-        imglist = "all_reports/img/{cellidx}_{cell}.list",
+        pan        = "all_reports/{cellidx}_{cell}.pan",
     input:
         yaml       = "{cell}.info.yml",
         links      = "{cell}.link.yml",
@@ -121,8 +120,7 @@ rule make_report:
     params:
         pdflink    = "pdf/{cell}.pdf",
     shell:
-       r"""printf '%s\n' {input.blob_plots} > {output.imglist}
-           ln -srnt all_reports/img {input.blob_plots}
+       r"""ln -srnt all_reports/img {input.blob_plots}
            make_report.py -o {output.pan} \
                 {input.yaml} {input.links} {params.pdflink} \
                 -s <(pb_run_status.py)

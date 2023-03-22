@@ -152,8 +152,7 @@ def i_one_cell_info(wildcards):
                 cstats = [],
                 cou = [],
                 xml = [],
-                blobs = [],
-                hplots = [] )
+                blobs = [] )
 
     # This will loop over ['subreads', 'scraps'] or ['reads']
     for apart in scinfo['parts']:
@@ -185,9 +184,6 @@ def i_one_cell_info(wildcards):
         # And we want stats for the BAM, as well as counts for the FASTQ
         res['cstats'].append(cellbase + ".hifi_reads.cstats.yml")
 
-    # Length histograms
-    res['hplots'].append("histo/" + cellbase + ".plots.yml"),
-
     # Blobs or no?
     if str(config.get('blobs', '1')) != '0':
         res['blobs'].append("blob/" + cellbase + ".plots.yml")
@@ -203,7 +199,7 @@ rule one_cell_info:
        r'''compile_cell_info.py {input.xml[0]} \
              -r {input.runxml} \
              -s {input.cstats} \
-             -p {input.hplots} {input.blobs} > {output}
+             -p {input.blobs} > {output}
         '''
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
@@ -276,7 +272,8 @@ rule filter_control:
         # Filter with standard sequences (would we ever use anything else??)
         "{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol"
 
-# This script produces some headline stats as well as a histogram we'll use in the next rule
+# This script produces some headline stats as well as a histogram we can use
+# (but currently we don't)
 rule get_contig_stats_yaml:
     output:
         yaml = "{bam}.cstats.yml",
@@ -285,25 +282,6 @@ rule get_contig_stats_yaml:
     shell:
         "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta {input}) > {output.yaml}"
 
-rule histo_plot:
-    output:
-        hplot = "{bam}.length_histo.png",
-        thumb = "{bam}.length_histo.__thumb.png"
-    input:
-        histo = "{bam}.length_histo.tsv"
-    params:
-        thumbsize = "480x480",
-        bins = "1K,2K,3K,5K,10K,50K,100K"
-    shell:
-       r"""if [ -s {input} ] ; then
-             {TOOLBOX} plot_histo.R -f {input} -o {output.hplot} --bins {params.bins} \
-                  --title `basename {input} .length_histo.tsv`
-             {TOOLBOX} convert {output.hplot} -resize {params.thumbsize} {output.thumb}
-           else
-             {TOOLBOX} gm_label.sh "200x150" "No data to plot" {output.hplot}
-             cp {output.hplot} {output.thumb}
-           fi
-        """
 
 # Prepare to export the HiFi reads
 HIFI_FILTER_ARGS = "--min-qv 20"
@@ -430,25 +408,6 @@ rule list_blob_plots:
         with open(output[0], 'w') as ofh:
             print(yaml.safe_dump(plots), file=ofh)
 
-# As above but for the histo plots
-# As there is only one heading this returns a singleton list.
-localrules: list_histo_plots
-rule list_histo_plots:
-    output: r"histo/{cell}{filter}.plots.yml"
-    input:
-        png = lambda wc: expand( "histo/{cell}.{s}.length_histo{thumb}.png",
-                                 cell = [wc.cell + wc.filter],
-                                 s = SC[wc.cell]['parts'], # subreads/scraps/reads
-                                 thumb = ['.__thumb', ''] )
-    run:
-        plots = [  dict(title = 'Binned sequence lengths',
-                        files = [ [ "{cell}{f}.{s}.length_histo.png".format( cell = wildcards.cell,
-                                                                             f = wildcards.filter,
-                                                                             s = s )
-                                    for s in SC[wildcards.cell]['parts'] ] ]
-                       ) ]
-        with open(output[0], 'w') as ofh:
-            print(yaml.safe_dump(plots), file=ofh)
 
 # Convert to FASTA and subsample and munge the headers
 rule bam_to_subsampled_fasta:
