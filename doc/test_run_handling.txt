@@ -1,0 +1,37 @@
+See https://github.com/EdinburghGenomics/smrtino/issues/4
+
+We have these pseudo-runs that the instrument generates, and we need to have
+them dealt with so we don't need to manually close all the tickets.
+
+eg. /lustre-gseg/smrtlink/sequel_seqdata/r64175e_20230220_093234
+
+Questions:
+
+1) How do we detect such runs, and can they be detected when the pipeline first sees the run or
+do we have to wait for the metadata to land?
+
+2) Do we want to avoid making a ticket entirely, or do we just want to close the ticket using
+an adaptation of the existing aborted cells mechanism?
+
+3) Should we even have an output directory? I think we do need one because I don't want to have
+to parse the XML for every old pseudo-run every time to see that it is a pseudo-run.
+
+Ways to do this:
+
+I could try to be clever and say that pseudo-runs process quickly (within 10 minutes) so if I see
+a really new run I could wait a little while to see if it reveals itself as a pseudo-run and if
+so avoid making a ticket. But adding timing considerations to the pipeline is meh.
+
+Or I could just hold off making a ticket at all until the info for the first cell comes in, but
+then people expect to see a ticket as soon as the run starts so I don't think that's very good.
+
+So I guess that gives me:
+
+* Add a new status "testrun" which basically works the same as "aborted"
+ * Modify pb_run_status.py and add a test
+
+* Continue to process new runs as before (there's no 0-cell report now since we're doing per-cell reports)
+
+* When the cell completes, detect if it's a test cell and if so:
+ * Close the ticket
+ * Touch pbpipeline/testrun to make the run done with

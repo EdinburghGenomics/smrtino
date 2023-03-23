@@ -18,6 +18,7 @@ class RunStatus:
     CELL_PROCESSED  = 3   # the pipeline has finished on this cell
     CELL_FAILED     = 4   # the pipeline failed to process this cell
     CELL_ABORTED    = 5   # cell aborted - disregard it
+    CELL_TESTRUN    = 6
 
     def __init__( self, pbrun_dir, opts = '', to_location=None, stall_time=None ):
 
@@ -126,6 +127,9 @@ class RunStatus:
         self._cells_cache = res
         return res
 
+    def _was_testrun(self):
+        return self._exists_to( 'pbpipeline/testrun' )
+
     def _was_aborted(self):
         if self._exists_to( 'pbpipeline/aborted' ):
             return True
@@ -177,6 +181,9 @@ class RunStatus:
         if not self._exists_to( 'pbpipeline' ):
             return "new"
 
+        # Auto test pseudo-runs require no processing
+        if self._was_testrun():
+            return "testrun"
         # Run in aborted state should not be subject to any further processing
         if self._was_aborted():
             return "aborted"

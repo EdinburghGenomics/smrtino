@@ -145,6 +145,17 @@ class T(unittest.TestCase):
 
         self.assertEqual(gs(), 'stalled')
 
+    def test_testrun_state(self):
+        """ New testrun state is basically the same as aborted but specifically
+            for auto-test runs.
+        """
+        run_info = self.use_run('r64175e_20201211_163702', copy=True)
+
+        self.md('pbpipeline')
+        self.touch('pbpipeline/testrun')
+
+        self.assertEqual(run_info.get_status(), 'testrun')
+
     def test_various_states(self):
         """ Simulate some pipeline activity on that run.
         """

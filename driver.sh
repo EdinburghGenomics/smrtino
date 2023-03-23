@@ -156,6 +156,7 @@ fi
 # reporting)      - the report is being made
 # complete)       - the pipeline has finished processing ALL cells on this run and made a report
 # aborted)        - the run is not to be processed
+# testrun)        - ditto
 # failed)         - the pipeline tried to process the run but failed somewhere
 # unknown)        - anything else. ie. something is broken
 
@@ -237,8 +238,6 @@ action_processed() {
 
     # In case we didn't already...
     notify_run_complete |& plog
-
-    # FIXME - report aborted vs. good cells!
 
     BREAK=1
     set +e ; ( set -e
@@ -332,8 +331,13 @@ action_aborted() {
     true
 }
 
+action_testrun() {
+    # self-test pseudo runs also require no further reporting
+    true
+}
+
 action_complete() {
-    # the pipeline already fully completed for this run - Yay! - nothing to be done ...
+    # the pipeline already fully completed for this run - Yay!
     true
 }
 
@@ -557,7 +561,7 @@ while [[ "${#candidate_run_list[@]}" > 0 ]] ; do
       fi
     done
 
-    # We can prune this directory from further searching
+    # Failing all that, we can prune this directory from further searching
     echo "Ignoring $run_basename"
     continue
   fi
@@ -566,7 +570,10 @@ while [[ "${#candidate_run_list[@]}" > 0 ]] ; do
   # to the state functions via global variables. RUNID INSTRUMENT CELLS etc.
   get_run_status "$run_dir"
 
-  if [ "$STATUS" = complete ] || [ "$STATUS" = aborted ] ; then _log=debug ; else _log=log ; fi
+  _log=log
+  for s in complete aborted testrun ; do
+    if [ "$STATUS" = "$s" ] ; then _log=debug ; fi
+  done
   $_log "$run_dir has $RUNID from $INSTRUMENT with cell(s) [$CELLS] and status=$STATUS"
 
   #Call the appropriate function in the appropriate directory.
