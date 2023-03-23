@@ -26,7 +26,7 @@ def load_input(yaml_file, links_file=None):
 
     # All YAML files have a 'cell_id' which should be globally unique
     if not yaml_info.get('cell_id'):
-        exit("info.yml file must include a cell ID - eg. m54321_200211_123456")
+        exit("info.yml file must include a cell_id - eg. m54321_200211_123456")
 
     if links_file:
         yaml_info['_links'] = load_yaml(links_file)
@@ -37,6 +37,7 @@ def rejig_status_info(status_info, cell_data, remove=('CellsReady', 'CellsAborte
     """Re-jig the status_info into the format we want to display in the
        'About this run' section.
        This was previously done within format_report() but I broke it out.
+       The result of load_input() should also be provided as cell_data
     """
     # First eliminate anything that starts with an underscore, and 'CellsReady'
     new_info = OrderedDict([ (k, v) for k, v in status_info.items()
@@ -61,7 +62,7 @@ def rejig_status_info(status_info, cell_data, remove=('CellsReady', 'CellsAborte
 
     # Replace the list of cells with a count of cells
     if 'Cells' in new_info:
-        new_info['Cells'] = len(new_info['Cells'])
+        new_info['Cells'] = str(len(new_info['Cells'].split()))
 
     return new_info
 
@@ -83,7 +84,7 @@ def main(args):
 
     rep = format_report( yaml_data,
                          pipedata = pipedata,
-                         run_status = args.run_status,
+                         run_status = run_status,
                          pdfreport = args.report )
 
     if (not args.out) or (args.out == '-'):
@@ -184,7 +185,7 @@ def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None
             rep(f"<dd>[{escape_md(v[0])}]({v[1]})</dd>")
         else:
             rep(f"<dd>{escape_md(v)}</dd>")
-    rep('</dl>\n')
+    rep('</dl>')
 
     # Report all the infos and plots for this cell
 
@@ -201,7 +202,7 @@ def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None
         rep("", " \| ".join(smrt_links), "")
 
     # The rest of the reporting is in another function
-    rep(*format_cell(yaml_data, cell_links['smrtlink_cell_link']))
+    rep(*format_cell(yaml_data, cell_links.get('smrtlink_cell_link')))
 
     # Footer??
     rep("", "*~~~*")
@@ -255,7 +256,6 @@ def format_cell(cdict, cell_link=None):
                     ))
                 rep("</div>")
 
-    rep()
     return rep
 
 def make_table(rows):
