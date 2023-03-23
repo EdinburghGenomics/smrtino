@@ -28,10 +28,23 @@ then people expect to see a ticket as soon as the run starts so I don't think th
 So I guess that gives me:
 
 * Add a new status "testrun" which basically works the same as "aborted"
- * Modify pb_run_status.py and add a test
+ * Modify pb_run_status.py and add a test - DONE
 
 * Continue to process new runs as before (there's no 0-cell report now since we're doing per-cell reports)
 
 * When the cell completes, detect if it's a test cell and if so:
  * Close the ticket
  * Touch pbpipeline/testrun to make the run done with
+
+I need a test run detector. I guess I'll make it a smal Python script: is_testrun.py
+
+Script should return 0 only if it is sure the CWD contains a test run. If not, it returns 1.
+If it can't tell, it returns 2. Within driver.sh I can then just say "if is_testrun.py ; then ..."
+I think this will want to be a Python script so it can parse XML, but I'm not sure. Maybe
+we can just grep? Yeah, actually:
+
+$ grep -F 'InstrumentId="Inst1234"' /lustre-gseg/smrtlink/sequel_seqdata/*/1_A01/.*.run.metadata.xml
+
+Seems as good an option as any.
+
+
