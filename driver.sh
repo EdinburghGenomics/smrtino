@@ -181,11 +181,10 @@ action_new(){
       plog_start
     ) ; [ $? = 0 ] && BREAK=1 || { pipeline_fail New_Run_Setup ; return ; }
 
-    # Run an initial report but don't abort the pipeline if this fails - the error
-    # will be noted by the main loop.
-    # Note this triggers a summary to be sent to RT as a comment, which should create
+    # Trigger a summary to be sent to RT as a comment, which should create
     # the new RT ticket.
-    run_report "Waiting for cells." "new" | plog && log DONE
+    # Do this via upload_reports even though there will be 0 reports.
+    upload_reports NEW | plog && log DONE
 }
 
 # TODO - it might be that we don't want to run multiple processings in parallel after all
@@ -202,8 +201,16 @@ action_cell_ready(){
     # Log the start in a way a script can easily read back (humans can check the main log!)
     save_start_time
 
-    # Do we want an RT message for every cell? No, just a comment.
+    # Check for auto-test pseudo-runs
+    if is_testrun.sh ; then
+        abort_testrun
+        BREAK=1 ; return
+    fi
+
+    # Do we want an RT message for every cell? Well, just a comment.
     send_summary_to_rt comment processing "Cell(s) ready: $CELLSREADY. Report is at" |& plog
+
+    # If $CELLSREADY + $CELLSDONE + $CELLSABORTED == $CELLS then this will complete the run.
 
     BREAK=1
     plog "Preparing to process cell(s) $CELLSREADY into $RUN_OUTPUT"
@@ -214,25 +221,40 @@ action_cell_ready(){
         Snakefile.process_cells --config cells="$CELLSREADY" blobs="${BLOBS:-1}"
       ) |& plog
 
-      # Now we can have an interim report.
-      # FIXME - this may not be safe - two reports running at once!
-      run_report "Processing completed for cells $CELLSREADY." "awaiting_cells" | plog && log DONE
+      # Now we can have a report. This bit runs locally.
+      plog "Processing done. Now for Snakefile.report"
+      ( cd "$RUN_OUTPUT"
+        always_run=(list_projects make_report)
+        Snakefile.report -R "${always_run[@]}" --config cells="$CELLSREADY" report_main
+      ) |& plog
 
       for c in $CELLSREADY ; do
           ( cd "$RUN_OUTPUT" && mv pbpipeline/${c}.started pbpipeline/${c}.done )
       done
 
     ) |& plog ; [ $? = 0 ] || pipeline_fail Processing_Cells "$CELLSREADY"
+
+    # And upload the reports. If all cells are done, go directly to action_processed
+    echo "Processing and reporting done for cells $CELLSREADY. Uploading reports."
+    if pb_run_status.py "$RUN_OUTPUT" | grep -qFx 'PipelineStatus: processed'  ; then
+        action_processed
+    else
+        # If this fails now, action_processed may still rectify things later.
+        if ! upload_reports INTERIM ; then
+            plog Error uploading reports
+            log Error uploading reports
+        fi
+        log DONE
+    fi
 }
 
-
 action_processed() {
-    # All cells are processed. Make the final report.
+    # All cells are processed and reported
     log "\_PROCESSED $RUNID"
     log "  Now reporting on $RUNID."
 
     # This touch file puts the run into status reporting.
-    # Upload of report is regarded as the final QC step, so if this fails we need to
+    # Upload of all reports is regarded as the final QC step, so if this fails we need to
     # log a failure even if everything else was OK.
     touch "$RUN_OUTPUT"/pbpipeline/report.started
 
@@ -241,19 +263,12 @@ action_processed() {
 
     BREAK=1
     set +e ; ( set -e
-        run_report "All processing complete."
+        upload_reports FINAL
         log "  Completed processing on $RUNID [$CELLS]."
 
-        if [ -s "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt ] ; then
-            send_summary_to_rt reply "Finished pipeline" \
-                "PacBio pipeline completed on $RUNID and QC report is available at"
-            # Final success is contingent on the report upload AND that message going to RT.
-            (cd "$RUN_OUTPUT" && mv pbpipeline/report.started pbpipeline/report.done )
-        else
-            # ||true here avoids calling the error handler twice
-            pipeline_fail Report_final_upload || true
-        fi
-    ) |& plog ; [ $? = 0 ] || pipeline_fail Reporting
+        # Final success is contingent on the report upload AND that message going to RT.
+        (cd "$RUN_OUTPUT" && mv pbpipeline/report.started pbpipeline/report.done )
+    ) |& plog ; [ $? = 0 ] || pipeline_fail Report_final_upload
 
 }
 
@@ -276,6 +291,23 @@ action_processing() {
     debug "\_PROCESSING $RUNID"
 
     notify_run_complete |& plog
+}
+
+action_reporting() {
+    debug "\_REPORTING $RUNID"
+}
+
+action_failed() {
+    # failed runs need attention from an operator, so log the situatuion
+    set +e
+    _reason=`cat "$RUN_OUTPUT"/pbpipeline/failed 2>/dev/null`
+    if [ -z "$_reason" ] ; then
+        # Get the last lane failure message
+        _lastfail=`echo "$RUN_OUTPUT"/pbpipeline/*.failed`
+        _reason=`cat ${_lastfail##* } 2>/dev/null`
+    fi
+
+    log "\_FAILED $RUNID ($_reason)"
 }
 
 action_stalled() {
@@ -307,23 +339,6 @@ action_stalled() {
             fi
         done
     fi
-}
-
-action_reporting() {
-    debug "\_REPORTING $RUNID"
-}
-
-action_failed() {
-    # failed runs need attention from an operator, so log the situatuion
-    set +e
-    _reason=`cat "$RUN_OUTPUT"/pbpipeline/failed 2>/dev/null`
-    if [ -z "$_reason" ] ; then
-        # Get the last lane failure message
-        _lastfail=`echo "$RUN_OUTPUT"/pbpipeline/*.failed`
-        _reason=`cat ${_lastfail##* } 2>/dev/null`
-    fi
-
-    log "\_FAILED $RUNID ($_reason)"
 }
 
 action_aborted() {
@@ -358,6 +373,18 @@ rt_runticket_manager(){
     rt_runticket_manager.py -r "$RUNID" -Q pbrun "$@"
 }
 
+abort_testrun() {
+    # Test runs are aborted and not processed further. We do use an explicit state "testrun" to
+    # distinguish them from failed runs but the logic is the same as for aborted.
+    # If this function is called, assume that the is_testrun.sh check has passed.
+
+    echo "detected by is_testrun.sh" > "$RUN_OUTPUT"/pbpipeline/testrun
+
+    # If notifying RT fails don't attempt to do anything else. We can close the ticket manually.
+    rt_runticket_manager --no_create --subject testrun --status resolved \
+        --reply "This auto-test run may be ignored. Ticket closed." |& plog
+}
+
 notify_run_complete(){
     # Tell RT that the run finished. This may happen if the last SMRT cell finishes
     # or if remaining cells are aborted. The notification should only happen once.
@@ -376,69 +403,66 @@ notify_run_complete(){
     fi
 }
 
-run_report() {
-    # Makes a report. Will not exit on error. I'm assuming all substantial processing
-    # will have been done by Snakefile.process_cells so this should be quick.
+upload_reports() {
+    # Pushes reports to the server, and notifies RT. Does not exit on error so
+    # caller should check return code.
+    #
+    # usage: upload_reports <mode>
+    #
+    # Where <mode> is NEW, INTERIM or FINAL
 
-    # usage: run_report <rt_prefix> [rt_set_status]
-
-    # rt_prefix is mandatory and should be descriptive
-    # A blank or missing rt_set_status will leave the status unchanged. A value of "NONE" will
-    # suppress reporting to RT entirely.
     # Caller is responsible for log redirection to plog, but in some cases we want to
     # make a regular log message referencing the plog destination, so this is a bit messy.
     set +o | grep '+o errexit' && _ereset='set +e' || _ereset='set -e'
     set +e
 
-    _rprefix="$1"
-    _rt_run_status="${2:-}"
+    _mode="$1"
 
     # Get a handle on logging.
     plog </dev/null
     _plog="${per_run_log}"
-
-    ( cd "$RUN_OUTPUT" ;
-      Snakefile.report -R list_projects make_report -- report_main ) 2>&1
-
-    # Snag that return value
-    _retval=$(( $? + ${_retval:-0} ))
 
     # Push to server and capture the result (if upload_report.sh does not error it must print a URL)
     # We want stderr from upload_report.sh to go to stdout, so it gets plogged.
     # Note that the code relies on checking the existence of this file to see if the upload worked,
     # so if the upload fails it needs to be removed.
     rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt
-    if [ $_retval = 0 ] ; then
-        upload_report.sh "$RUN_OUTPUT" 2>&1 >"$RUN_OUTPUT"/pbpipeline/report_upload_url.txt || \
-            { log "Upload error. See $_plog" ;
-              rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt ; }
+    if ! upload_report.sh "$RUN_OUTPUT" 2>&1 \
+            >"$RUN_OUTPUT"/pbpipeline/report_upload_url.txt  ; then
+        log "Upload error. See $_plog"
+        # Maybe notify RT? But this could well be a general network error.
+        rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt
+        return 1
     fi
 
-    send_summary_to_rt comment "$_rt_run_status" "$_rprefix Run report is at"
+    if [ "$_mode" = NEW ] ; then
+        send_summary_to_rt comment "new" "New run. Waiting for cells."
+    elif [ "$_mode" = FINAL ] ; then
+        send_summary_to_rt reply "Finished pipeline" "All processing complete."
+    else
+        send_summary_to_rt comment "awaiting_cells" "Processing completed for cells $CELLSREADY."
+    fi
 
     # If this fails, the pipeline will continue, since only the final message to RT
     # is seen as critical.
     if [ $? != 0 ] ; then
         log "Failed to send summary to RT. See $per_run_log"
-        _retval=$(( $_retval + 1 ))
+        return 1
     fi
 
-    eval "$_ereset"
-    # Retval will be >1 if anything failed. It's up to the caller what to do with this info.
-    # The exception is for the upload. Caller should check for the URL file to see if that that failed.
-    return $_retval
+    # All was good.
+    true
 }
 
 send_summary_to_rt() {
     # Sends a summary to RT. It is assumed that "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt is
-    # in place and can be read. In the initial cut, we'll simply list the
-    # SMRT cells on the run, as I'm not sure how soon I get to see the XML meta-data?
-    # Other than that, supply run_status and premble if you want this.
-    _reply_or_comment="${1:-}"
+    # in place and can be read by make_summary.py.
+    # All cells on the run will be listed, with a report URL if we have one.
+    _reply_or_comment="${1}"
     _run_status="${2:-}"
-    _preamble="${3:-Run report is at}"
+    _preamble="${3:-A separate report will be produced per cell.}"
 
-    # Quoting of a subject with spaces requires use of arrays but beware this:
+    # This was a problem before BASH 4.4 but now we should be fine.
     # https://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
     if [ -n "$_run_status" ] ; then
         _run_status=(--subject "$_run_status")
@@ -446,14 +470,12 @@ send_summary_to_rt() {
         _run_status=()
     fi
 
-    echo "Sending new summary of PacBio run to RT."
+    echo "Sending new summary of cells on this PacBio run to RT."
     # Subshell needed to capture STDERR from make_summary.py
     # TODO - test that this works as advertised with different results from make_summary.py
-    last_upload_report="`cat "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt 2>/dev/null || echo "Report was not generated or upload failed"`"
-    ( set +u ; rt_runticket_manager "${_run_status[@]}" --"${_reply_or_comment}" \
-        @<(echo "$_preamble "$'\n'"$last_upload_report" ;
-           echo ;
-           make_summary.py --runid "$RUNID" --txt - \
+    ( rt_runticket_manager "${_run_status[@]}" --"${_reply_or_comment}" \
+        @<(echo "$_preamble" ; echo ;
+           make_summary.py --runid "$RUNID" --replinks "$RUN_OUTPUT/pbpipeline/report_upload_url.txt"  --txt - \
            || echo "Error while summarizing run contents." ) ) 2>&1
 }
 
@@ -502,7 +524,7 @@ get_run_status() { # run_dir
 
   # Capture the various parts into variables (see test/grs.sh in Hesiod)
   for _v in RUNID/RunID INSTRUMENT/Instrument STATUS/PipelineStatus \
-            CELLS/Cells CELLSREADY/CellsReady CELLSABORTED/CellsAborted ; do
+            CELLS/Cells CELLSREADY/CellsReady CELLSDONE/CellsDone CELLSABORTED/CellsAborted ; do
     _line="$(awk -v FS=":" -v f="${_v#*/}" '$1==f {gsub(/^[^:]*:[[:space:]]*/,"");print}' <<<"$_runstatus")"
     eval "${_v%/*}"='"$_line"'
   done

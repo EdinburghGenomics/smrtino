@@ -33,9 +33,11 @@ class RunStatus:
 
         if os.path.exists(os.path.join(pbrun_dir, 'pbpipeline', 'from')):
             # ok, pbrun_dir was an existing output directory
-            self.to_path = pbrun_dir
             self.from_path = os.path.join(pbrun_dir, 'pbpipeline', 'from')
+            self.to_path = pbrun_dir
+            L.debug(f"Found {self.from_path}")
         elif to_location:
+            L.debug(f"No {pbrun_dir}/pbpipeline/from. Looking in {to_location}")
             if os.path.isdir(os.path.join(to_location,
                                           os.path.basename(pbrun_dir),
                                           'pbpipeline', 'from')):
@@ -60,8 +62,7 @@ class RunStatus:
                 self.from_path = pbrun_dir
         else:
             # We dunno
-            raise Exception("Location {} does not look like an output directory and no TO_LOCATION is set.".format(
-                                      pbrun_dir) )
+            raise Exception(f"Location {pbrun_dir} does not look like an output directory and no TO_LOCATION is set.")
 
         # In quick mode we don't parse the XML. But we don't parse it anyway so this is redundant.
         self.quick_mode = 'q' in opts
@@ -90,7 +91,7 @@ class RunStatus:
         full_pattern = os.path.join(root_path, glob_pattern)
         if full_pattern not in self._exists_cache:
             self._exists_cache[full_pattern] = glob(full_pattern)
-            L.debug("_exists {} => {}".format(full_pattern, self._exists_cache[full_pattern]))
+            L.debug(f"_exists {full_pattern} => {self._exists_cache[full_pattern]}")
 
         return len( self._exists_cache[full_pattern] )
 
@@ -258,8 +259,12 @@ class RunStatus:
 
     def get_cells_aborted(self):
         """ Get a list of the cells that were aborted, if any.
+            Note that this is distinct from aborting the whoel run, or it being a testrun.
         """
         return [c for c, v in self.get_cells().items() if v == self.CELL_ABORTED]
+
+    def get_cells_done(self):
+        return [c for c, v in self.get_cells().items() if v == self.CELL_PROCESSED]
 
     def get_run_id(self):
         """ We can read this from RunDetails in any of the subreadset.xml files, but it's
@@ -299,11 +304,14 @@ class RunStatus:
                                'Instrument: '   + self.get_instrument(),
                                'Cells: '        + ' '.join(sorted(self.get_cells())),
                                'CellsReady: '   + ' '.join(sorted(self.get_cells_ready())),
+                               'CellsDone: '    + ' '.join(sorted(self.get_cells_done())),
                                'CellsAborted: ' + ' '.join(sorted(self.get_cells_aborted())),
                                'StartTime: '    + self.get_start_time(),
                                'PipelineStatus: ' + self.get_status() ])
 
-        except Exception: # if we can't read something just produce a blank reply.
+        except Exception:
+            # if we can't read something just produce a blank reply, unless -d flag
+            # is in effect.
             if debug: raise
             pstatus = 'aborted' if self._was_aborted() else 'unknown'
 
@@ -311,18 +319,21 @@ class RunStatus:
                                'Instrument: unknown',
                                'Cells: ',
                                'CellsReady: ',
+                               'CellsDone: ',
                                'CellsAborted: ',
                                'StartTime: unknown',
                                'PipelineStatus: ' + pstatus ])
 
 if __name__ == '__main__':
-    #Very cursory option parsing
+    # Very cursory option parsing
+    # -v = verbose; -d = debug ; -q = quick mode
     optind = 1 ; opts = ''
     if sys.argv[optind:] and sys.argv[optind].startswith('-'):
         opts += sys.argv[optind][1:]
         optind += 1
 
-    L.basicConfig(level=L.WARNING, stream=sys.stderr)
+    L.basicConfig( level = L.DEBUG if 'v' in opts else L.WARNING,
+                   stream = sys.stderr )
 
     #If no run specified, examine the CWD.
     runs = sys.argv[optind:] or ['.']
@@ -330,4 +341,4 @@ if __name__ == '__main__':
         run_info = RunStatus(run, opts,
                              to_location = os.environ.get('TO_LOCATION'),
                              stall_time  = os.environ.get('STALL_TIME') or None)
-        print ( run_info.get_yaml( debug=os.environ.get('DEBUG', '0') != '0' ) )
+        print ( run_info.get_yaml( debug=('d' in opts) ) )

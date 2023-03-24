@@ -9,6 +9,7 @@ from pprint import pprint
 import logging as L
 
 from pb_run_status import RunStatus
+import yaml
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/mock_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
@@ -267,6 +268,29 @@ class T(unittest.TestCase):
         # If we abort the last one, then that's a fail
         self.touch('pbpipeline/7_H01.aborted')
         self.assertEqual(gs(), 'failed')
+
+    def test_get_yaml(self):
+        """The get_yaml() method doesn't (at present) use a YAML library but just prints out
+           the lines. Check that, for our simple test at least, it does make valid YAML.
+        """
+        run_info = self.use_run('r64175e_20210528_154754', copy=False)
+        self.md('pbpipeline')
+        self.touch('pbpipeline/1_A01.done')
+        self.touch('pbpipeline/2_B01.aborted')
+
+        res = run_info.get_yaml()
+        res_dict = yaml.safe_load(res)
+
+        self.assertEqual( res_dict,
+                          { 'Cells': '1_A01 2_B01 3_C01',
+                            'CellsAborted': '2_B01',
+                            'CellsDone': '1_A01',
+                            'CellsReady': '3_C01',
+                            'Instrument': '64175e',
+                            'PipelineStatus': 'cell_ready',
+                            'RunID': 'r64175e_20210528_154754',
+                            'StartTime': 'unknown',
+                          } )
 
 def dictify(s):
     """ Very very dirty minimal YAML parser is OK for testing.
