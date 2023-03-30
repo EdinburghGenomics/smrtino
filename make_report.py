@@ -8,7 +8,7 @@ from collections import OrderedDict
 import yaml
 import base64
 
-from smrtino import glob, load_yaml
+from smrtino import glob, load_yaml, aggregator
 
 """ Makes a report (in PanDoc format) for a cell. We will only report on
     processed SMRT cells where the info.yml has been generated - so no
@@ -137,21 +137,6 @@ def get_pipeline_metadata(pipe_dir):
     # Should be the same as the run name.
     return dict( version = '+'.join(sorted(versions)),
                  rundir = os.path.basename(os.path.realpath(pipe_dir + '/..')) )
-
-class aggregator:
-    """A light wrapper around a list to save some typing when building
-       a list of lines to be printed.
-    """
-    def __init__(self, *args):
-        self._list = list()
-        if args:
-            self(*args)
-
-    def __call__(self, *args):
-        self._list.extend([str(a) for a in args] or [''])
-
-    def __iter__(self, *args):
-        return iter(self._list)
 
 def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}

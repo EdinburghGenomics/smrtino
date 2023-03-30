@@ -2,9 +2,8 @@
 import os, sys, re
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from pprint import pformat
 
-from smrtino import glob
+from smrtino import glob, aggregator
 from smrtino.ParseXML import get_readset_info
 
 """ Makes a summary (in text format) for a run.
@@ -23,7 +22,9 @@ def main(args):
     # This will be by slot, not by cell ID, as we're not sure we even know the cell IDs.
     all_info = dict()
 
-    scanpattern = args.dir + '/*/'
+    scanpattern = f"{args.dir}/*/"
+
+    replinks = load_replinks(args.replinks)
 
     # Look for a subdirs that look like slot names (eg. 1_A01)
     for slot_dir in glob(scanpattern):
@@ -35,9 +36,9 @@ def main(args):
         all_info[slot] = dict()
 
         # Load the XML, if found
-        srs_xml = glob(slot_dir + '/*.*readset.xml')
+        srs_xml = glob(f"{slot_dir}/*.*readset.xml")
         if len(srs_xml) > 1:
-            L.error("Multiple .*readset.xml found for slot " + slot)
+            L.error(f"Multiple .*readset.xml found for slot {slot}")
         elif srs_xml:
             srs_xml, = srs_xml
 
@@ -45,22 +46,50 @@ def main(args):
 
             all_info[slot].update(xml_info)
 
-    rep = format_report(all_info, run_id=args.runid, run_dir=os.path.realpath(args.dir))
+        # Link to the report, if found
+        all_info[slot][report] = replinks.get(slot)
+
+    rep = format_summary(all_info, run_id=args.runid, run_dir=os.path.realpath(args.dir))
 
     if (not args.txt) or (args.txt == '-'):
         print(*rep, sep="\n")
     else:
-        L.info("Writing to {}.".format(args.out))
+        L.info(f"Writing to {args.out}.")
         with open(args.txt, "w") as ofh:
             print(*rep, sep="\n", file=ofh)
 
-def format_report(all_info, run_id=None, run_dir='.'):
+def load_replinks(replinks_file):
+    """Load the links from the report_upload_url.txt file, if supplied.
+       Ideally this would be a YAML already but the upload_report.sh is not clever
+       enough to make one, so reconstruct a dict based on the filenames, which must
+       start with the slot names.
+    """
+    res = dict()
+
+    if not replinks_file:
+        return res
+
+    try:
+        with open(replinks_file) as fh:
+            for aline in fh:
+                aline = aline.strip()
+                mo = re.search(r'/([^-]+)-[^/]+$', aline)
+                if mo:
+                    res[mo.group(1)] = aline
+    except FileNotFoundError:
+        # I'm not sure if this should be a fatal error. Probably not.
+        L.exception()
+        pass
+
+    return res
+
+def format_summary(all_info, run_id=None, run_dir='.'):
     """ Make a summary report based upon the contents of a dict of {slot_id: {infos}, ...}
         Return a list of lines to be included in a summary sent to RT
     """
     # Sanity check all_info has some info
     if not all_info:
-        return ["No SMRT Cells found in " + os.getcwd()]
+        return [f"No SMRT Cells found in {os.getcwd()}"]
 
     # Sanity-check the run_id is consistently reported.
     run_id_set = set(i['run_id'] for i in all_info.values() if i.get('run_id'))
@@ -69,25 +98,26 @@ def format_report(all_info, run_id=None, run_dir='.'):
     try:
         run_id, = run_id_set
     except ValueError:
-        exit("Cannot determine Run ID. Please supply a --runid consistent with {}.".format(run_id_set))
+        exit(f"Cannot determine Run ID. Please supply a --runid consistent with {run_id_set}.")
 
-    replines = [ run_dir,
-                 "Run {} with {} SMRT cells".format(run_id, len(all_info))]
+    replines = aggregator( run_dir,
+                           f"Run {run_id} with {len(all_info)} SMRT cells" )
 
     for k, v in sorted(all_info.items()):
 
-        replines.append("\nSlot *{}*:".format(k))
-        replines.append("  Cell ID: " + v.get('cell_id', "unknown"))
-        replines.append("  Sample : " + v.get('ws_name', "unknown"))
-        # replines.append("")
+        replines()
+        replines(f"Slot *{k}*:")
+        replines(f"  Cell ID: {v.get('cell_id', 'unknown')}")
+        replines(f"  Sample : {v.get('ws_name', 'unknown')}")
+        replines(f"  Report : {v.get('report', 'none yet')}")
 
     return replines
 
 def parse_args(*args):
     description = """ Makes a summary (in text format) for a run, by scanning the directory.
                       Unlike make_report.py, this one always runs on the original source dir,
-                      not the output directory, and does not save/use any intermadiate YAML
-                      files.
+                      not the output directory, and does not save/use any intermediate YAML
+                      files, though it does try to read the XML.
                   """
     argparser = ArgumentParser( description=description,
                                 formatter_class = ArgumentDefaultsHelpFormatter )
@@ -97,6 +127,8 @@ def parse_args(*args):
                             help="Where to scan, if not the current dir.")
     argparser.add_argument("--runid",
                             help="Hint what we expect the run ID to be.")
+    argparser.add_argument("--replinks",
+                            help="File with HTML links to reports, one per line.")
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 

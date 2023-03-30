@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 import os, re
-import yaml, yamlloader
 
 # Currently provides the "glob" function and the "smrtino_version" constant.
 from glob import glob as _glob
+
+# And some YAML enhancement
+from smrtino.yaml_ordered import yaml, yamlloader
+
+from smrtino.aggregator import aggregator
 
 def glob(pattern):
     """Improves on the regular glob function by supporting tilde expansion,
@@ -60,11 +64,11 @@ def load_yaml(filename):
     """Load YAML from a file (not a file handle).
     """
     with open(filename) as yfh:
-        return yaml.load(yfh, Loader=yamlloader.ordereddict.CSafeLoader)
+        return yaml.ordered_load(yfh)
 
 def dump_yaml(foo, filename=None):
     """Return YAML string and optionally dump to a file (not a file handle)."""
-    ydoc = yaml.dump(foo, Dumper=yamlloader.ordereddict.CSafeDumper, default_flow_style=False)
+    ydoc = yaml.safe_dump(foo, default_flow_style=False)
     if filename:
         with open(filename, 'w') as yfh:
             print(ydoc, file=yfh, end='')

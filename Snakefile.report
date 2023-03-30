@@ -53,16 +53,16 @@ def scan_cells():
 
 # Global wildcard patterns
 wildcard_constraints:
-    cellidx    = r"\d+",
+    cellslot   = r"\d_[A-Z]01",
     cell       = r"m\w+_\w+_\w+",
 
 # We shall make a single report per cell (used to be one per run).
 # The report filenames are to be of the form:
-#   {cellnum}_{cellid}.pan.html
+#   {cellslot}_{cellid}.pan.html
 localrules: report_main
 rule report_main:
     input:
-        pan   = lambda wc: expand("all_reports/{c[0][0]}_{c[1]}.pan.html", c=scan_cells()),
+        pan   = lambda wc: expand("all_reports/{c[0]}-{c[1]}.pan.html", c=scan_cells()),
         plist = "projects_ready.txt",
 
 # A list of projects, like with Illuminatus. Used to quickly scan for runs that have data related to
@@ -120,7 +120,7 @@ rule pan_to_html:
 # This rule marshalls all the .png images and makes one report in PanDoc format.
 rule make_report:
     output:
-        pan        = "all_reports/{cellidx}_{cell}.pan",
+        pan        = "all_reports/{cellslot}-{cell}.pan",
     input:
         yaml       = "{cell}.info.yml",
         links      = "{cell}.link.yml",

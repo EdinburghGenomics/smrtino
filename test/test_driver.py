@@ -22,10 +22,11 @@ DRIVER = os.path.abspath(os.path.dirname(__file__) + '/../driver.sh')
 # Note the reason for forcing output to STDERR is to test that any such message
 # is being logged and not emitted!
 PROGS_TO_MOCK = {
-    "Snakefile.process_run" : None,
-    "Snakefile.report" : None,
+    "Snakefile.process_run"   : None,
+    "Snakefile.report"        : None,
     "rt_runticket_manager.py" : "echo STDERR rt_runticket_manager.py >&2",
-    "upload_report.sh" : "echo STDERR upload_report.sh >&2"
+    "upload_report.sh"        : "echo STDERR upload_report.sh >&2",
+    "is_testrun.sh"           : True,
 }
 
 class T(unittest.TestCase):
@@ -44,7 +45,11 @@ class T(unittest.TestCase):
             pass
 
         self.bm = BinMocker()
-        for p, s in PROGS_TO_MOCK.items(): self.bm.add_mock(p, side_effect=s)
+        for p, s in PROGS_TO_MOCK.items():
+            if type(s) is bool:
+                self.bm.add_mock(p, fail=s)
+            else:
+                self.bm.add_mock(p, side_effect=s)
 
         # Set the driver to run in our test harness. Note I can set
         # $BIN_LOCATION to more than one path.
@@ -225,10 +230,10 @@ class T(unittest.TestCase):
         # Pipeline folder should appear
         self.assertTrue(os.path.isdir(self.to_path + '/pbpipeline'))
 
-        # Initial report should be made
+        # No initial report should be made, but 'upload_report.sh' still ends up getting called once
+        # because that's the code path
         expected_calls = self.bm.empty_calls()
         expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun --subject new --comment @???'.split()]
-        expected_calls['Snakefile.report'] = ['-R list_projects make_report -- report_main'.split()]
         expected_calls['upload_report.sh'] = [[self.to_path]]
 
         # The call to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
@@ -239,8 +244,10 @@ class T(unittest.TestCase):
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         # Log file should appear (here accessed via the output symlink)
-        self.assertTrue(os.path.isfile(self.to_path + '/pipeline.log') )
+        self.assertTrue(os.path.isfile(f"{self.to_path}/pipeline.log") )
 
+        # And the list of reports uploaded should be empty
+        self.assertEqual(0, os.path.getsize(f"{self.to_path}/pbpipeline/report_upload_url.txt"))
 
     def test_in_pipeline(self):
         """ Run is already processing, nothing to do
@@ -325,7 +332,7 @@ class T(unittest.TestCase):
         self.bm_rundriver()
         self.assertInStdout("r54041_20180518_131155", "STALLED")
 
-        # A this point, nothing should happen
+        # A this point, nothing much should happen. (flags are written to pbpipeline)
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
         # But on the next round, it should complete
@@ -335,24 +342,22 @@ class T(unittest.TestCase):
         self.assertInStdout("r54041_20180518_131155", "PROCESSED")
 
         # The second to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
-        self.bm.last_calls['rt_runticket_manager.py'][1][-1] = re.sub(
-                                    r'@\S+$', '@???', self.bm.last_calls['rt_runticket_manager.py'][1][-1] )
+        last_reply_fd = self.bm.last_calls['rt_runticket_manager.py'][-1][-1]
 
         expected_calls = self.bm.empty_calls()
-        expected_calls['Snakefile.report'] = ['-R list_projects make_report -- report_main'.split()]
         expected_calls['upload_report.sh'] = [[self.to_path]]
         expected_calls['rt_runticket_manager.py'] = [[ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--subject', 'processing',
                                                        '--reply', '2 SMRT cells have run. 5 were aborted. Final report will follow soon.' ],
-                                                     [ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--comment', '@???'],
-                                                     [ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--subject', 'failed',
-                                                       '--reply', 'Report_final_upload failed. See log in ' + self.to_path + '/pipeline.log' ]]
+                                                     [ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--subject', 'Finished pipeline',
+                                                       '--reply', last_reply_fd ]]
         self.assertEqual(self.bm.last_calls, expected_calls)
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
 
-        # Now it should be in status FAILED (would be 'COMPLETE' if the upload_report.sh was rigged to succeed.)
+        # Now it should be in status COMPLETE because two of the cells did work
+        # (note this check relies on the driver always being run in VERBOSE mode)
         self.bm_rundriver()
         expected_calls = self.bm.empty_calls()
-        self.assertInStdout("r54041_20180518_131155", "FAILED")
+        self.assertInStdout("r54041_20180518_131155", "status=complete")
 
 if __name__ == '__main__':
     unittest.main()

@@ -249,9 +249,12 @@ action_cell_ready(){
 }
 
 action_processed() {
-    # All cells are processed and reported
+    # All cells are processed and reported. Normally this is called directly off the
+    # end of reporting the final cell, but it need not be (eg. if final cell is aborted
+    # or if there was an intermittent upload failure).
+    # Cells are processed as we go, so there is little to be done.
     log "\_PROCESSED $RUNID"
-    log "  Now reporting on $RUNID."
+    log "  Now finalising $RUNID."
 
     # This touch file puts the run into status reporting.
     # Upload of all reports is regarded as the final QC step, so if this fails we need to
@@ -422,10 +425,10 @@ upload_reports() {
     plog </dev/null
     _plog="${per_run_log}"
 
-    # Push to server and capture the result (if upload_report.sh does not error it must print a URL)
+    # Push to server and capture the result.
     # We want stderr from upload_report.sh to go to stdout, so it gets plogged.
-    # Note that the code relies on checking the existence of this file to see if the upload worked,
-    # so if the upload fails it needs to be removed.
+    # If the upload fails the report_upload_url.txt it needs to be removed, to distinuguish
+    # from the case where there are just no reports.
     rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt
     if ! upload_report.sh "$RUN_OUTPUT" 2>&1 \
             >"$RUN_OUTPUT"/pbpipeline/report_upload_url.txt  ; then

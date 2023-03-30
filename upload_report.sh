@@ -17,18 +17,17 @@ function echorun(){
     "$@"
 }
 
-# Confirm we do have at least one HTML report
+# If we do have any HTML report this is now OK
 if ! compgen -G "all_reports/*.html" >/dev/null ; then
-    echo 'No HTML files found in ./all_reports!'
-    false
+    echo 'No HTML files found in ./all_reports!' >&2
+    exit 0
 fi
 
 # Check where (and if) we want to push reports on the server.
 if [ "${REPORT_DESTINATION:-none}" == none ] ; then
     echo "Skipping report upload, as no \$REPORT_DESTINATION is set." >&2
-    # This will go into RT in place of a link. It's not an error - you can legitimately
+    # Leave the output empty. It's not an error - you can legitimately
     # switch off uploading for testing etc.
-    echo '[upload of report was skipped as no REPORT_DESTINATION was set]'
     exit 0
 fi
 dest="${REPORT_DESTINATION}"
@@ -37,12 +36,12 @@ dest="${REPORT_DESTINATION}"
 # Any required SSH settings should go in ~/.ssh/config
 RSYNC_CMD="echorun ${RSYNC_CMD:-rsync}"
 
-echo "Uploading report for $runname to $dest..." >&2
+echo "Uploading reports for $runname to $dest..." >&2
 $RSYNC_CMD -drvlOt all_reports $dest/$runname/ >&2
 $RSYNC_CMD -drvLOt all_reports/img $dest/$runname/all_reports/ >&2
 
 # I think we no longer need the index.php
-
+# Output one line per report.
 # eg. https://egcloud.bio.ed.ac.uk/smrtino/...
 echo "Link to reports is: ${REPORT_LINK:-$REPORT_DESTINATION}/$runname" >&2
 for htmlrep in all_reports/*.html ; do

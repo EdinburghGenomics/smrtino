@@ -7,7 +7,7 @@ from collections import namedtuple, OrderedDict
 from itertools import islice
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-from smrtino.yaml_ordered import yaml
+from smrtino import dump_yaml
 
 fastaline = namedtuple('fastaline', 'length at_bases gc_bases'.split())
 
@@ -129,8 +129,9 @@ def main(args):
             histo = fasta_to_histo(read_fasta(fh, trim_n = args.trim_n))
 
     # Print the result to STDOUT
-    print( yaml.safe_dump( histo_to_result(histo, args.cutoff, headings=not(args.no_headings)),
-                           default_flow_style=False ) )
+    print(dump_yaml(histo_to_result( histo,
+                                     args.cutoff,
+                                     headings=not(args.no_headings) )))
 
     # Save the histogram
     if args.histogram:

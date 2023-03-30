@@ -4,8 +4,7 @@
 I want to permit dumping of OrderedDict and defaultdict with
 yaml.safe_dump().
 The OrderedDict will be dumped as a regular dict but in order.
-I don't care about how the YAML is loaded, nor how the OrderedDict
-is represented with regular yaml.dump().
+I don't care about how the YAML is loaded.
 
 As a new addition, defaultdict objects will also be dump-able as
 regular dicts, sorted by key just like regular dicts.
