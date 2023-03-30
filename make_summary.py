@@ -47,7 +47,7 @@ def main(args):
             all_info[slot].update(xml_info)
 
         # Link to the report, if found
-        all_info[slot][report] = replinks.get(slot)
+        all_info[slot]['report'] = replinks.get(slot)
 
     rep = format_summary(all_info, run_id=args.runid, run_dir=os.path.realpath(args.dir))
 
@@ -109,7 +109,7 @@ def format_summary(all_info, run_id=None, run_dir='.'):
         replines(f"Slot *{k}*:")
         replines(f"  Cell ID: {v.get('cell_id', 'unknown')}")
         replines(f"  Sample : {v.get('ws_name', 'unknown')}")
-        replines(f"  Report : {v.get('report', 'none yet')}")
+        replines(f"  Report : {v.get('report') or 'none yet'}")
 
     return replines
 
