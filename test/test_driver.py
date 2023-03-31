@@ -12,9 +12,9 @@ from glob import glob
 """Here we're using a Python script to test a shell script (driver.sh).  The shell
    script calls various programs.  Ideally we want to have a cunning way of catching
    and detecting the calls to those programs, similar to the way that Test::Mock works.
-   To this end, see the BinMocker class. I've broken this out for general use.
+   To this end, see the BashMocker class. I've broken this out for general use.
 """
-from test.binmocker import BinMocker
+from bashmocker import BashMocker
 
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 DRIVER = os.path.abspath(os.path.dirname(__file__) + '/../driver.sh')
@@ -33,7 +33,7 @@ class T(unittest.TestCase):
 
     def setUp(self):
         """Make a shadow folder, and in it have subdirs sequel and pacbio_data and log.
-           Initialize BinMocker.
+           Initialize BashMocker.
            Calculate the test environment needed to run the driver.sh script.
         """
         self.temp_dir = mkdtemp()
@@ -44,7 +44,7 @@ class T(unittest.TestCase):
         with open(os.path.join(self.temp_dir, 'pacbio_data', '.smrtino'), 'x'):
             pass
 
-        self.bm = BinMocker()
+        self.bm = BashMocker()
         for p, s in PROGS_TO_MOCK.items():
             if type(s) is bool:
                 self.bm.add_mock(p, fail=s)
@@ -75,7 +75,7 @@ class T(unittest.TestCase):
         self.maxDiff = None
 
     def tearDown(self):
-        """Remove the shadow folder and clean up the BinMocker
+        """Remove the shadow folder and clean up the BashMocker
         """
         rmtree(self.temp_dir)
 

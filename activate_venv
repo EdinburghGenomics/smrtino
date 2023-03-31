@@ -53,6 +53,9 @@ else
         pip_install 'yamlloader<2'
         pip_install rt==2.2.2
 
+        # My test helper
+        pip_install bashmocker==0.3.0
+
         # For access the Clarity
         #pip_install pyclarity_lims==0.4.8
         #pip_install psycopg2-binary
