@@ -139,4 +139,4 @@ all the info I need in the .info.yml. I just need to add "_readset_type" which w
 
 And ./link_to_smrtlink.py is done, and it works. Cool.
 
-
+Note that the URL to get a list of all valid API calls is: https://edgen-smrtlink.epcc.ed.ac.uk:8243/sl/docs/services/

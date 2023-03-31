@@ -32,14 +32,24 @@ def main(args):
     with open(args.info_yml) as yfh:
         info_yml = yaml.safe_load(yfh)
 
-    # Simplest connection with ~/.smrtlinkrc defaults
-    global conn
-    conn = SMRTLinkClient.connect_with_creds(section=args.rc_section)
-
     res = dict( run_dir = info_yml['run_id'],
                 cell_dir = info_yml['cell_id'],
                 cell_uuid = info_yml.get('cell_uuid'),
                 cell_type = info_yml.get('_readset_type') )
+
+    if args.rc_section == 'none':
+        L.warning("Running in no-connection mode as rc_section==none")
+        # Test mode!
+        res['smrtlink_cell_link'] = 'https://test.example.com/cell'
+        res['smrtlink_run_link'] = 'https://test.example.com/run'
+        res['smrtlink_run_name'] = 'test run'
+        res['smrtlink_run_uuid'] = '0-0-0-0-0'
+        yaml.safe_dump(res, sys.stdout)
+        return
+
+    # Simplest connection with ~/.smrtlinkrc defaults
+    global conn
+    conn = SMRTLinkClient.connect_with_creds(section=args.rc_section)
 
     # We need to query the API for the 'smrtlink_run_name' so may as well get the 'cell_uuid'
     # and 'cell_type' as well, even though we already have them in the XML.
@@ -77,7 +87,8 @@ def make_links(res, host):
                  smrtlink_run_link  = f"{host}/sl/run-qc/{res['smrtlink_run_uuid']}", )
 
 def get_cell_id_and_type(cell_dir, uuid=None):
-    """We can do this without fetching every cell because the datasets endpoint supports search
+    """Get some info about the cell from the API.
+       We can do this without fetching every cell because the datasets endpoint supports search
        by 'metadataContextId'.
        However, this will also see derived datasets, so you can provide uuid as a hint to
        find the right one.
@@ -151,7 +162,7 @@ def parse_args(*args):
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("--link_host",
                             help="Force hostname on links to be different from that in .smrtlinkrc")
-    argparser.add_argument("--rc_section", default="smrtlink",
+    argparser.add_argument("--rc_section", default=os.environ.get("SMRTLINKRC_SECTION", "smrtlink"),
                             help="Read specified section in .smrtlinkrc for connection details")
 
     argparser.add_argument("info_yml",

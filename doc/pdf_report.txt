@@ -88,5 +88,5 @@ OK so let's code up "smrtlink_pdf_report.py". Done. Seems to take around 30 secs
 And I'll add it to the Snakefile.
 
 I'll put this in Snakefile.report because that's where I query the API already.
-Note that upt to now, Snakefile.report is being run with -F, but I don't want to regenerate the PDF reports each time.
+Note that up to now, Snakefile.report is being run with -F, but I don't want to regenerate the PDF reports each time.
 

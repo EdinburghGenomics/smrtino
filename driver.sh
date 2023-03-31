@@ -47,7 +47,8 @@ if [ -e "$ENVIRON_SH" ] ; then
            RT_SYSTEM          RT_SETTINGS       GENOLOGICSRC \
            PROJECT_NAME_LIST  PROJECT_PAGE_URL  REPORT_DESTINATION  REPORT_LINK \
            RSYNC_CMD          STALL_TIME        VERBOSE             FILTER_LOCALLY \
-           BLOBS              EXTRA_SNAKE_FLAGS EXTRA_SLURM_FLAGS
+           BLOBS              EXTRA_SNAKE_FLAGS EXTRA_SLURM_FLAGS \
+           SMRTLINKRC_SECTION
 fi
 
 # LOG_DIR is ignored if MAINLOG is set explicitly.

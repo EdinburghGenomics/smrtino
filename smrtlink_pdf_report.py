@@ -27,6 +27,12 @@ def main(args):
     # Resolve the report name which may have {cell_uuid} in there
     out_file = args.out_file.format(cell_uuid=args.cell_uuid)
 
+    if args.rc_section == 'none':
+        L.warning("Running in no-connection mode as rc_section==none")
+        # Bypass API connection for testing and just make an empty report
+        with open(out_file, 'wb') as __:
+            pass
+
     # Ask the API to generate the report. Just one at a time.
     conn = SMRTLinkClient.connect_with_creds(section=args.rc_section)
     post_body = dict(ids=[args.cell_uuid])
@@ -38,7 +44,7 @@ def main(args):
             L.exception("Status 422 normally indicates that the cell_uuid is not in SMRTLink")
             if args.empty_on_missing:
                 L.warning("Saving empty report as --empty_on_missing is set")
-                with open(out_file, 'wb') as _:
+                with open(out_file, 'wb') as __:
                     pass
                 return
             else:
@@ -83,7 +89,7 @@ def parse_args(*args):
                   """
     argparser = ArgumentParser( description=description,
                                 formatter_class = ArgumentDefaultsHelpFormatter )
-    argparser.add_argument("--rc_section", default="smrtlink",
+    argparser.add_argument("--rc_section", default=os.environ.get("SMRTLINKRC_SECTION", "smrtlink"),
                             help="Read specified section in .smrtlinkrc for connection details")
     argparser.add_argument("--timeout", type=int, default=(5*60),
                             help="Number of seconds to wait before deciding the report is not coming")

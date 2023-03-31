@@ -99,6 +99,7 @@ rule smrtlink_pdf_report:
     output: "all_reports/pdf/{cell}.pdf"
     input:  "{cell}.link.yml"
     run:
+        # Setting SMRTLINKRC_SECTION=none will cause an empty report file to be made
         cell_uuid = load_yaml(str(input))['cell_uuid']
         shell("smrtlink_pdf_report.py -o {output} --empty_on_missing {cell_uuid}")
 

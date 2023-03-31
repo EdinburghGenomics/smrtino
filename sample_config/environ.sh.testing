@@ -10,6 +10,10 @@ TO_LOCATION=~/test_pacbio_data
 # As we never write to the input dir we can test process live data:
 #FROM_LOCATION=/fluidfs/sequel
 
+# We may want to avoid pestering SMRTLink to make PDF reports when
+# running tests
+SMRTLINKRC_SECTION=none
+
 # Bypass RT and use the global partition on SLURM
 RT_SYSTEM='none'
 CLUSTER_PARTITION=standard

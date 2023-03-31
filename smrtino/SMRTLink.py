@@ -12,7 +12,7 @@ from requests.exceptions import HTTPError
 import logging
 L = logging.getLogger(__name__)
 
-class Wso2Constants(object):
+class Wso2Constants:
     """ These client registration credentials are valid for every SMRT Link
         server (and are also used by the SL UI)
     """
@@ -28,7 +28,7 @@ class APIConnectionError(RuntimeError):
 class OAUTHClient:
 
     def __init__(self):
-        """No auto connecting.
+        """Base class minimal init. No auto connecting.
         """
         self.host = None
         self.verify_ssl = True
@@ -176,6 +176,9 @@ class OAUTHClient:
 
 
 class SMRTLinkClient(OAUTHClient):
+    """For documentation on the available API calls, visit the /sl/docs/services/
+       address while logged into SMRTLink in a browser.
+    """
 
     def __init__(self, host, verify_ssl=False):
         """Set up a client for a given host. Connection must be done explicitly.
