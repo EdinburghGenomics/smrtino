@@ -556,7 +556,7 @@ for rnregex in "${RUN_NAME_REGEX[@]}" ; do
         PREFIX_RUN_NAME_REGEX+=("$rnregex")
     done
 done
-debug "PREFIX_RUN_NAME_REGEX is (${PREFIX_RUN_NAME_REGEX[@]})"
+# debug "PREFIX_RUN_NAME_REGEX is (${PREFIX_RUN_NAME_REGEX[@]})"
 
 # 6) Scan through each run until we find something that needs dealing with.
 pushd "$FROM_LOCATION" >/dev/null

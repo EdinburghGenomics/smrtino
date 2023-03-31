@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ue
+set -eu
 shopt -s nullglob
 
 # Takes a PacBio run folder and makes a mini version of it for you to test on.
@@ -16,15 +16,15 @@ TOOLBOX="$( cd $EXEC_DIR && readlink -f ${TOOLBOX:-toolbox} )"
 PATH="${TOOLBOX}:${PATH}"
 
 # If RUN_ID contains no /, assume the normal location (FROM_LOCATION in environ.sh)
-if [[ ! "$RUN_PATH" =~ / ]] ; then
+if [[ -e /lustre-gseg/smrtlink/sequel_seqdata/"$RUN_PATH" ]] ; then
     RUN_PATH=/lustre-gseg/smrtlink/sequel_seqdata/"$RUN_PATH"
 fi
 # If $RUN_PATH is a symlink do we follow or do we use the name as-is?
 if [[ "$(basename $RUN_PATH)" =~ _.*_ ]] ; then
     RUN_ID="$(basename $RUN_PATH)"
-    RUN_PATH="$(readlink -f "$RUN_PATH")"
+    RUN_PATH="$(readlink -vf "$RUN_PATH")"
 else
-    RUN_PATH="$(readlink -f "$RUN_PATH")"
+    RUN_PATH="$(readlink -vf "$RUN_PATH")"
     RUN_ID="$(basename $RUN_PATH)"
 fi
 

@@ -22,7 +22,7 @@ DRIVER = os.path.abspath(os.path.dirname(__file__) + '/../driver.sh')
 # Note the reason for forcing output to STDERR is to test that any such message
 # is being logged and not emitted!
 PROGS_TO_MOCK = {
-    "Snakefile.process_run"   : None,
+    "Snakefile.process_cells" : None,
     "Snakefile.report"        : None,
     "rt_runticket_manager.py" : "echo STDERR rt_runticket_manager.py >&2",
     "upload_report.sh"        : "echo STDERR upload_report.sh >&2",
@@ -356,8 +356,60 @@ class T(unittest.TestCase):
         # Now it should be in status COMPLETE because two of the cells did work
         # (note this check relies on the driver always being run in VERBOSE mode)
         self.bm_rundriver()
-        expected_calls = self.bm.empty_calls()
+        self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
         self.assertInStdout("r54041_20180518_131155", "status=complete")
+
+    def test_process_run_ok(self):
+        """ Test processing a run when the cells are ready
+        """
+        test_data = self.copy_run("r64175e_20210528_154754")
+
+        # Run the pipeline once to setup the output directory
+        self.bm_rundriver()
+
+        # Run again to try processing the cells
+        self.bm_rundriver()
+
+        # Check the touch files all appear
+        for cell in "1_A01 2_B01 3_C01".split():
+            self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
+
+    def test_process_run_fail(self):
+        """ Test error handling when Snakefile.process_cells fails
+        """
+        test_data = self.copy_run("r64175e_20210528_154754")
+        self.bm.add_mock("Snakefile.process_cells", fail=True)
+
+        # Run the pipeline once to setup the output directory
+        self.bm_rundriver()
+
+        # Run again to try processing the cells
+        self.bm_rundriver()
+
+        # Check the touch files all appear
+        for cell in "1_A01 2_B01 3_C01".split():
+            for sf in "started failed".split():
+                self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.{sf}"))
+
+        # Check that upload_reports.sh is not called
+        expected_calls = self.bm.empty_calls()
+
+        expected_calls['is_testrun.sh'] = [[]]
+        expected_calls['Snakefile.process_cells'] = [["--config", "cells=1_A01 2_B01 3_C01", "blobs=1"]]
+        expected_calls['rt_runticket_manager.py'] = [ "-r r64175e_20210528_154754 -Q pbrun --subject processing"
+                                                      " --comment @???".split(),
+                                                      "-r r64175e_20210528_154754 -Q pbrun --subject failed"
+                                                      " --reply".split() + ["Processing_Cells failed for cells"
+                                                                            " [1_A01 2_B01 3_C01]. See log in"
+                                                                            f" {self.to_path}/pipeline.log"] ]
+
+        # Doctor self.bm.last_calls because we don't know the FD
+        for cl in self.bm.last_calls['rt_runticket_manager.py']:
+            if cl[-1].startswith('@/'):
+                cl.pop()
+                cl.append('@???')
+
+        self.assertEqual(self.bm.last_calls, expected_calls)
 
 if __name__ == '__main__':
     unittest.main()
