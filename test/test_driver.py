@@ -22,11 +22,11 @@ DRIVER = os.path.abspath(os.path.dirname(__file__) + '/../driver.sh')
 # Note the reason for forcing output to STDERR is to test that any such message
 # is being logged and not emitted!
 PROGS_TO_MOCK = {
-    "Snakefile.process_cells" : None,
-    "Snakefile.report"        : None,
+    "Snakefile.process_cells" : True,
+    "Snakefile.report"        : True,
     "rt_runticket_manager.py" : "echo STDERR rt_runticket_manager.py >&2",
     "upload_report.sh"        : "echo STDERR upload_report.sh >&2",
-    "is_testrun.sh"           : True,
+    "is_testrun.sh"           : False,
 }
 
 class T(unittest.TestCase):
@@ -47,7 +47,7 @@ class T(unittest.TestCase):
         self.bm = BashMocker()
         for p, s in PROGS_TO_MOCK.items():
             if type(s) is bool:
-                self.bm.add_mock(p, fail=s)
+                self.bm.add_mock(p, fail=(not s))
             else:
                 self.bm.add_mock(p, side_effect=s)
 
@@ -280,6 +280,7 @@ class T(unittest.TestCase):
 
         self.bm_rundriver()
         self.assertInStdout("r54041_20180613_132039", "PROCESSING")
+        self.assertNotInStdout("Exception")
 
         # Message should be sent
         expected_calls = self.bm.empty_calls()
@@ -370,6 +371,9 @@ class T(unittest.TestCase):
         # Run again to try processing the cells
         self.bm_rundriver()
 
+        # This was appearing in some cases
+        self.assertNotInStdout("Exception")
+
         # Check the touch files all appear
         for cell in "1_A01 2_B01 3_C01".split():
             self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
@@ -386,7 +390,13 @@ class T(unittest.TestCase):
         # Run again to try processing the cells
         self.bm_rundriver()
 
+        # Why am I seeing a broken pipe error? There was a logic problem
+        self.assertNotInStdout("Exception")
+
         # Check the touch files all appear
+        if VERBOSE:
+            os.system(f"ls {self.to_path}/pbpipeline")
+
         for cell in "1_A01 2_B01 3_C01".split():
             for sf in "started failed".split():
                 self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.{sf}"))
@@ -410,6 +420,35 @@ class T(unittest.TestCase):
                 cl.append('@???')
 
         self.assertEqual(self.bm.last_calls, expected_calls)
+
+    def test_detect_self_test(self):
+        """Self test runs should be detected when the first cell is ready, and shut down.
+        """
+        test_data = self.copy_run("r64175e_20210528_154754")
+        self.bm.add_mock("is_testrun.sh", fail=False)
+
+        # Run the pipeline once to setup the output directory
+        self.bm_rundriver()
+
+        # Run again to try processing the cells, but this should now be detected as a PacBio self
+        # test run.
+        self.bm_rundriver()
+
+        expected_calls = self.bm.empty_calls()
+        expected_calls['is_testrun.sh'] = [[]]
+        expected_calls['rt_runticket_manager.py'] = [ "-r r64175e_20210528_154754 -Q pbrun --no_create --subject testrun"
+                                                      " --status resolved --reply".split() +
+                                                      [ "This auto-test run may be ignored. Ticket closed." ] ]
+
+        self.assertEqual(self.bm.last_calls, expected_calls)
+
+        with open(f"{self.to_path}/pbpipeline/testrun") as fh:
+            self.assertEqual( fh.read(),
+                              "detected by is_testrun.sh\n" )
+
+        # Run driver again to confirm the status
+        self.bm_rundriver()
+        self.assertInStdout("r64175e_20210528_154754", "status=testrun")
 
 if __name__ == '__main__':
     unittest.main()

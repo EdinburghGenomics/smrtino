@@ -7,7 +7,8 @@ It can run cells in parallel (but SMRTino should be able to cope with that!)
 It has a ?new? optimised file format. But I'm not sure about this. The public
 datasets at https://www.pacb.com/connect/datasets/ look to be just HiFi BAM.
 
-So I think we'll just assume that the Revio will be a big deal and benefit from
-these SMRTino enhancements and I should push on with the plan accordingly.
+So I think we'll just assume that the Revio will be a big part of our sequencing
+by next year and benefit from these SMRTino enhancements and I should push on
+with the plan accordingly.
 
 But as we discover more, add notes here:

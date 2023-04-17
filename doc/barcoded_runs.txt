@@ -1,0 +1,20 @@
+I added support for barcodes to Hesiod. I'm pretty happy with how it
+has come out and I think I did things right for that system. However:
+
+- It took a lot of work, spanning Hesiod itself, the np_utils, and
+  the delivery script.
+- There is no good way to input the sample manifest data (it should
+  go into some sort of LIMS!)
+
+For SMRTino, barcodeing is more complex beacause we have different
+barcode schemes that act in different ways, and also we have SMRTLink
+which is kind of a LIMS (or at least provides a database of sample names
+and an interface to enter them).
+
+So, I think for this pipeline we keep SMRTino as it is, and we look
+at having a facility to query demultiplexing info from SMRTLink in the
+pb_utils scripts, and then look to use this for delivery. Yeah.
+
+OK, more notes here as I investigate further:
+
+

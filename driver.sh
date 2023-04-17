@@ -180,7 +180,13 @@ action_new(){
       ln -nsv "`pwd -P`" "$RUN_OUTPUT"/pbpipeline/from |& debug
 
       plog_start
-    ) ; [ $? = 0 ] && BREAK=1 || { pipeline_fail New_Run_Setup ; return ; }
+    )
+    if [ $? = 0 ] ; then
+        BREAK=1
+    else
+        pipeline_fail New_Run_Setup
+        return
+    fi
 
     # Trigger a summary to be sent to RT as a comment, which should create
     # the new RT ticket.
@@ -233,7 +239,11 @@ action_cell_ready(){
           ( cd "$RUN_OUTPUT" && mv pbpipeline/${c}.started pbpipeline/${c}.done )
       done
 
-    ) |& plog ; [ $? = 0 ] || pipeline_fail Processing_Cells "$CELLSREADY"
+    ) |& plog
+    if [ $? != 0 ] ; then
+        pipeline_fail Processing_Cells "$CELLSREADY"
+        return
+    fi
 
     # And upload the reports. If all cells are done, go directly to action_processed
     echo "Processing and reporting done for cells $CELLSREADY. Uploading reports."
