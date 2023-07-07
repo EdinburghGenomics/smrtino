@@ -17,7 +17,7 @@ SMRTLINKRC_SECTION=none
 # Bypass RT and use the global partition on SLURM
 RT_SYSTEM='none'
 CLUSTER_PARTITION=standard
-EXTRA_SLURM_FLAGS="--time=24:00:00 --qos=edgen --account=edg01"
+#EXTRA_SLURM_FLAGS="--time=24:00:00 --qos=edgen --account=edg01"
 
 # Process all runs on our Sequel IIe
 RUN_NAME_REGEX=('K[0-9]+/r64175e_.+_.+' 'r64175e_.+_.+')

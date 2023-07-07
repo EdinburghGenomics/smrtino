@@ -17,9 +17,9 @@ function echorun(){
     "$@"
 }
 
-# If we do have any HTML report this is now OK
+# If we have no HTML report (yet) this is now OK
 if ! compgen -G "all_reports/*.html" >/dev/null ; then
-    echo 'No HTML files found in ./all_reports!' >&2
+    echo 'No HTML files found in ./all_reports' >&2
     exit 0
 fi
 

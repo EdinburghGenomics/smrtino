@@ -111,6 +111,7 @@ class T(unittest.TestCase):
         """Utility function to add a run from mock_examples into TMP/seqdata.
            Returns the path to the run copied.
         """
+        self.run_name = run
         run_dir = os.path.join(os.path.dirname(__file__), 'mock_examples', run)
 
         # We want to know the expected output location
@@ -156,6 +157,11 @@ class T(unittest.TestCase):
             raise ChildProcessError("Exit status was %s running command:\n%s" % (status, cmd))
 
         return status
+
+    def rt_cmd(self, *args):
+        """Get the expected args to rt_runticket_manager.py
+        """
+        return [*f"-r {self.run_name} -Q pbrun --subject".split(), *args]
 
     ### And the actual tests ###
 
@@ -233,8 +239,9 @@ class T(unittest.TestCase):
         # No initial report should be made, but 'upload_report.sh' still ends up getting called once
         # because that's the code path
         expected_calls = self.bm.empty_calls()
-        expected_calls['rt_runticket_manager.py'] = ['-r r54041_20180613_132039 -Q pbrun --subject new --comment @???'.split()]
+        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("new", "--comment", "@???")]
         expected_calls['upload_report.sh'] = [[self.to_path]]
+        expected_calls['is_testrun.sh'] = [[]]
 
         # The call to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
         self.bm.last_calls['rt_runticket_manager.py'][0][-1] = re.sub(
@@ -284,10 +291,9 @@ class T(unittest.TestCase):
 
         # Message should be sent
         expected_calls = self.bm.empty_calls()
-        expected_calls['rt_runticket_manager.py'] = [[ '-r', 'r54041_20180613_132039', '-Q', 'pbrun',
-                                                       '--subject', 'processing',
-                                                       '--reply', 'All 1 SMRT cells have run on the instrument.'
-                                                       ' Final report will follow soon.' ]]
+        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd('processing', '--reply',
+                                                                 'All 1 SMRT cells have run on the instrument.'
+                                                                 ' Final report will follow soon.')]
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
@@ -306,9 +312,9 @@ class T(unittest.TestCase):
         self.assertInStdout("r54041_20180613_132039", "STALLED")
 
         expected_calls = self.bm.empty_calls()
-        expected_calls['rt_runticket_manager.py'] = [[ '-r', 'r54041_20180613_132039', '-Q', 'pbrun',
-                                                       '--no_create', '--subject', 'aborted', '--status', 'resolved',
-                                                       '--comment', 'No activity in the last 0 hours.' ]]
+        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd(
+                                                       'aborted', '--no_create', '--status', 'resolved',
+                                                       '--comment', 'No activity in the last 0 hours.' )]
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         # Now it should be aborted - since we're in verbose mode we do see this,
@@ -347,10 +353,10 @@ class T(unittest.TestCase):
 
         expected_calls = self.bm.empty_calls()
         expected_calls['upload_report.sh'] = [[self.to_path]]
-        expected_calls['rt_runticket_manager.py'] = [[ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--subject', 'processing',
-                                                       '--reply', '2 SMRT cells have run. 5 were aborted. Final report will follow soon.' ],
-                                                     [ '-r', 'r54041_20180518_131155', '-Q', 'pbrun', '--subject', 'Finished pipeline',
-                                                       '--reply', last_reply_fd ]]
+        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd( 'processing',
+                                                       '--reply', '2 SMRT cells have run. 5 were aborted. Final report will follow soon.' ),
+                                                     self.rt_cmd( 'Finished pipeline',
+                                                       '--reply', last_reply_fd )]
         self.assertEqual(self.bm.last_calls, expected_calls)
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
 
@@ -406,12 +412,10 @@ class T(unittest.TestCase):
 
         expected_calls['is_testrun.sh'] = [[]]
         expected_calls['Snakefile.process_cells'] = [["--config", "cells=1_A01 2_B01 3_C01", "blobs=1"]]
-        expected_calls['rt_runticket_manager.py'] = [ "-r r64175e_20210528_154754 -Q pbrun --subject processing"
-                                                      " --comment @???".split(),
-                                                      "-r r64175e_20210528_154754 -Q pbrun --subject failed"
-                                                      " --reply".split() + ["Processing_Cells failed for cells"
-                                                                            " [1_A01 2_B01 3_C01]. See log in"
-                                                                            f" {self.to_path}/pipeline.log"] ]
+        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
+                                                     self.rt_cmd("failed", "--reply",
+                                                                  "Processing_Cells failed for cells [1_A01 2_B01 3_C01]. See log in"
+                                                                  f" {self.to_path}/pipeline.log") ]
 
         # Doctor self.bm.last_calls because we don't know the FD
         for cl in self.bm.last_calls['rt_runticket_manager.py']:
@@ -421,24 +425,54 @@ class T(unittest.TestCase):
 
         self.assertEqual(self.bm.last_calls, expected_calls)
 
-    def test_detect_self_test(self):
-        """Self test runs should be detected when the first cell is ready, and shut down.
+    def test_detect_self_test_1(self):
+        """Self test runs should be detected and not processed further.
         """
         test_data = self.copy_run("r64175e_20210528_154754")
         self.bm.add_mock("is_testrun.sh", fail=False)
 
-        # Run the pipeline once to setup the output directory
+        # Run the pipeline once
         self.bm_rundriver()
 
-        # Run again to try processing the cells, but this should now be detected as a PacBio self
-        # test run.
-        self.bm_rundriver()
+        self.assertInStdout("This is a test run.")
 
         expected_calls = self.bm.empty_calls()
         expected_calls['is_testrun.sh'] = [[]]
-        expected_calls['rt_runticket_manager.py'] = [ "-r r64175e_20210528_154754 -Q pbrun --no_create --subject testrun"
-                                                      " --status resolved --reply".split() +
-                                                      [ "This auto-test run may be ignored. Ticket closed." ] ]
+        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("testrun", "--no_create",
+                                                                  "--status", "resolved", "--reply",
+                                                                  "This auto-test run may be ignored. Ticket closed.")]
+
+        self.assertEqual(self.bm.last_calls, expected_calls)
+
+        with open(f"{self.to_path}/pbpipeline/testrun") as fh:
+            self.assertEqual( fh.read(),
+                              "detected by is_testrun.sh\n" )
+
+        # Run driver again to confirm the status
+        self.bm_rundriver()
+        self.assertInStdout("r64175e_20210528_154754", "status=testrun")
+
+    def test_detect_self_test_2(self):
+        """If the test run is not picked up on the original scan,
+           then it should be detected when the first cell is ready, and shut down.
+        """
+        test_data = self.copy_run("r64175e_20210528_154754")
+
+        # Run the pipeline once to setup the output directory
+        self.bm_rundriver()
+
+        # Run again to try processing the cells, but make it so this is now detected
+        # as a PacBio self test run.
+        self.bm.add_mock("is_testrun.sh", fail=False)
+        self.bm_rundriver()
+
+        self.assertInStdout("This is a test run.")
+
+        expected_calls = self.bm.empty_calls()
+        expected_calls['is_testrun.sh'] = [[]]
+        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("testrun", "--no_create",
+                                                                 "--status", "resolved", "--reply",
+                                                                 "This auto-test run may be ignored. Ticket closed.")]
 
         self.assertEqual(self.bm.last_calls, expected_calls)
 

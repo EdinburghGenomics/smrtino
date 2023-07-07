@@ -181,10 +181,15 @@ action_new(){
 
       plog_start
     )
-    if [ $? = 0 ] ; then
-        BREAK=1
-    else
+    if [ $? != 0 ] ; then
         pipeline_fail New_Run_Setup
+        return
+    fi
+
+    # Check for auto-test pseudo-runs, though we may not spot it until the cell
+    # is actually ready.
+    if is_testrun.sh ; then
+        abort_testrun
         return
     fi
 
@@ -340,7 +345,7 @@ action_stalled() {
         echo "no activity for $STALL_TIME hours" > "$RUN_OUTPUT"/pbpipeline/aborted
 
         # If notifying RT fails don't attempt to do anything else. We can close the ticket manually.
-        rt_runticket_manager --no_create --subject aborted --status resolved \
+        rt_runticket_manager --subject aborted --no_create --status resolved \
             --comment "No activity in the last $STALL_TIME hours." |& plog
     else
         # So a partial run, we assume. Abort any remaining SMRT cells so the report (or whatever)
@@ -391,11 +396,13 @@ abort_testrun() {
     # Test runs are aborted and not processed further. We do use an explicit state "testrun" to
     # distinguish them from failed runs but the logic is the same as for aborted.
     # If this function is called, assume that the is_testrun.sh check has passed.
+    log  "~~This is a test run. Writing pbpipeline/testrun."
+    plog "This is a test run and needs no further processing. Writing pbpipeline/testrun."
 
     echo "detected by is_testrun.sh" > "$RUN_OUTPUT"/pbpipeline/testrun
 
     # If notifying RT fails don't attempt to do anything else. We can close the ticket manually.
-    rt_runticket_manager --no_create --subject testrun --status resolved \
+    rt_runticket_manager --subject testrun --no_create --status resolved \
         --reply "This auto-test run may be ignored. Ticket closed." |& plog
 }
 

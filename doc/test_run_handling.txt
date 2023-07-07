@@ -36,7 +36,7 @@ So I guess that gives me:
  * Close the ticket
  * Touch pbpipeline/testrun to make the run done with
 
-I need a test run detector. I guess I'll make it a smal Python script: is_testrun.py
+I need a test run detector. I guess I'll make it a small Python script: is_testrun.py
 
 Script should return 0 only if it is sure the CWD contains a test run. If not, it returns 1.
 If it can't tell, it returns 2. Within driver.sh I can then just say "if is_testrun.py ; then ..."
@@ -47,4 +47,11 @@ $ grep -F 'InstrumentId="Inst1234"' /lustre-gseg/smrtlink/sequel_seqdata/*/1_A01
 
 Seems as good an option as any.
 
+Question - if a run is already clearly a test run when I first see it, do I want to avoid making an
+RT ticket and having to close it again? I think I do. So yes let's implement that.
+
+DONE.
+---
+
+OK, I'll test this new behaviour with run r64175e_20230220_093234
 
