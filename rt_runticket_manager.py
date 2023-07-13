@@ -96,9 +96,47 @@ def main(args):
         if ticket_status:
             rtm.change_ticket_status( ticket_id , ticket_status )
 
-# This part was modified from illuminatus/RTUtils.py.
+class DummyTracker:
+    """Dummy tracker that just prints calling args.
+    """
+    def __init__(self, outfh=sys.stderr):
+        self._outfh = outfh
+        self._counter = 0
 
-class RTManager():
+    def __getattr__(self, name):
+        """Allow calling of any method on this class
+        """
+        return self._gen_arg_printer(name)
+
+    def _gen_arg_printer(self, name):
+
+        outfh = self._outfh
+        spcrs = ("", ((" " * len(name)) + " "))
+
+        def _f(*args, **kwargs):
+            # Spacer for pretty printing
+            spcr = spcrs[0]
+
+            outfh.write(f"CALL {self._counter}:\n{name}(")
+            self._counter += 1 # Update global counter
+
+            if not (args or kwargs):
+                outfh.write(")\n")
+                return
+
+            for a in args:
+                outfh.write(f"{spcr} {a!r},\n")
+                spcr = spcrs[1]
+            for k, v in kwargs.items():
+                outfh.write(f"{spcr} {k} = {v!r},\n")
+                spcr = spcrs[1]
+
+            print(f"{spcr})", file=outfh)
+
+        return _f
+
+# This part was modified from illuminatus/RTUtils.py.
+class RTManager:
     def __init__(self, config_name, queue_setting):
         """Communication with RT is managed via the RT module.
            This wrapper picks up connection params from an .ini file,
@@ -124,6 +162,7 @@ class RTManager():
 
         if not self._config:
             L.warning("Making dummy connection - all operations will be no-ops.")
+            self.tracker = DummyTracker()
             return self
 
         self.server_path = self._config['server']
@@ -192,19 +231,19 @@ class RTManager():
            ignored.
            Returns a pair (ticket_id, created?).
         """
-        c = self._config
         ticket_id, _ = self.search_run_ticket(run_id)
 
         if ticket_id:
             return ticket_id, False
 
-        # Since dummy mode returns 999, if ticket_id was unset we can infer we have a real
-        # connection and proceed with real ops.
+        # Since dummy mode returns 999, if the ticket has not been found we can
+        # infer we have a real connection and proceed with real ops.
 
         # Text munge
         text = re.sub(r'\n', r'\n      ', text.rstrip()) if text \
                else ""
 
+        c = self._config
         ticket_id = int(self.tracker.create_ticket(
                 Subject   = subject,
                 Queue     = self._queue,
@@ -221,8 +260,7 @@ class RTManager():
            as an integer, along with the ticket metadata as a dict,
            or return (None, None) if there is no such ticket.
         """
-        c = self._config
-        if not c:
+        if isinstance(self.tracker, DummyTracker):
             #In dummy mode, all tickets are 999
             return (999, dict())
 
@@ -237,7 +275,7 @@ class RTManager():
         # run name. This is actually possible for Promethion, so we now do a further check
         # to ensure we really really got the right ticket.
         for t in tickets:
-            if not re.search(r'\b{}\b'.format(run_id), t.get('Subject', '')):
+            if not re.search(fr"\b{run_id}\b", t.get("Subject", "")):
                 L.warning(f"Disregarding ticket with subject {t.get('Subject')}")
                 t['id'] = None
         tickets = [ t for t in tickets if t.get('id') ]
@@ -264,9 +302,6 @@ class RTManager():
             # hack around this? No, not easily.
             raise NotImplementedError("RT REST API does not support setting subjects on replies.")
 
-        # Dummy connection mode...
-        if not self._config: return True
-
         return self.tracker.reply(ticket_id, text=message)
 
     def comment_on_ticket(self, ticket_id, message, subject=None):
@@ -276,14 +311,9 @@ class RTManager():
             #hack around this? No, not easily.
             raise NotImplementedError("RT REST API does not support setting subjects on replies.")
 
-        # Dummy connection mode...
-        if not self._config: return True
-
         return self.tracker.comment(ticket_id, text=message)
 
     def change_ticket_status(self, ticket_id, status):
-        # Dummy connection mode...
-        if not self._config: return
 
         kwargs = dict( Status = status )
         # Ignore IndexError raised when subject is already set
@@ -296,9 +326,6 @@ class RTManager():
            (see share/html/REST/1.0/Forms/ticket/comment in the RT source code)
            This call permanently changes the ticket subject.
         """
-        # Dummy connection mode...
-        if not self._config: return
-
         # why the extra space?? I'm not sure but it looks to have been added deliberately.
         kwargs = dict( Subject = f"{subject} " )
 
