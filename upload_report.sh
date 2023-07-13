@@ -10,7 +10,7 @@ set -euo pipefail
 
 # See where to get the report from (by default, right here)
 cd "${1:-.}"
-runname="`basename $PWD`"
+runname="$(basename "$PWD")"
 
 function echorun(){
     printf '%q ' "$@" ; printf '\n'
@@ -37,8 +37,8 @@ dest="${REPORT_DESTINATION}"
 RSYNC_CMD="echorun ${RSYNC_CMD:-rsync}"
 
 echo "Uploading reports for $runname to $dest..." >&2
-$RSYNC_CMD -drvlOt all_reports $dest/$runname/ >&2
-$RSYNC_CMD -drvLOt all_reports/img $dest/$runname/all_reports/ >&2
+$RSYNC_CMD -drvlOt all_reports/ $dest/$runname/ >&2
+$RSYNC_CMD -drvLOt all_reports/img $dest/$runname/ >&2
 
 # I think we no longer need the index.php
 # Output one line per report.

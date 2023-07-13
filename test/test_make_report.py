@@ -39,6 +39,12 @@ class T(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def assertODEqual(self, od1, od2):
+        """Tests that two dictionaries have the same content and the same ordering.
+        """
+        self.assertEqual(dict(od1), dict(od2))
+        self.assertEqual(list(od1), list(od2))
+
     ### THE TESTS ###
 
     # In general, we'll do one test per function
@@ -165,9 +171,9 @@ class T(unittest.TestCase):
             mf.return_value.__iter__ = lambda self: self
             mf.return_value.__next__ = lambda self: next(iter(self.readline, ''))
 
-            self.assertEqual( dict(load_status_info("xxx")), expected )
+            res = dict(load_status_info("xxx"))
 
-            # Fudge is no longer in this function
+            self.assertODEqual( res, expected )
 
     def test_rejig_status_info(self):
         """Function that returns a version of status_info good for the report.
@@ -181,24 +187,21 @@ class T(unittest.TestCase):
                           PipelineStatus = 'complete',
                           _foo = 'bar' )
 
-        expected1 = OrderedDict([ ( "RunID",           'r54321_20181019_123127' ),
+        expected1 = OrderedDict([ ( "Cells",           '4' ),
+                                  ( "RunID",           'r54321_20181019_123127' ),
                                   ( "Instrument",      '54321' ),
-                                  ( "Cells",           '4' ),
-                                  ( "StartTime",       'Fri Oct 19 13:31:59 2018' ),
-                                  ( "PipelineStatus",  'complete' ) ])
+                                  ( "StartTime",       'Fri Oct 19 13:31:59 2018' ) ])
         rejig1 = rejig_status_info( some_info, {} )
         # Double comparison because the difference between dicts is easier to see in the
-        # error message.
-        self.assertEqual(dict(rejig1), dict(expected1))
-        self.assertEqual(rejig1, expected1)
+        # error message, and then we need to check the ordering too.
+        self.assertODEqual(rejig1, expected1)
 
-        expected2 = OrderedDict([ ( "Experiment",      'K123' ),
+        expected2 = OrderedDict([ ( "Cells",           '4' ),
+                                  ( "Experiment",      'K123' ),
                                   ( "SMRTLink Run QC", ('label','link') ),
                                   ( "RunID",           'r54321_20181019_123127' ),
                                   ( "Instrument",      'Sequel2e_64175e' ),
-                                  ( "Cells",           '4' ),
-                                  ( "StartTime",       'Fri Oct 19 13:31:59 2018' ),
-                                  ( "PipelineStatus",  'complete' ) ])
+                                  ( "StartTime",       'Fri Oct 19 13:31:59 2018' ) ])
         rejig2 = rejig_status_info( some_info,
                                     cell_data = dict(
                                         _links = dict(
@@ -207,8 +210,7 @@ class T(unittest.TestCase):
                                         _run = dict(
                                             ExperimentId = 'K123',
                                             Instrument = 'Sequel2e_64175e' ) ) )
-        self.assertEqual(dict(rejig2), dict(expected2))
-        self.assertEqual(rejig2, expected2)
+        self.assertODEqual(rejig2, expected2)
 
     def test_get_qc_link(self):
         """Find the Run QC link

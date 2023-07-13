@@ -58,11 +58,11 @@ wildcard_constraints:
 
 # We shall make a single report per cell (used to be one per run).
 # The report filenames are to be of the form:
-#   {cellslot}_{cellid}.pan.html
+#   {cellslot}_{cellid}.html
 localrules: report_main
 rule report_main:
     input:
-        pan   = lambda wc: expand("all_reports/{c[0]}-{c[1]}.pan.html", c=scan_cells()),
+        pan   = lambda wc: expand("all_reports/{c[0]}-{c[1]}.html", c=scan_cells()),
         plist = "projects_ready.txt",
 
 # A list of projects, like with Illuminatus. Used to quickly scan for runs that have data related to
@@ -105,8 +105,8 @@ rule smrtlink_pdf_report:
 
 # Invokes PanDoc with the template stuff
 rule pan_to_html:
-    output: "{report}.pan.html"
-    input:  "{report}.pan"
+    output: "all_reports/{report}.html"
+    input:  "all_reports/pandoc/{report}.pan"
     params:
         templates = os.environ.get('TEMPLATES', '.')
     shell:
@@ -121,17 +121,19 @@ rule pan_to_html:
 # This rule marshalls all the .png images and makes one report in PanDoc format.
 rule make_report:
     output:
-        pan        = "all_reports/{cellslot}-{cell}.pan",
+        pan        = "all_reports/pandoc/{cellslot}-{cell}.pan",
+        btouch     = touch("all_reports/img/{cellslot}-{cell}-blob.linked"),
     input:
         yaml       = "{cell}.info.yml",
         links      = "{cell}.link.yml",
         pdf        = "all_reports/pdf/{cell}.pdf",
-        blob_plots = lambda wc: glob("blob/{wc.cell}.*.png"),
+        blob_plots = lambda wc: glob(f"blob/{wc.cell}.*.cov0*.png"),
     params:
         pdflink    = "pdf/{cell}.pdf",
     shell:
-       r"""ln -srnt all_reports/img {input.blob_plots}
+       r"""rm -vf all_reports/img/{wildcards.cell}.*.cov0*.png
+           ln -vsrnt all_reports/img {input.blob_plots}
            make_report.py -o {output.pan} \
-                {input.yaml} {input.links} {params.pdflink} \
+                -y {input.yaml} -l {input.links} -r {params.pdflink} \
                 -s <(pb_run_status.py)
         """

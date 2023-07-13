@@ -384,6 +384,13 @@ class T(unittest.TestCase):
         for cell in "1_A01 2_B01 3_C01".split():
             self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
 
+        # Check the right things were called - eg. Snakefile.report
+        self.assertEqual(self.bm.last_calls["Snakefile.report"],
+                         [ ['-R', 'list_projects', 'make_report',
+                            '--config', 'cells=1_A01 2_B01 3_C01',
+                            '-p', 'report_main'] ])
+
+
     def test_process_run_fail(self):
         """ Test error handling when Snakefile.process_cells fails
         """

@@ -28,10 +28,12 @@ def main(args):
     out_file = args.out_file.format(cell_uuid=args.cell_uuid)
 
     if args.rc_section == 'none':
-        L.warning("Running in no-connection mode as rc_section==none")
+        L.warning(f"args.rc_section == {args.rc_section}")
+        L.warning(f"Bypassing API connection and creating blank {out_file}")
         # Bypass API connection for testing and just make an empty report
-        with open(out_file, 'wb') as __:
+        with open(out_file, 'wb'):
             pass
+        return
 
     # Ask the API to generate the report. Just one at a time.
     conn = SMRTLinkClient.connect_with_creds(section=args.rc_section)
@@ -44,7 +46,7 @@ def main(args):
             L.exception("Status 422 normally indicates that the cell_uuid is not in SMRTLink")
             if args.empty_on_missing:
                 L.warning("Saving empty report as --empty_on_missing is set")
-                with open(out_file, 'wb') as __:
+                with open(out_file, 'wb'):
                     pass
                 return
             else:

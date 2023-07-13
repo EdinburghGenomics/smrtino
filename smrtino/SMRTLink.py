@@ -291,7 +291,7 @@ class SMRTLinkClient(OAUTHClient):
             try:
                 res["password"] = config[section]["pass"]
             except KeyError:
-                raise RuntimeError("No password found in file for {res['user']}@{res['host']}")
+                raise RuntimeError(f"No password found in file for {res['user']}@{res['host']}")
 
         # Host should not have 'https://' part.
         assert not '/' in res['host']

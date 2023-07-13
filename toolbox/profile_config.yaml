@@ -17,6 +17,7 @@ cores: 400
 local-cores: 4
 latency-wait: 10
 max-jobs-per-second: 1
+printshellcmds: true
 set-resource-scopes:
     - extra_slurm_flags=local
 default-resources:

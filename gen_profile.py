@@ -99,7 +99,7 @@ def gen_profile(template, env, groupsize=None, cores=None):
             res[k] = v
 
     if cores:
-        L.debug(f"overriding cores")
+        L.debug(f"overriding cores to be {cores}")
         res["cores"] = cores
 
     return res

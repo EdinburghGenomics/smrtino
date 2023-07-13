@@ -174,7 +174,7 @@ action_new(){
     # The symlink ./pbpipeline/from will point back to the data folder
     # There's no symlink back in the other direction to the input folder as we can't write to that FS
     # The logs will be created in the output folder, after which we may use 'plog'
-    log "\_NEW $RUNID. Creating $RUN_OUTPUT/pbpipeline folder and making initial report."
+    log "\_NEW $RUNID. Creating $RUN_OUTPUT/pbpipeline directory and RT ticket."
     set +e ; ( set -e
       mkdir -vp "$RUN_OUTPUT"/pbpipeline |&debug
       ln -nsv "`pwd -P`" "$RUN_OUTPUT"/pbpipeline/from |& debug
@@ -186,8 +186,8 @@ action_new(){
         return
     fi
 
-    # Check for auto-test pseudo-runs, though we may not spot it until the cell
-    # is actually ready.
+    # Check for auto-test pseudo-runs, though we may not be able to spot it
+    # until the cell is actually ready.
     if is_testrun.sh ; then
         abort_testrun
         return
@@ -237,7 +237,7 @@ action_cell_ready(){
       plog "Processing done. Now for Snakefile.report"
       ( cd "$RUN_OUTPUT"
         always_run=(list_projects make_report)
-        Snakefile.report -R "${always_run[@]}" --config cells="$CELLSREADY" report_main
+        Snakefile.report -R "${always_run[@]}" --config cells="$CELLSREADY" -p report_main
       ) |& plog
 
       for c in $CELLSREADY ; do

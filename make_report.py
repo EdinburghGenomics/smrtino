@@ -2,13 +2,10 @@
 import os, sys, re
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from pprint import pformat
 from datetime import datetime
 from collections import OrderedDict
-import yaml
-import base64
 
-from smrtino import glob, load_yaml, aggregator
+from smrtino import load_yaml, aggregator
 
 """ Makes a report (in PanDoc format) for a cell. We will only report on
     processed SMRT cells where the info.yml has been generated - so no
@@ -33,16 +30,19 @@ def load_input(yaml_file, links_file=None):
 
     return yaml_info
 
-def rejig_status_info(status_info, cell_data, remove=('CellsReady', 'CellsAborted')):
+def rejig_status_info(status_info, cell_data, remove=(r"Cells(Ready|Aborted|Done)", ".*Status")):
     """Re-jig the status_info into the format we want to display in the
        'About this run' section.
        This was previously done within format_report() but I broke it out.
        The result of load_input() should also be provided as cell_data
     """
+    def _filter(label):
+        # Returns true if the label should be filtered.
+        return any( re.fullmatch(p, label) for p in [r"_.*", *remove] )
+
     # First eliminate anything that starts with an underscore, and 'CellsReady'
     new_info = OrderedDict([ (k, v) for k, v in status_info.items()
-                              if not (k.startswith('_') or
-                                      k in remove) ])
+                              if not _filter(k) ])
 
     # Now add the smrtlink_qc_link at the top
     if cell_data.get('_links'):
@@ -60,9 +60,10 @@ def rejig_status_info(status_info, cell_data, remove=('CellsReady', 'CellsAborte
         if cell_data['_run'].get('Instrument'):
             new_info['Instrument'] = cell_data['_run']['Instrument']
 
-    # Replace the list of cells with a count of cells
+    # Replace the list of cells with a count of cells, and put it to the top
     if 'Cells' in new_info:
         new_info['Cells'] = str(len(new_info['Cells'].split()))
+        new_info.move_to_end('Cells', last=False)
 
     return new_info
 
@@ -174,7 +175,7 @@ def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None
 
     # Report all the infos and plots for this cell
 
-    rep("", f"# SMRT cell info", "")
+    rep("", "# SMRT cell info", "")
 
     # See if we have a PDF and/or link to SMRTLink for this cell
     smrt_links = []
@@ -223,7 +224,7 @@ def format_cell(cdict, cell_link=None):
     if cdict.get('_cstats'):
         rep('', *make_table(cdict['_cstats']))
 
-    rep("", f"# SMRT cell QC", "")
+    rep("", "# SMRT cell QC", "")
 
     # Now add the blob and histo plots. The input data defines the plot order
     # and placement.
