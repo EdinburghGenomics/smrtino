@@ -113,6 +113,8 @@ class T(unittest.TestCase):
 
             # About the whole run
 
+            [Reports for other cells](./)
+
             <dl class="dl-horizontal">
             </dl>
 

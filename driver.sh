@@ -141,6 +141,22 @@ if [ "${py_venv}" != none ] ; then
     log 'VEnv ACTIVATED'
 fi
 
+###--->>> UTILITY FUNCTIONS USED BY THE ACTIONS <<<---###
+
+touch_atomic(){
+    # Create a file or files but it's an error if the file already existed.
+    for f in "$@" ; do
+        (set -o noclobber ; >"$f")
+    done
+}
+
+mv_atomic(){
+    # Used in place of "mv x.started x.done"
+    # Doesn't actually move the file, just makes a new empty file.
+    echo "renaming $1 -> $2"
+    (set -o noclobber ; >"$2") && rm "$1"
+}
+
 ###--->>> ACTION CALLBACKS <<<---###
 
 # 3) Define an action for each possible status that a pacbio run can have:
@@ -205,7 +221,8 @@ action_new(){
 action_cell_ready(){
     # It's time for Snakefile.process_cells to process one or more cells.
     ( cd "$RUN_OUTPUT" &&
-      touch $(awk '{ for(i=1; i<=NF; i++) print "pbpipeline/"$i".started" }' <<<"$CELLSREADY") )
+      touch_atomic $(awk '{ for(i=1; i<=NF; i++) print "pbpipeline/"$i".started" }' <<<"$CELLSREADY")
+    )
 
     log "\_CELL_READY $RUNID ($CELLSREADY). Kicking off processing."
     plog_start
@@ -220,7 +237,7 @@ action_cell_ready(){
     fi
 
     # Do we want an RT message for every cell? Well, just a comment.
-    send_summary_to_rt comment processing "Cell(s) ready: $CELLSREADY. Report is at" |& plog
+    send_summary_to_rt comment processing "Cell(s) ready to process: $CELLSREADY." |& plog
 
     # If $CELLSREADY + $CELLSDONE + $CELLSABORTED == $CELLS then this will complete the run.
 
@@ -241,7 +258,7 @@ action_cell_ready(){
       ) |& plog
 
       for c in $CELLSREADY ; do
-          ( cd "$RUN_OUTPUT" && mv pbpipeline/${c}.started pbpipeline/${c}.done )
+          ( cd "$RUN_OUTPUT" && mv_atomic pbpipeline/${c}.started pbpipeline/${c}.done )
       done
 
     ) |& plog
@@ -249,6 +266,9 @@ action_cell_ready(){
         pipeline_fail Processing_Cells "$CELLSREADY"
         return
     fi
+
+    # Note - unlikely but possible race condition here if a second driver picks up the
+    # processed run, but the use of touch_atomic should fix that.
 
     # And upload the reports. If all cells are done, go directly to action_processed
     echo "Processing and reporting done for cells $CELLSREADY. Uploading reports."
@@ -275,7 +295,7 @@ action_processed() {
     # This touch file puts the run into status reporting.
     # Upload of all reports is regarded as the final QC step, so if this fails we need to
     # log a failure even if everything else was OK.
-    touch "$RUN_OUTPUT"/pbpipeline/report.started
+    touch_atomic "$RUN_OUTPUT"/pbpipeline/report.started
 
     # In case we didn't already...
     notify_run_complete |& plog
@@ -286,7 +306,7 @@ action_processed() {
         log "  Completed processing on $RUNID [$CELLS]."
 
         # Final success is contingent on the report upload AND that message going to RT.
-        (cd "$RUN_OUTPUT" && mv pbpipeline/report.started pbpipeline/report.done )
+        (cd "$RUN_OUTPUT" && mv_atomic pbpipeline/report.started pbpipeline/report.done )
     ) |& plog ; [ $? = 0 ] || pipeline_fail Report_final_upload
 
 }

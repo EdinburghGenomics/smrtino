@@ -23,12 +23,16 @@ def resolve_msg(in_val):
         return None
 
     if in_val == "@-":
-        return sys.stdin.read()
+        in_val = sys.stdin.read()
     elif in_val.startswith("@"):
         with open(in_val[1:]) as in_file:
-            return in_file.read()
-    else:
-        return in_val
+            in_val = in_file.read()
+
+    # Add a newline
+    if in_val and not in_val.endswith("\n"):
+        in_val += "\n"
+
+    return in_val
 
 def main(args):
 
@@ -128,10 +132,18 @@ class DummyTracker:
                 outfh.write(f"{spcr} {a!r},\n")
                 spcr = spcrs[1]
             for k, v in kwargs.items():
-                outfh.write(f"{spcr} {k} = {v!r},\n")
+                if k == "text":
+                    outfh.write(f"{spcr} {k} = '<see below>',\n")
+                else:
+                    outfh.write(f"{spcr} {k} = {v!r},\n")
                 spcr = spcrs[1]
 
             print(f"{spcr})", file=outfh)
+
+            if "text" in kwargs:
+                outfh.write("~~~ text >>>\n")
+                outfh.write(kwargs["text"])
+                outfh.write("~~~\n")
 
         return _f
 
@@ -239,7 +251,7 @@ class RTManager:
         # Since dummy mode returns 999, if the ticket has not been found we can
         # infer we have a real connection and proceed with real ops.
 
-        # Text munge
+        # Text munge. Adding indent.
         text = re.sub(r'\n', r'\n      ', text.rstrip()) if text \
                else ""
 
@@ -249,7 +261,7 @@ class RTManager:
                 Queue     = self._queue,
                 Requestor = c['requestor'],
                 Cc        = c.get(self._queue_setting + '_cc') or "",
-                Text      = text or ""      ))
+                Text      = text or "" ))
 
         # Open the ticket, or we'll not find it again.
         self.tracker.edit_ticket(ticket_id, Status='open')

@@ -162,6 +162,9 @@ def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None
     # Add the run_status meta-data
     run_status = run_status or {}
     rep("\n# About the whole run\n")
+
+    rep("[Reports for other cells](./)\n")
+
     rep('<dl class="dl-horizontal">')
 
     # The dict has been pre-processed. Links will be a pair of (uuid, hyperlink)

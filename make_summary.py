@@ -73,12 +73,12 @@ def load_replinks(replinks_file):
         with open(replinks_file) as fh:
             for aline in fh:
                 aline = aline.strip()
-                mo = re.search(r'/([^-]+)-[^/]+$', aline)
+                mo = re.search(r'/([^-/]+)-[^/]+$', aline)
                 if mo:
                     res[mo.group(1)] = aline
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         # I'm not sure if this should be a fatal error. Probably not.
-        L.exception()
+        L.exception(e)
         pass
 
     return res
@@ -101,7 +101,7 @@ def format_summary(all_info, run_id=None, run_dir='.'):
         exit(f"Cannot determine Run ID. Please supply a --runid consistent with {run_id_set}.")
 
     replines = aggregator( run_dir,
-                           f"Run {run_id} with {len(all_info)} SMRT cells" )
+                           f"holds run {run_id} with {len(all_info)} SMRT cells" )
 
     for k, v in sorted(all_info.items()):
 
