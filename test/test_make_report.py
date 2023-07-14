@@ -105,15 +105,15 @@ class T(unittest.TestCase):
                                     run_status = dict(),
                                     rep_time = datetime(2000,11,2) )
 
-        expected_empty = dd(r"""
-            % PacBio SMRT cell test\_cell\_id
+        expected_empty = dd("""
+            % PacBio SMRT cell test\\_cell\\_id
             % SMRTino version None
             % Thursday, 02 Nov 2000 00:00
 
 
             # About the whole run
 
-            [Reports for other cells](./)
+            [\u2bb0 Reports for all cells](./)
 
             <dl class="dl-horizontal">
             </dl>
@@ -122,7 +122,7 @@ class T(unittest.TestCase):
 
             <dl class="dl-horizontal">
             <dt>cell_id</dt>
-            <dd>test\_cell\_id</dd>
+            <dd>test\\_cell\\_id</dd>
             <dt>ws_project</dt>
             <dd><span style='color: Tomato;'>None</span></dd>
             </dl>

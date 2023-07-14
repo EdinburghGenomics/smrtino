@@ -163,7 +163,7 @@ def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None
     run_status = run_status or {}
     rep("\n# About the whole run\n")
 
-    rep("[Reports for other cells](./)\n")
+    rep("[⮰ Reports for all cells](./)\n")
 
     rep('<dl class="dl-horizontal">')
 
