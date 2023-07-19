@@ -53,6 +53,11 @@ def gen_info(args):
         with open(p) as yfh:
             info.setdefault('_plots', []).append(yaml.safe_load(yfh))
 
+    # Add taxon if supplied
+    for t in args.taxon or []:
+        with open(t) as yfh:
+            info['guessed_taxon'] = t.read().strip()
+
     # Add stats if we have them
     for s in args.stats or []:
         filename = '-'
@@ -82,6 +87,8 @@ def parse_args(*args):
                             help="Plots generated for this cell (YAML files)")
     argparser.add_argument("-s", "--stats", nargs="*",
                             help="Stats generated for this cell (YAML files)")
+    argparser.add_argument("-t", "--taxon", nargs="*",
+                            help="BLAST taxon guess for this cell (text file)")
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 

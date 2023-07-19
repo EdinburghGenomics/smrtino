@@ -39,6 +39,7 @@ class T(unittest.TestCase):
         args.runxml = None
         args.plots = []
         args.stats = []
+        args.taxon = []
         args.debug = False
 
         return args

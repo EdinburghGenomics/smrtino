@@ -1,0 +1,15 @@
+## 1.1.1
+## cov0=/mnt/lustre/gseg/pacbio/pacbio_data/r64175e_20220401_133539/.snakemake/shadow/tmpzg6hla2s/blob/m64175e_220402_224908.reads+sub10000.complexity
+# name	colour	count_visible	count_visible_perc	span_visible	span_visible_perc	n50	gc_mean	gc_std	cov0_mean	cov0_std	cov0_read_map	cov0_read_map_p
+all	None	9,958	99.6%	152,271,056	100.0%	18,056	0.44	0.094	24.5	26.0	9,958	99.6%
+no-hit	#d3d3d3	3,851	98.9%	57,719,064	100.0%	27,363	0.47	0.13	19.5	34.6	3,851	38.5%
+other	#ffffff	3	100.0%	30,113	100.0%	12,489	0.39	0.021	14.4	4.9	3	0.0%
+Strigeidida	None	2	100.0%	17,624	100.0%	13,379	0.39	0.026	12.2	4.6	2	0.0%
+Galliformes	None	1	100.0%	12,489	100.0%	12,489	0.4	0.0	18.8	0.0	1	0.0%
+undef	#d3d3d3	9	100.0%	127,934	100.0%	16,649	0.44	0.056	36.7	19.3	9	0.1%
+Rodentia	#6d009c	6,057	100.0%	93,818,279	100.0%	16,666	0.42	0.047	27.7	18.0	6,057	60.6%
+Primates	#002fdd	30	100.0%	430,904	100.0%	15,622	0.41	0.038	28.1	15.2	30	0.3%
+Chordata-undef	#00a4bb	4	100.0%	76,844	100.0%	19,453	0.43	0.034	37.7	16.6	4	0.0%
+Lagomorpha	#009b13	1	100.0%	27,455	100.0%	27,455	0.4	0.0	36.3	0.0	1	0.0%
+Carnivora	#00e200	2	100.0%	22,147	100.0%	11,864	0.37	0.026	17.0	4.9	2	0.0%
+Enterobacterales	#ccf900	1	100.0%	18,316	100.0%	18,316	0.54	0.0	60.1	0.0	1	0.0%

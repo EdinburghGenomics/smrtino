@@ -1,0 +1,15 @@
+## 1.1.1
+## cov0=/mnt/lustre/gseg/pacbio/pacbio_data/r64175e_20220401_133539/.snakemake/shadow/tmp7d7cefgo/blob/m64175e_220404_060823.reads+sub10000.complexity
+# name	colour	count_visible	count_visible_perc	span_visible	span_visible_perc	n50	gc_mean	gc_std	cov0_mean	cov0_std	cov0_read_map	cov0_read_map_p
+all	None	9,967	99.7%	154,169,812	100.0%	18,496	0.44	0.097	24.2	26.4	9,967	99.7%
+no-hit	#d3d3d3	4,301	99.2%	65,948,403	100.0%	28,661	0.48	0.13	19.2	33.2	4,301	43.0%
+other	#ffffff	2	100.0%	32,183	100.0%	16,612	0.43	0.033	30.6	29.9	2	0.0%
+Casuariiformes	None	1	100.0%	16,612	100.0%	16,612	0.46	0.0	0.7	0.0	1	0.0%
+Cetacea	None	1	100.0%	15,571	100.0%	15,571	0.39	0.0	60.6	0.0	1	0.0%
+undef	#d3d3d3	9	100.0%	104,973	100.0%	13,382	0.41	0.04	21.7	16.7	9	0.1%
+Rodentia	#6d009c	5,615	100.0%	87,468,393	100.0%	16,727	0.42	0.048	28.0	18.9	5,615	56.1%
+Primates	#002fdd	31	100.0%	468,851	100.0%	18,470	0.41	0.031	27.1	19.1	31	0.3%
+Chordata-undef	#00a4bb	5	100.0%	72,023	100.0%	17,067	0.4	0.023	31.9	15.8	5	0.1%
+Salmoniformes	#009b13	1	100.0%	29,511	100.0%	29,511	0.37	0.0	0.1	0.0	1	0.0%
+Tetraodontiformes	#00e200	1	100.0%	25,149	100.0%	25,149	0.45	0.0	0.2	0.0	1	0.0%
+Carnivora	#ccf900	2	100.0%	20,326	100.0%	14,937	0.39	0.0092	38.3	9.1	2	0.0%

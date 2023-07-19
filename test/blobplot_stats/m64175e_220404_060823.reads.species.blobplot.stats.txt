@@ -1,0 +1,45 @@
+## 1.1.1
+## cov0=/mnt/lustre/gseg/pacbio/pacbio_data/r64175e_20220401_133539/.snakemake/shadow/tmp7d7cefgo/blob/m64175e_220404_060823.reads+sub10000.complexity
+# name	colour	count_visible	count_visible_perc	span_visible	span_visible_perc	n50	gc_mean	gc_std	cov0_mean	cov0_std	cov0_read_map	cov0_read_map_p
+all	None	9,967	99.7%	154,169,812	100.0%	18,496	0.44	0.097	24.2	26.4	9,967	99.7%
+no-hit	#d3d3d3	4,301	99.2%	65,948,403	100.0%	28,661	0.48	0.13	19.2	33.2	4,301	43.0%
+other	#ffffff	158	100.0%	2,317,015	100.0%	15,571	0.42	0.054	26.6	17.4	158	1.6%
+Cricetulus barabensis	None	29	100.0%	467,492	100.0%	15,481	0.43	0.096	24.1	16.4	29	0.3%
+Cricetulus sp.	None	30	100.0%	465,374	100.0%	17,021	0.42	0.036	27.4	17.7	30	0.3%
+Homo sapiens	None	23	100.0%	343,716	100.0%	18,470	0.41	0.03	28.5	21.5	23	0.2%
+Microtus ochrogaster	None	12	100.0%	153,975	100.0%	12,860	0.43	0.059	21.8	13.8	12	0.1%
+Oryzomys palustris	None	11	100.0%	153,684	100.0%	14,115	0.39	0.025	30.5	17.0	11	0.1%
+eukaryotic synthetic construct	None	8	100.0%	88,779	100.0%	13,382	0.41	0.042	22.5	17.5	8	0.1%
+Microtus levis	None	6	100.0%	67,506	100.0%	12,573	0.44	0.034	27.8	15.2	6	0.1%
+Grammomys surdaster	None	5	100.0%	66,944	100.0%	14,850	0.43	0.039	28.9	13.2	5	0.1%
+Meriones unguiculatus	None	3	100.0%	55,495	100.0%	22,623	0.42	0.015	30.1	12.0	3	0.0%
+Macaca mulatta	None	2	100.0%	40,730	100.0%	28,528	0.41	0.055	25.5	5.0	2	0.0%
+Tokudaia muenninki	None	3	100.0%	37,776	100.0%	11,628	0.47	0.016	48.6	10.6	3	0.0%
+Microtus kirgisorum	None	2	100.0%	32,334	100.0%	16,799	0.41	0.0092	22.2	3.7	2	0.0%
+Pan troglodytes	None	2	100.0%	29,846	100.0%	27,597	0.4	0.02	15.8	0.7	2	0.0%
+Salmo trutta	None	1	100.0%	29,511	100.0%	29,511	0.37	0.0	0.1	0.0	1	0.0%
+Callithrix jacchus	None	2	100.0%	27,770	100.0%	13,979	0.4	0.0094	19.9	1.2	2	0.0%
+Takifugu rubripes	None	1	100.0%	25,149	100.0%	25,149	0.45	0.0	0.2	0.0	1	0.0%
+Mus spretus	None	1	100.0%	20,891	100.0%	20,891	0.41	0.0	41.9	0.0	1	0.0%
+Ovis canadensis	None	2	100.0%	19,534	100.0%	15,179	0.41	0.0009	37.1	5.1	2	0.0%
+Odocoileus virginianus	None	1	100.0%	18,133	100.0%	18,133	0.4	0.0	19.9	0.0	1	0.0%
+Bos mutus	None	1	100.0%	17,289	100.0%	17,289	0.42	0.0	55.0	0.0	1	0.0%
+Sus scrofa	None	1	100.0%	17,067	100.0%	17,067	0.35	0.0	10.3	0.0	1	0.0%
+Dromaius novaehollandiae	None	1	100.0%	16,612	100.0%	16,612	0.46	0.0	0.7	0.0	1	0.0%
+synthetic construct	None	1	100.0%	16,194	100.0%	16,194	0.4	0.0	15.2	0.0	1	0.0%
+Mandrillus leucophaeus	None	1	100.0%	15,595	100.0%	15,595	0.39	0.0	19.8	0.0	1	0.0%
+Tursiops truncatus	None	1	100.0%	15,571	100.0%	15,571	0.39	0.0	60.6	0.0	1	0.0%
+Ailuropoda melanoleuca	None	1	100.0%	14,937	100.0%	14,937	0.4	0.0	47.4	0.0	1	0.0%
+Cricetulus migratorius	None	1	100.0%	13,119	100.0%	13,119	0.41	0.0	24.0	0.0	1	0.0%
+Mus pahari	None	1	100.0%	12,164	100.0%	12,164	0.42	0.0	35.4	0.0	1	0.0%
+Macaca nemestrina	None	1	100.0%	11,194	100.0%	11,194	0.44	0.0	41.2	0.0	1	0.0%
+Reithrodontomys fulvescens	None	1	100.0%	10,733	100.0%	10,733	0.37	0.0	29.4	0.0	1	0.0%
+Mus caroli	None	2	100.0%	6,512	100.0%	3,508	0.43	0.0028	12.0	7.8	2	0.0%
+Ursus arctos	None	1	100.0%	5,389	100.0%	5,389	0.38	0.0	29.3	0.0	1	0.0%
+Mus musculus	#6d009c	2,501	100.0%	38,663,385	100.0%	16,275	0.42	0.047	29.2	16.8	2,501	25.0%
+Cricetulus griseus	#002fdd	2,437	100.0%	38,367,980	100.0%	17,240	0.42	0.049	27.6	20.8	2,437	24.4%
+Peromyscus maniculatus	#00a4bb	164	100.0%	2,625,401	100.0%	17,495	0.4	0.031	15.6	11.5	164	1.6%
+Mesocricetus auratus	#009b13	131	100.0%	2,107,457	100.0%	16,696	0.43	0.049	29.6	17.3	131	1.3%
+Peromyscus leucopus	#00e200	98	100.0%	1,440,175	100.0%	15,533	0.4	0.037	21.5	19.4	98	1.0%
+Cricetulus longicaudatus	#ccf900	89	100.0%	1,394,067	100.0%	17,074	0.43	0.032	31.8	28.0	89	0.9%
+Rattus norvegicus	#ffad00	88	100.0%	1,305,929	100.0%	15,373	0.43	0.043	32.2	15.7	88	0.9%

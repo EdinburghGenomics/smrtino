@@ -152,7 +152,8 @@ def i_one_cell_info(wildcards):
                 cstats = [],
                 cou = [],
                 xml = [],
-                blobs = [] )
+                blobs = [],
+                taxon = [] )
 
     # This will loop over ['subreads', 'scraps'] or ['reads']
     for apart in scinfo['parts']:
@@ -187,6 +188,7 @@ def i_one_cell_info(wildcards):
     # Blobs or no?
     if str(config.get('blobs', '1')) != '0':
         res['blobs'].append("blob/" + cellbase + ".plots.yml")
+        res['taxon'].append("blob/" + cellbase + ".species.txt")
 
     return res
 
@@ -197,9 +199,10 @@ rule one_cell_info:
        # What needs to go into the YML? Stuff from the XML and also some stuff from the
        # stats, maybe? At present the script will discover extra files automagically.
        r'''compile_cell_info.py {input.xml[0]} \
-             -r {input.runxml} \
-             -s {input.cstats} \
-             -p {input.blobs} > {output}
+             --runxml {input.runxml} \
+             --stats  {input.cstats} \
+             --taxon  {input.taxon} \
+             --plots  {input.blobs} > {output}
         '''
 
 # On GSEG this has to be local as the worker nodes can't see IFS...
@@ -370,9 +373,9 @@ BLAST_SCRIPT   = config.get('blast_script', "blast_nt")
 # Serves as the driver by depending on the 6 blob plots and thumbnails for
 # each, and arranges the plots into two rows of three columns as we wish to
 # display them.
-localrules: list_blob_plots
+localrules: list_blob_plots, get_blob_species
 rule list_blob_plots:
-    output: r"blob/{cell}{filter}.plots.yml"
+    output: "blob/{cell}{filter}.plots.yml"
     input:
         png = lambda wc: expand( "blob/{cell}{flt}.{s}.{taxlevel}.{extn}{thumb}.png",
                                  cell = [wc.cell],
@@ -410,6 +413,16 @@ rule list_blob_plots:
         with open(output[0], 'w') as ofh:
             print(yaml.safe_dump(plots), file=ofh)
 
+rule get_blob_species:
+    output: "blob/{cell}{filter}.species.txt"
+    input:
+        txt = lambda wc: expand( "blob/{cell}{flt}.{s}.{taxlevel}.blobplot.stats.txt",
+                                 cell = [wc.cell],
+                                 flt = [wc.filter],
+                                 s = SC[wc.cell]['parts'], # subreads/scraps/reads
+                                 taxlevel = BLOB_LEVELS[::-1] )
+    shell:
+        "blobplot_stats_to_species.py {input.txt} > {output}"
 
 # Convert to FASTA and subsample and munge the headers
 rule bam_to_subsampled_fasta:
