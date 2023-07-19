@@ -418,7 +418,8 @@ class T(unittest.TestCase):
         expected_calls = self.bm.empty_calls()
 
         expected_calls['is_testrun.sh'] = [[]]
-        expected_calls['Snakefile.process_cells'] = [["--config", "cells=1_A01 2_B01 3_C01", "blobs=1"]]
+        expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info",
+                                                       "--config", "cells=1_A01 2_B01 3_C01", "blobs=1", "-p" ]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
                                                      self.rt_cmd("failed", "--reply",
                                                                   "Processing_Cells failed for cells [1_A01 2_B01 3_C01]. See log in"

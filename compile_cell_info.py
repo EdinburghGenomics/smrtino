@@ -55,8 +55,8 @@ def gen_info(args):
 
     # Add taxon if supplied
     for t in args.taxon or []:
-        with open(t) as yfh:
-            info['guessed_taxon'] = t.read().strip()
+        with open(t) as tfh:
+            info['guessed_taxon'] = tfh.read().strip()
 
     # Add stats if we have them
     for s in args.stats or []:

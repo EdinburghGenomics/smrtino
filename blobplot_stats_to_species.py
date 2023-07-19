@@ -19,7 +19,7 @@ def main(args):
 
     verdict = tables_to_verdict(stats_tables, args.cutoff, args.dominance)
 
-    print(";".join(verdict or ["unknown"]))
+    print(";".join(verdict or [f"No hits >{args.cutoff}%"]))
 
 def tables_to_verdict(stats_tables, cutoff, dominance):
 

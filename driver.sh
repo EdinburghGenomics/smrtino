@@ -247,7 +247,8 @@ action_cell_ready(){
       log "  Starting Snakefile.process_cells on $RUNID."
       # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
       ( cd "$RUN_OUTPUT"
-        Snakefile.process_cells --config cells="$CELLSREADY" blobs="${BLOBS:-1}"
+        always_run=(one_cell_info)
+        Snakefile.process_cells -R "${always_run[@]}" --config cells="$CELLSREADY" blobs="${BLOBS:-1}" -p
       ) |& plog
 
       # Now we can have a report. This bit runs locally.

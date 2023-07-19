@@ -205,7 +205,8 @@ rule one_cell_info:
              --plots  {input.blobs} > {output}
         '''
 
-# On GSEG this has to be local as the worker nodes can't see IFS...
+# On GSEG this had to be on the login node as the worker nodes can't see IFS.
+# Still a useful option to have.
 if os.environ.get('FILTER_LOCALLY', '1') != '0':
     localrules: filter_control, copy_subreads, copy_reads
 
