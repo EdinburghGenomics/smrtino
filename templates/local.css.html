@@ -31,9 +31,18 @@
         display: flex;
     }
 
-    /* Bootstrap does not give us a page border or quite enough header padding */
+    /* Bootstrap does not give us a page border or quite enough header padding
+       Also add some corner colour.
+    */
     body {
         padding: 16pt;
+        background: radial-gradient( 400px 200px at top left,
+                                     rgba(162,0,103,1)   0%,
+                                     rgba(162,0,103,0.6) 20%,
+                                     rgba(162,0,103,0)   100% );
+    }
+    #TOC a {
+        font-weight: 700; /* ie. bold */
     }
 
     /* This */
@@ -49,7 +58,11 @@
         font-size: 28px;
         padding: 2px;
         margin: 34px 0px 10px 0px;
-        background: plum;
+        background: linear-gradient( 90deg,
+                                     rgba(223,25,149,0.35) 0%,
+                                     rgba(162,0,103,1)     60%,
+                                     rgba(162,0,103,1)     80%,
+                                     rgba(223,25,149,1)    100% );
     }
     h2:not(.title) {
         font-size: 24px;
