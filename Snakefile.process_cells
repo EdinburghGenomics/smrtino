@@ -329,6 +329,9 @@ rule primrose_bam:
         log_level = "DEBUG"
     shadow: "shallow"
     threads: 8
+    resources:
+        mem_mb = 24000,
+        n_cpus = 8,
     shell:
        r"""cp -vP {input.xml} in.consensusreadset.xml
            {TOOLBOX} smrt primrose \
@@ -456,6 +459,9 @@ rule blast_chunk:
     output: temp("{foo}.blast_part_{chunk}")
     input: "{foo}.fasta_part_{chunk}"
     threads: 4
+    resources:
+        mem_mb = 24000,
+        n_cpus = 6,
     params:
         evalue = '1e-50',
         outfmt = '6 qseqid staxid bitscore'
@@ -496,6 +502,9 @@ rule blob_db:
         reads_sample  = "blob/{{foo}}+sub{}.fasta".format(BLOB_SUBSAMPLE),
         cov           = "blob/{{foo}}+sub{}.complexity".format(BLOB_SUBSAMPLE)
     shadow: 'shallow'
+    resources:
+        mem_mb = 30000,
+        n_cpus = 6,
     shell:
        r"""if [ ! -s {input.reads_sample} ] ; then touch {output.json} ; exit 0 ; fi
            mkdir blob_tmp
@@ -519,6 +528,9 @@ rule blob_plot_png:
         maxsize = "1750x1750",
         thumbsize = "320x320"
     shadow: 'shallow'
+    resources:
+        mem_mb = 30000,
+        n_cpus = 6,
     shell:
        r""" mkdir blob_tmp
             if [ -s {input.json} ] ; then
