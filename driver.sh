@@ -212,7 +212,7 @@ action_new(){
     # Trigger a summary to be sent to RT as a comment, which should create
     # the new RT ticket.
     # Do this via upload_reports even though there will be 0 reports.
-    upload_reports NEW | plog && log DONE
+    upload_reports NEW |& plog && log DONE
 }
 
 # TODO - it might be that we don't want to run multiple processings in parallel after all
@@ -282,7 +282,7 @@ action_cell_ready(){
         log "  Completed processing on $RUNID [$CELLS]."
     else
         # If this fails now, action_processed may still rectify things later.
-        if ! upload_reports INTERIM ; then
+        if ! upload_reports INTERIM |& plog ; then
             plog "Error uploading reports"
             log  "Error uploading reports"
         fi

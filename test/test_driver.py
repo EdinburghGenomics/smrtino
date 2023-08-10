@@ -369,10 +369,40 @@ class T(unittest.TestCase):
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
         self.assertInStdout("r54041_20180518_131155", "status=complete")
 
+    def test_process_run_partial(self):
+        """ Test processing a run when one cell is ready
+        """
+        test_data = self.copy_run("r64175e_20210528_111111")
+
+        # Run the pipeline once to setup the output directory
+        self.bm_rundriver()
+
+        # Run again to try processing the cells
+        self.bm_rundriver()
+
+        # This was appearing in some cases
+        self.assertNotInStdout("Exception")
+
+        # Check the touch files all appear
+        for cell in "1_A01".split():
+            self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
+        for cell in "2_B01 3_C01".split():
+            self.assertFalse(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
+
+        # Report should be made on just the one cell
+        self.assertEqual(self.bm.last_calls["Snakefile.report"],
+                         [ ['-d', self.to_path,
+                            '-R', 'list_projects', 'make_report',
+                            '--config', 'cells=1_A01',
+                            '-p', 'report_main'] ])
+
+        for r in "report.started report.done".split():
+            self.assertFalse(os.path.exists(f"{self.to_path}/pbpipeline/{r}"))
+
     def test_process_run_ok(self):
         """ Test processing a run when the cells are ready
         """
-        test_data = self.copy_run("r64175e_20210528_154754")
+        test_data = self.copy_run("r64175e_20210528_333333")
 
         # Run the pipeline once to setup the output directory
         self.bm_rundriver()
@@ -398,7 +428,7 @@ class T(unittest.TestCase):
     def test_process_run_fail(self):
         """ Test error handling when Snakefile.process_cells fails
         """
-        test_data = self.copy_run("r64175e_20210528_154754")
+        test_data = self.copy_run("r64175e_20210528_333333")
         self.bm.add_mock("Snakefile.process_cells", fail=True)
 
         # Run the pipeline once to setup the output directory
@@ -440,7 +470,7 @@ class T(unittest.TestCase):
     def test_detect_self_test_1(self):
         """Self test runs should be detected and not processed further.
         """
-        test_data = self.copy_run("r64175e_20210528_154754")
+        test_data = self.copy_run("r64175e_20210528_333333")
         self.bm.add_mock("is_testrun.sh", fail=False)
 
         # Run the pipeline once
@@ -462,13 +492,13 @@ class T(unittest.TestCase):
 
         # Run driver again to confirm the status
         self.bm_rundriver()
-        self.assertInStdout("r64175e_20210528_154754", "status=testrun")
+        self.assertInStdout("r64175e_20210528_333333", "status=testrun")
 
     def test_detect_self_test_2(self):
         """If the test run is not picked up on the original scan,
            then it should be detected when the first cell is ready, and shut down.
         """
-        test_data = self.copy_run("r64175e_20210528_154754")
+        test_data = self.copy_run("r64175e_20210528_333333")
 
         # Run the pipeline once to setup the output directory
         self.bm_rundriver()
@@ -494,7 +524,7 @@ class T(unittest.TestCase):
 
         # Run driver again to confirm the status
         self.bm_rundriver()
-        self.assertInStdout("r64175e_20210528_154754", "status=testrun")
+        self.assertInStdout("r64175e_20210528_333333", "status=testrun")
 
 if __name__ == '__main__':
     unittest.main()

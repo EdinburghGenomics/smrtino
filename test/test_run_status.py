@@ -227,7 +227,7 @@ class T(unittest.TestCase):
         """ We seem to have a run with three cells and two are ready to go yet the status is
             'complete' and nothing is happening. Not good!
         """
-        run_info = self.use_run('r64175e_20210528_154754', copy=False)
+        run_info = self.use_run('r64175e_20210528_333333', copy=False)
 
         self.assertCountEqual( run_info.get_cells(), "1_A01  2_B01  3_C01".split() )
         self.assertEqual( run_info.get_status(), 'new' )
@@ -288,7 +288,7 @@ class T(unittest.TestCase):
         """The get_yaml() method doesn't (at present) use a YAML library but just prints out
            the lines. Check that, for our simple test at least, it does make valid YAML.
         """
-        run_info = self.use_run('r64175e_20210528_154754', copy=False)
+        run_info = self.use_run('r64175e_20210528_333333', copy=False)
         self.md('pbpipeline')
         self.touch('pbpipeline/1_A01.done')
         self.touch('pbpipeline/2_B01.aborted')
@@ -303,7 +303,7 @@ class T(unittest.TestCase):
                             'CellsReady': '3_C01',
                             'Instrument': '64175e',
                             'PipelineStatus': 'cell_ready',
-                            'RunID': 'r64175e_20210528_154754',
+                            'RunID': 'r64175e_20210528_333333',
                             'StartTime': 'unknown',
                           } )
 
