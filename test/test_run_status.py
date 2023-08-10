@@ -261,13 +261,28 @@ class T(unittest.TestCase):
 
         # If all but 1 have errors we should still await data from the last one
         for cell in "1_B01  2_C01  3_D01  4_E01  5_F01  6_G01".split():
-            self.touch('pbpipeline/' + cell + '.failed')
+            self.touch(f"pbpipeline/{cell}.failed")
 
         self.assertEqual(gs(), 'idle_awaiting_cells')
 
         # If we abort the last one, then that's a fail
         self.touch('pbpipeline/7_H01.aborted')
         self.assertEqual(gs(), 'failed')
+
+    def test_reporting(self):
+        """Test the -i flag which I seem to have introduced.
+        """
+        run_info = self.use_run('r54041_20180613_132039', copy=False)
+        self.md('pbpipeline')
+
+        self.touch("pbpipeline/1_A01.done")
+        self.touch("pbpipeline/report.started")
+        self.assertEqual(run_info.get_status(), 'reporting')
+
+        # Now with -i
+        run_info._clear_cache()
+        run_info.ignore_report_started = True
+        self.assertEqual(run_info.get_status(), 'processed')
 
     def test_get_yaml(self):
         """The get_yaml() method doesn't (at present) use a YAML library but just prints out

@@ -198,7 +198,7 @@ action_new(){
       plog_start
     )
     if [ $? != 0 ] ; then
-        pipeline_fail New_Run_Setup
+        pipeline_fail New_run_setup
         return
     fi
 
@@ -246,17 +246,17 @@ action_cell_ready(){
     set +e ; ( set -e
       log "  Starting Snakefile.process_cells on $RUNID."
       # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
-      ( cd "$RUN_OUTPUT"
-        always_run=(one_cell_info)
-        Snakefile.process_cells -R "${always_run[@]}" --config cells="$CELLSREADY" blobs="${BLOBS:-1}" -p
-      ) |& plog
+      always_run=(one_cell_info)
+      Snakefile.process_cells -d "$RUN_OUTPUT" -R "${always_run[@]}" \
+                              --config cells="$CELLSREADY" blobs="${BLOBS:-1}" -p |& plog
 
       # Now we can have a report. This bit runs locally.
       plog "Processing done. Now for Snakefile.report"
-      ( cd "$RUN_OUTPUT"
-        always_run=(list_projects make_report)
-        Snakefile.report -R "${always_run[@]}" --config cells="$CELLSREADY" -p report_main
-      ) |& plog
+      touch_atomic "$RUN_OUTPUT"/pbpipeline/report.started
+
+      always_run=(list_projects make_report)
+      Snakefile.report -d "$RUN_OUTPUT" -R "${always_run[@]}" \
+                       --config cells="$CELLSREADY" -p report_main |& plog
 
       for c in $CELLSREADY ; do
           ( cd "$RUN_OUTPUT" && mv_atomic pbpipeline/${c}.started pbpipeline/${c}.done )
@@ -264,29 +264,37 @@ action_cell_ready(){
 
     ) |& plog
     if [ $? != 0 ] ; then
-        pipeline_fail Processing_Cells "$CELLSREADY"
+        pipeline_fail Processing_cells "$CELLSREADY"
         return
     fi
 
-    # Note - unlikely but possible race condition here if a second driver picks up the
-    # processed run, but the use of touch_atomic should fix that.
-
     # And upload the reports. If all cells are done, go directly to action_processed
     echo "Processing and reporting done for cells $CELLSREADY. Uploading reports."
-    if pb_run_status.py "$RUN_OUTPUT" | grep -qFx 'PipelineStatus: processed'  ; then
-        action_processed
+    if pb_run_status.py -i "$RUN_OUTPUT" | grep -qFx 'PipelineStatus: processed'  ; then
+        # In case we didn't already...
+        notify_run_complete |& plog
+
+        set +e ; ( set -e
+            upload_reports FINAL
+            cd "$RUN_OUTPUT"
+            mv_atomic pbpipeline/report.started pbpipeline/report.done
+        ) |& plog ; [ $? = 0 ] || pipeline_fail Report_final_upload
+        log "  Completed processing on $RUNID [$CELLS]."
     else
         # If this fails now, action_processed may still rectify things later.
         if ! upload_reports INTERIM ; then
-            plog Error uploading reports
-            log Error uploading reports
+            plog "Error uploading reports"
+            log  "Error uploading reports"
         fi
         log DONE
     fi
+    # Last-ditch cleanup.
+    ( cd "$RUN_OUTPUT" && rm -f pbpipeline/report.started )
+
 }
 
 action_processed() {
-    # All cells are processed and reported. Normally this is called directly off the
+    # All cells are processed and reported. Normally this is short-circuited by the
     # end of reporting the final cell, but it need not be (eg. if final cell is aborted
     # or if there was an intermittent upload failure).
     # Cells are processed as we go, so there is little to be done.
@@ -297,19 +305,24 @@ action_processed() {
     # Upload of all reports is regarded as the final QC step, so if this fails we need to
     # log a failure even if everything else was OK.
     touch_atomic "$RUN_OUTPUT"/pbpipeline/report.started
+    BREAK=1
+    set +e
 
     # In case we didn't already...
     notify_run_complete |& plog
 
-    BREAK=1
+    set +e ; ( set -e
+        always_run=(list_projects)
+        Snakefile.report -d "$RUN_OUTPUT" -R "${always_run[@]}" --config cells="_None" -p report_main
+    ) |& plog ; [ $? = 0 ] || pipeline_fail Final_report
+
     set +e ; ( set -e
         upload_reports FINAL
-        log "  Completed processing on $RUNID [$CELLS]."
-
-        # Final success is contingent on the report upload AND that message going to RT.
-        (cd "$RUN_OUTPUT" && mv_atomic pbpipeline/report.started pbpipeline/report.done )
     ) |& plog ; [ $? = 0 ] || pipeline_fail Report_final_upload
 
+    # Final success is contingent on the report upload AND that message going to RT.
+    ( cd "$RUN_OUTPUT" && mv_atomic pbpipeline/report.started pbpipeline/report.done )
+    log "  Completed processing on $RUNID [$CELLS]."
 }
 
 # Now all the actions that don't do anything (inactions?)

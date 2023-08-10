@@ -67,6 +67,9 @@ class RunStatus:
         # In quick mode we don't parse the XML. But we don't parse it anyway so this is redundant.
         self.quick_mode = 'q' in opts
 
+        # This is used by the driver to ask what the status of the run would be if the report was not running.
+        self.ignore_report_started = 'i' in opts
+
         self._clear_cache()
 
     def _clear_cache( self ):
@@ -208,14 +211,15 @@ class RunStatus:
             else:
                 return "complete"
 
-        if self._exists_to( 'pbpipeline/report.started' ):
-            # Even if reporting is very quick, we need a state for the run to be in while
-            # it is happening. Alternative would be that driver triggers report after processing
-            # the last SMRT cell, before marking the cell done, but this seems a bit flakey.
-            if self._exists_to( 'pbpipeline/failed' ):
-                return "failed"
-            else:
-                return "reporting"
+        if not self.ignore_report_started:
+            if self._exists_to( 'pbpipeline/report.started' ):
+                # Even if reporting is very quick, we need a state for the run to be in while
+                # it is happening. Alternative would be that driver triggers report after processing
+                # the last SMRT cell, before marking the cell done, but this seems a bit flakey.
+                if self._exists_to( 'pbpipeline/failed' ):
+                    return "failed"
+                else:
+                    return "reporting"
 
         # The 'failed' flag is going to be set if a report fails to generate or there is an
         # RT error or summat like that.
@@ -324,21 +328,25 @@ class RunStatus:
                                'StartTime: unknown',
                                'PipelineStatus: ' + pstatus ])
 
-if __name__ == '__main__':
-    # Very cursory option parsing
-    # -v = verbose; -d = debug ; -q = quick mode
-    optind = 1 ; opts = ''
-    if sys.argv[optind:] and sys.argv[optind].startswith('-'):
-        opts += sys.argv[optind][1:]
-        optind += 1
+try:
+    if __name__ == '__main__':
+        # Very cursory option parsing
+        # -v = verbose; -d = debug ; -q = quick mode ; -i = ignore report.started
+        optind = 1 ; opts = ''
+        if sys.argv[optind:] and sys.argv[optind].startswith('-'):
+            opts += sys.argv[optind][1:]
+            optind += 1
 
-    L.basicConfig( level = L.DEBUG if 'v' in opts else L.WARNING,
-                   stream = sys.stderr )
+        L.basicConfig( level = L.DEBUG if 'v' in opts else L.WARNING,
+                       stream = sys.stderr )
 
-    #If no run specified, examine the CWD.
-    runs = sys.argv[optind:] or ['.']
-    for run in runs:
-        run_info = RunStatus(run, opts,
-                             to_location = os.environ.get('TO_LOCATION'),
-                             stall_time  = os.environ.get('STALL_TIME') or None)
-        print ( run_info.get_yaml( debug=('d' in opts) ) )
+        #If no run specified, examine the CWD.
+        runs = sys.argv[optind:] or ['.']
+        for run in runs:
+            run_info = RunStatus(run, opts,
+                                 to_location = os.environ.get('TO_LOCATION'),
+                                 stall_time  = os.environ.get('STALL_TIME') or None)
+            print ( run_info.get_yaml( debug=('d' in opts) ) )
+except BrokenPipeError:
+    # We're not fussed
+    pass
