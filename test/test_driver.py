@@ -352,7 +352,7 @@ class T(unittest.TestCase):
         last_reply_fd = self.bm.last_calls['rt_runticket_manager.py'][-1][-1]
 
         expected_calls = self.bm.empty_calls()
-        expected_calls['Snakefile.report'] = [ ['-d', self.to_path, '-R', 'list_projects',
+        expected_calls['Snakefile.report'] = [ ['-R', 'list_projects',
                                                 '--config', 'cells=_None', '-p', 'report_main'] ]
         expected_calls['upload_report.sh'] = [[self.to_path]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd( 'processing',
@@ -391,8 +391,7 @@ class T(unittest.TestCase):
 
         # Report should be made on just the one cell
         self.assertEqual(self.bm.last_calls["Snakefile.report"],
-                         [ ['-d', self.to_path,
-                            '-R', 'list_projects', 'make_report',
+                         [ ['-R', 'list_projects', 'make_report',
                             '--config', 'cells=1_A01',
                             '-p', 'report_main'] ])
 
@@ -419,8 +418,7 @@ class T(unittest.TestCase):
 
         # Check the right things were called.
         self.assertEqual(self.bm.last_calls["Snakefile.report"],
-                         [ ['-d', self.to_path,
-                            '-R', 'list_projects', 'make_report',
+                         [ ['-R', 'list_projects', 'make_report',
                             '--config', 'cells=1_A01 2_B01 3_C01',
                             '-p', 'report_main'] ])
 
@@ -452,7 +450,7 @@ class T(unittest.TestCase):
         expected_calls = self.bm.empty_calls()
 
         expected_calls['is_testrun.sh'] = [[]]
-        expected_calls['Snakefile.process_cells'] = [[ "-d", self.to_path, "-R", "one_cell_info",
+        expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info",
                                                        "--config", "cells=1_A01 2_B01 3_C01", "blobs=1", "-p" ]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
                                                      self.rt_cmd("failed", "--reply",

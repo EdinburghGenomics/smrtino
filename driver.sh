@@ -245,21 +245,24 @@ action_cell_ready(){
     plog "Preparing to process cell(s) $CELLSREADY into $RUN_OUTPUT"
     set +e ; ( set -e
       log "  Starting Snakefile.process_cells on $RUNID."
+
       # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
+      cd "$RUN_OUTPUT"
+
       always_run=(one_cell_info)
-      Snakefile.process_cells -d "$RUN_OUTPUT" -R "${always_run[@]}" \
+      Snakefile.process_cells -R "${always_run[@]}" \
                               --config cells="$CELLSREADY" blobs="${BLOBS:-1}" -p |& plog
 
       # Now we can have a report. This bit runs locally.
       plog "Processing done. Now for Snakefile.report"
-      touch_atomic "$RUN_OUTPUT"/pbpipeline/report.started
+      touch_atomic pbpipeline/report.started
 
       always_run=(list_projects make_report)
-      Snakefile.report -d "$RUN_OUTPUT" -R "${always_run[@]}" \
+      Snakefile.report -R "${always_run[@]}" \
                        --config cells="$CELLSREADY" -p report_main |& plog
 
       for c in $CELLSREADY ; do
-          ( cd "$RUN_OUTPUT" && mv_atomic pbpipeline/${c}.started pbpipeline/${c}.done )
+          mv_atomic pbpipeline/${c}.started pbpipeline/${c}.done
       done
 
     ) |& plog
@@ -312,8 +315,10 @@ action_processed() {
     notify_run_complete |& plog
 
     set +e ; ( set -e
+        cd "$RUN_OUTPUT"
+
         always_run=(list_projects)
-        Snakefile.report -d "$RUN_OUTPUT" -R "${always_run[@]}" --config cells="_None" -p report_main
+        Snakefile.report -R "${always_run[@]}" --config cells="_None" -p report_main
     ) |& plog ; [ $? = 0 ] || pipeline_fail Final_report
 
     set +e ; ( set -e
