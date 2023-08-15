@@ -314,7 +314,7 @@ rule hifi_fastx:
 
 # The old hifi_bam rule just filtered the reads, but now we want to run primrose too
 # Primrose is fussy about filenames, but let's see how it goes.
-# FIXME - some sort of munging to fix the final xml, or do we not care?
+# TODO - some sort of munging to fix the final xml, or do we not care?
 rule primrose_bam:
     output:
         xml   = "{cell}.primrose_consensusreadset.xml",
@@ -330,7 +330,7 @@ rule primrose_bam:
     shadow: "shallow"
     threads: 8
     resources:
-        mem_mb = 24000,
+        mem_mb = 48000,
         n_cpus = 8,
     shell:
        r"""cp -vP {input.xml} in.consensusreadset.xml
