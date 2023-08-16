@@ -305,12 +305,15 @@ rule hifi_readset:
 rule hifi_fastx:
     output:
         fastq = "{cell}.hifi_reads.{x,fast.}.gz",
-        json  = "{cell}.{x,fast.}.datastore.json"
     input:
         xml = "{cell}.hifireadset.xml",
-        bam = "{cell}.reads.bam"
+        bam = "{cell}.reads.bam",
+    threads: 4
+    resources:
+        mem_mb = 24000,
+        n_cpus = 4,
     shell:
-        "{PBCORETOOLS}.auto_ccs_outputs --log-level INFO {HIFI_FILTER_ARGS} {wildcards.x} {input.xml} {output.json}"
+        "{TOOLBOX} smrt bam2{wildcards.x} -j {threads} -o {wildcards.cell}.hifi_reads {input.xml}"
 
 # The old hifi_bam rule just filtered the reads, but now we want to run primrose too
 # Primrose is fussy about filenames, but let's see how it goes.
@@ -328,7 +331,7 @@ rule primrose_bam:
     params:
         log_level = "DEBUG"
     shadow: "shallow"
-    threads: 8
+    threads: 4
     resources:
         mem_mb = 48000,
         n_cpus = 8,
