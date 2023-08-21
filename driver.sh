@@ -500,7 +500,7 @@ upload_reports() {
     elif [ "$_mode" = FINAL ] ; then
         send_summary_to_rt reply "Finished pipeline" "All processing complete."
     else
-        send_summary_to_rt comment "awaiting_cells" "Processing completed for cells $CELLSREADY."
+        send_summary_to_rt reply "awaiting_cells" "Processing completed for cells $CELLSREADY."
     fi
 
     # If this fails, the pipeline will continue, since only the final message to RT
