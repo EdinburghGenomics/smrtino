@@ -6,7 +6,7 @@
 
 import os, sys
 import logging as L
-from time import sleep, time
+from time import sleep, monotonic
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino.SMRTLink import SMRTLinkClient, HTTPError
@@ -15,10 +15,10 @@ class StopWatch:
     """A class that tells you how long since it was initiated.
     """
     def __init__(self):
-        self._start_time = time()
+        self._start_time = monotonic()
 
     def __call__(self):
-        return time() - self._start_time
+        return monotonic() - self._start_time
 
 def main(args):
 

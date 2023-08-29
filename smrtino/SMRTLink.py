@@ -169,11 +169,25 @@ class OAUTHClient:
                                   data = json.dumps(body),
                                   params = params,
                                   headers = headers,
-                                  verify = self.verify_ssl)
+                                  verify = self.verify_ssl )
         response.raise_for_status()
 
         return response.json()
 
+    def delete_endpoint(self, ep_path, **params):
+        """Performs a delete action on the given endpoint
+        """
+        headers = self.token_to_headers()
+
+        full_url = f"{self.api_base}/{ep_path.lstrip('/')}"
+
+        response = requests.delete( full_url,
+                                    params = params,
+                                    headers = headers,
+                                    verify = self.verify_ssl )
+        response.raise_for_status()
+
+        return True
 
 class SMRTLinkClient(OAUTHClient):
     """For documentation on the available API calls, visit the /sl/docs/services/
