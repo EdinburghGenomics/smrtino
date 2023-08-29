@@ -12,3 +12,129 @@ by next year and benefit from these SMRTino enhancements and I should push on
 with the plan accordingly.
 
 But as we discover more, add notes here:
+
+Looking at the test run at: /lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301
+
+The first thing I see is that the cell slots are named:
+
+1_A01 1_B01 1_C01 1_D01 and not
+1_A01 2_B01 3_C01 4_D01
+
+I should look and see what the numbers/letters physically refer to. Hmmm. Not sure.
+
+Anyway, the directory contents are completely different:
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+[tbooth2@edgen-login0 ~]$ ls /lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01
+fail_reads  hifi_reads  metadata  pb_formats  pb_internal  statistics  Transfer_Test_230823_175307.txt
+[tbooth2@edgen-login0 ~]$ ls /lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/*
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/Transfer_Test_230823_175307.txt
+
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/fail_reads:
+m84140_230823_180019_s1.fail_reads.default.bam      m84140_230823_180019_s1.fail_reads.unassigned.bam
+m84140_230823_180019_s1.fail_reads.default.bam.pbi  m84140_230823_180019_s1.fail_reads.unassigned.bam.pbi
+
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/hifi_reads:
+m84140_230823_180019_s1.hifi_reads.default.bam      m84140_230823_180019_s1.hifi_reads.unassigned.bam
+m84140_230823_180019_s1.hifi_reads.default.bam.pbi  m84140_230823_180019_s1.hifi_reads.unassigned.bam.pbi
+
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/metadata:
+m84140_230823_180019_s1.barcodes.fasta           m84140_230823_180019_s1.hifi_reads.lima.log
+m84140_230823_180019_s1.basecaller.log           m84140_230823_180019_s1.hifi_reads.primrose.log
+m84140_230823_180019_s1.baz2bam.log              m84140_230823_180019_s1.metadata.xml
+m84140_230823_180019_s1.canary                   m84140_230823_180019_s1.nrt_find.txt
+m84140_230823_180019_s1.ccs.log                  m84140_230823_180019_s1.sts.xml
+m84140_230823_180019_s1.darkcal.log              m84140_230823_180019_s1.transferdone
+m84140_230823_180019_s1.fail_reads.lima.log      nvidia-smi.log
+m84140_230823_180019_s1.fail_reads.primrose.log
+
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/pb_formats:
+m84140_230823_180019_s1.fail_reads.consensusreadset.xml
+m84140_230823_180019_s1.fail_reads.default.consensusreadset.xml
+m84140_230823_180019_s1.fail_reads.json
+m84140_230823_180019_s1.fail_reads.unassigned.consensusreadset.xml
+m84140_230823_180019_s1.hifi_reads.consensusreadset.xml
+m84140_230823_180019_s1.hifi_reads.default.consensusreadset.xml
+m84140_230823_180019_s1.hifi_reads.json
+m84140_230823_180019_s1.hifi_reads.unassigned.consensusreadset.xml
+
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/pb_internal:
+m84140_230823_180019_s1_ActiveLaserPower_Equilibrium.csv            m84140_230823_180019_s1_PixelAverage_Data.csv
+m84140_230823_180019_s1_ActiveLaserPower_ModelInputData.csv         m84140_230823_180019_s1_PixelAverage_Settings.csv
+m84140_230823_180019_s1_ActiveLaserPower_ModelPowerResults.csv      m84140_230823_180019_s1.ppaConfig.json
+m84140_230823_180019_s1_ActiveLaserPower_RecordedPowers_Laser1.csv  m84140_230823_180019_s1.rsts.h5
+m84140_230823_180019_s1_ActiveLaserPower_Settings.csv               m84140_230823_180019_s1_RtMetrics.csv
+m84140_230823_180019_s1_ActiveLaserPower_Start.csv                  m84140_230823_180019_s1.rtmetrics.json
+m84140_230823_180019_s1_ActiveLaserPower_Stop.csv                   m84140_230823_180019_s1.stderr
+m84140_230823_180019_s1_CellInfo.csv                                m84140_230823_180019_s1.sts.h5
+m84140_230823_180019_s1.darkcal.h5                                  m84140_230823_180019_s1.subreads.bam
+m84140_230823_180019_s1_InitialLaserPower.csv                       m84140_230823_180019_s1.subreads.bam.pbi
+m84140_230823_180019_s1_LaserAlign_Details.csv                      m84140_230823_180019_s1.subreadset.xml
+m84140_230823_180019_s1_LaserAlign_Summary.csv                      m84140_230823_180019_s1_TaskTiming.csv
+m84140_230823_180019_s1.outputfiles.fofn                            m84140_230823_180019_s1.trc.h5
+m84140_230823_180019_s1.pawneeConf.json                             run.darkcal.sh
+m84140_230823_180019_s1.pawnee.sh                                   run.ppa.sh
+
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/statistics:
+m84140_230823_180019_s1.ccs_report.json              m84140_230823_180019_s1.hifi_reads.lima_counts.txt
+m84140_230823_180019_s1.ccs_report.txt               m84140_230823_180019_s1.hifi_reads.lima_report.txt
+m84140_230823_180019_s1.fail_reads.5mc_report.json   m84140_230823_180019_s1.hifi_reads.lima_summary.txt
+m84140_230823_180019_s1.fail_reads.lima_counts.txt   m84140_230823_180019_s1.hifi_reads.unassigned.json
+m84140_230823_180019_s1.fail_reads.lima_report.txt   m84140_230823_180019_s1.summary.json
+m84140_230823_180019_s1.fail_reads.lima_summary.txt  m84140_230823_180019_s1.zmw_metrics.csv.gz
+m84140_230823_180019_s1.fail_reads.unassigned.json   m84140_230823_180019_s1.zmw_metrics.json.gz
+m84140_230823_180019_s1.hifi_reads.5mc_report.json
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+The cell names m84140_230823_180019_s1 seem to be related to the cell slots 1_A01 but this may not
+be the case. In any case, we still have a .transferdone in the metadata directory. Good.
+
+Other files we expect are:
+
+{cell}.reads.bam - under hifi_reads. I guess the fail reads are the <Q20 reads
+                   Do we still have the option to include kinetics??
+{cell}.reads.bam.pbi - yep we get PBI files
+{cell}.consensusreadset.xml - under pb_formats
+.{cell}.run.metadata.xml - Seems to be gone.
+
+Also we get 1_A01/pb_internal/m84140_230823_180019_s1.subreads.bam
+
+What? The subreads are back? Is this now a standard feature?
+
+Anyway, for the run.metadata.xml, I used this for is_testrun.sh but I'm sure there is an easy alternative.
+I also used it in smrtino.ParseXML.get_runmetadata_info() to obtain:
+
+ExperimentId
+ChipType
+InstrumentType
+CreatedBy
+TimeStampedName
+InstrumentId
+
+Pretty sure I can get all this from:
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/metadata/m84140_230823_180019_s1.metadata.xml
+I also have the instrument name, but this is easily changeable so maybe not so useful.
+
+OK, now the potentially tricky part.
+/lustre-gseg/smrtlink/sequel_seqdata/355/r84140_20230823_175301/1_A01/metadata/m84140_230823_180019_s1.barcodes.fasta
+
+The top barcode corresponds to "default" which matches the name m84140_230823_180019_s1.hifi_reads.default.bam
+So are we now in a NanoPore-like situation where the demultiplexing is done on the instrument and the files
+are pre-split into barcodes? If so, the good news is I could reproduce the Hesiod logic to process multiplexed
+cells. The bad news is, this logic is really complex and took me ages to get working!
+
+And what if there is an un-barcoded run? I'd want to take a look at that.
+
+So, quite a lot changed. I think that rather than trying to make a SMRTino that deals with both instruments I'm
+going to fork the code and make SMRTino v3 just for the Revio. The versioning makes sense - Revio == Sequel3
+If I need to process a SequelII run I can just re-run the old pipeline. Easy.
+
+I need to de-risk some of these unknowns, particularly the barcodes and the presence of subreads.
+Other than that I think I can make a SMRTino 3 that produces output directories and reports much like SMRTino2.
+And then the delivery will be very similar.
+
+Alternative would be to embrace SMRTLink and re-imagine a pipeline that reports from there rather than the
+file system. But I still need to run Blobtools and deal with barcodes and flag for delivery so I don't
+think it helps me much.
+
+Hmmmm.
