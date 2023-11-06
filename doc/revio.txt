@@ -101,7 +101,8 @@ Also we get 1_A01/pb_internal/m84140_230823_180019_s1.subreads.bam
 
 What? The subreads are back? Is this now a standard feature?
 
-Anyway, for the run.metadata.xml, I used this for is_testrun.sh but I'm sure there is an easy alternative.
+Anyway, for the run.metadata.xml, I used this for is_testrun.sh but I'm sure there is an easy
+alternative. Or maybe there are just no test runs any more?
 I also used it in smrtino.ParseXML.get_runmetadata_info() to obtain:
 
 ExperimentId
@@ -138,3 +139,5 @@ file system. But I still need to run Blobtools and deal with barcodes and flag f
 think it helps me much.
 
 Hmmmm.
+
+Right, time to make a new "revio" branch in Git and start working on that.

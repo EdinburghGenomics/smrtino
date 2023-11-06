@@ -17,4 +17,5 @@ pb_utils scripts, and then look to use this for delivery. Yeah.
 
 OK, more notes here as I investigate further:
 
-
+Well it seems that for the Revio, barcoding is always going to happen on the instrument,
+so we have no way around it.
