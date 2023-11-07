@@ -19,3 +19,16 @@ OK, more notes here as I investigate further:
 
 Well it seems that for the Revio, barcoding is always going to happen on the instrument,
 so we have no way around it.
+
+---
+
+So what do I need to make SMRTino work like Hesiod, with regard to barcodes?
+
+In both pipelines, we have a function that gathers up all the inputs for a given cell. In
+Hesiod, this relies on SC_DATA and makes an xxpand() function that expands over the barcodes.
+
+In SMRTino 2, we also have SC_DATA but this is generated from a function in the Snakefile and
+has no barcode info.
+
+So I think task 1 is to break out scan_cells() from Snakfile.process_cells, and to make a
+version of scan_cells.py like what Hesiod has.

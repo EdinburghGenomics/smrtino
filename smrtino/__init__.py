@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import os, re
+from datetime import datetime
 
 # Currently provides the "glob" function and the "smrtino_version" constant.
 from glob import glob as _glob
 
 # And some YAML enhancement
 from smrtino.yaml_ordered import yaml, yamlloader
-
 from smrtino.aggregator import aggregator
 
 def glob(pattern):
@@ -57,6 +57,46 @@ def _determine_version():
         pass
 
     return vers
+
+def parse_run_name(name):
+    """Parse a run name like r64175e_20230811_115046/ and see what it tells us.
+       You can also parse a cell name if you like.
+    """
+    # Tolerate extra slashes
+    name = name.strip('/')
+
+    res = dict( run_or_cell = "",
+                fullname = name,
+                platform = "unknown",
+                instrument = "unknown",
+                rundate = None )
+
+    # We expect to see a pattern like this
+    mo = re.fullmatch(r"([rm])(\d{5})(e?)_(\d+_\d+)", name)
+
+    if not mo:
+        # Ooopsie. Caller should check they got a real result!
+        return res
+
+    res['run_or_cell'] = { 'r' : "run",
+                           'm' : "cell" }.get(mo.group(1), "neither")
+    res['platform'] = { '5'  : "Sequel I",
+                        '6'  : "Sequel II",
+                        '6e' : "Sequel IIe",
+                        '8'  : "Revio" }.get( mo.group(2)[0] + mo.group(3), "unknown" )
+    res['instrument'] = mo.group(2) + mo.group(3)
+    # The numbers give us a date and time so let's parse it
+    # But the format for cells and runs is different!
+    try:
+        if len(mo.group(4)) == 15:
+            res['rundate'] = datetime.strptime(mo.group(4), "%Y%m%d_%H%M%S")
+        elif len(mo.group(4)) == 13:
+            res['rundate'] = datetime.strptime(mo.group(4), "%y%m%d_%H%M%S")
+    except ValueError:
+        # Invalid date? Really?
+        pass
+
+    return res
 
 # YAML convenience functions that use the ordered loader/saver
 # yamlloader is basically the same as my yaml_ordered hack. It will go away with Py3.7.
