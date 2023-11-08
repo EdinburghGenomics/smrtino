@@ -72,7 +72,7 @@ def parse_run_name(name):
                 rundate = None )
 
     # We expect to see a pattern like this
-    mo = re.fullmatch(r"([rm])(\d{5})(e?)_(\d+_\d+)", name)
+    mo = re.fullmatch(r"([rm])(\d{5})(e?)_(\d+_\d+)(_s\d)?", name)
 
     if not mo:
         # Ooopsie. Caller should check they got a real result!
@@ -95,6 +95,10 @@ def parse_run_name(name):
     except ValueError:
         # Invalid date? Really?
         pass
+
+    # Revio cells hava slot number too
+    if mo.group(5):
+        res['slot'] = mo.group(5).strip("_")
 
     return res
 

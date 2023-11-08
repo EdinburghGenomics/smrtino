@@ -95,7 +95,7 @@ Other files we expect are:
                    Do we still have the option to include kinetics??
 {cell}.reads.bam.pbi - yep we get PBI files
 {cell}.consensusreadset.xml - under pb_formats
-.{cell}.run.metadata.xml - Seems to be gone.
+.{cell}.run.metadata.xml - Seems to be gone? Or is it m84140_230823_180019_s1.metadata.xml?
 
 Also we get 1_A01/pb_internal/m84140_230823_180019_s1.subreads.bam
 

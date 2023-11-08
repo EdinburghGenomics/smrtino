@@ -93,6 +93,16 @@ class T(unittest.TestCase):
                             'run_or_cell': 'run',
                             'rundate': datetime(2023, 9, 12, 14, 10, 10) } )
 
+        # Revio cells have a slot number
+        r4m = parse_run_name("m84140_230823_180019_s1")
+        self.assertEqual( r4m,
+                          { 'fullname': 'm84140_230823_180019_s1',
+                            'instrument': '84140',
+                            'platform': 'Revio',
+                            'run_or_cell': 'cell',
+                            'rundate': datetime(2023, 8, 23, 18, 0, 19),
+                            'slot' : 's1' } )
+
         # Correct length but invalid date for some reason
         r5 = parse_run_name("r84140_20230932_251010")
         self.assertEqual( r5,

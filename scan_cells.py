@@ -15,6 +15,7 @@ import os, sys, re
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import logging as L
 from functools import partial
+from itertools import chain
 from pprint import pprint, pformat
 
 from smrtino import ( glob, parse_run_name, dump_yaml )
@@ -52,10 +53,64 @@ def scan_main(args):
 
     return res
 
+
 def scan_cells_revio(rundir, cell_list):
+    """ Here's what we want to find, per cell.
+        .transferdone - is under metadata
+        {cell}.reads.bam - under hifi_reads. I guess the fail reads are the <Q20 reads
+                           Do we still have the option to include kinetics??
+                           Well apparently they are included already (says Heleen)
+        {cell}.reads.bam.pbi - yep we get PBI files
+        {cell}.consensusreadset.xml - under pb_formats
+        .{cell}.run.metadata.xml - Seems to be gone? Or is it m84140_230823_180019_s1.metadata.xml?
+    """
+    # Get a dict of slot: cell for all cells
+    all_cells = { b.split('/')[-3]: b.split('/')[-1][:-len('.transferdone')]
+                  for b in glob(f"{rundir}/*/metadata/*.transferdone") }
+
+    if cell_list:
+        all_cells = { k:all_cells[k] for k in cell_list }
+
+    # Now we can make a result, keyed off cell ID (not slot)
+    res = { cellid: { 'slot': slot,
+                      'parts': ['reads_hifi', 'reads_fail'],
+                      'barcodes': find_barcodes(rundir, slot, cellid),
+                      'unassigned': find_unass(rundir, slot, cellid),
+                      'meta': find_meta(rundir, slot, cellid)
+                    } for slot, cellid in all_cells.items() }
+
+    return res
+
+def find_barcodes(rundir, slot, cellid):
 
     # TODO
     return {}
+
+def find_unass(rundir, slot, cellid):
+    """Returns the location of the unassigned reads files, and checks they
+       exits.
+    """
+    hifi = dict( bam = f"{slot}/hifi_reads/{cellid}.hifi_reads.unassigned.bam",
+                 pbi = f"{slot}/hifi_reads/{cellid}.hifi_reads.unassigned.bam.pbi",
+                 xml = f"{slot}/pb_formats/{cellid}.hifi_reads.unassigned.consensusreadset.xml" )
+    fail = dict( bam = f"{slot}/fail_reads/{cellid}.fail_reads.unassigned.bam",
+                 pbi = f"{slot}/fail_reads/{cellid}.fail_reads.unassigned.bam.pbi",
+                 xml = f"{slot}/pb_formats/{cellid}.fail_reads.unassigned.consensusreadset.xml" )
+
+    assert all( os.path.exists(f"{rundir}/{f}")
+                for f in chain(hifi.values(), fail.values()) )
+
+    return dict( reads_hifi = hifi,
+                 reads_fail = fail )
+
+def find_meta(rundir, slot, cellid):
+    """Returns the location of the .metadata.xml, and checks it exists.
+    """
+    res = f"{slot}/metadata/{cellid}.metadata.xml"
+
+    assert os.path.exists(f"{rundir}/{res}")
+
+    return res
 
 def scan_cells_sequel(rundir, cell_list):
     """ Work out all the cells to process based on config['cells'] and config['rundir']
