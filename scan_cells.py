@@ -75,27 +75,44 @@ def scan_cells_revio(rundir, cell_list):
     res = { cellid: { 'slot': slot,
                       'parts': ['reads_hifi', 'reads_fail'],
                       'barcodes': find_barcodes(rundir, slot, cellid),
-                      'unassigned': find_unass(rundir, slot, cellid),
+                      'unassigned': files_per_barcode(rundir, slot, cellid, "unassigned"),
                       'meta': find_meta(rundir, slot, cellid)
                     } for slot, cellid in all_cells.items() }
 
     return res
 
 def find_barcodes(rundir, slot, cellid):
+    """Find the barcodes used by globbing the files. Could also check the XML.
 
-    # TODO
-    return {}
-
-def find_unass(rundir, slot, cellid):
-    """Returns the location of the unassigned reads files, and checks they
-       exits.
+       In Revio, "default" is regarded as a barcode but "unassigned" is
+       special. We feel this may change in later releases.
     """
-    hifi = dict( bam = f"{slot}/hifi_reads/{cellid}.hifi_reads.unassigned.bam",
-                 pbi = f"{slot}/hifi_reads/{cellid}.hifi_reads.unassigned.bam.pbi",
-                 xml = f"{slot}/pb_formats/{cellid}.hifi_reads.unassigned.consensusreadset.xml" )
-    fail = dict( bam = f"{slot}/fail_reads/{cellid}.fail_reads.unassigned.bam",
-                 pbi = f"{slot}/fail_reads/{cellid}.fail_reads.unassigned.bam.pbi",
-                 xml = f"{slot}/pb_formats/{cellid}.fail_reads.unassigned.consensusreadset.xml" )
+
+    # Previously I was globbing the BAM files, but I think I'll glob the matadata files
+    # instead. Probably makes no difference.
+    # eg: 1_C01/pb_formats/m84140_231018_155043_s3.hifi_reads.bc1002.consensusreadset.xml
+
+    xmlpath = f"{rundir}/{slot}/pb_formats"
+    xmlfiles = glob(f"{xmlpath}/{cellid}.hifi_reads.*.consensusreadset.xml")
+    barcodes = [ f[len(f"{xmlpath}/{cellid}.hifi_reads."):-len(".consensusreadset.xml")]
+                 for f in xmlfiles ]
+
+    res = { bc: files_per_barcode(rundir, slot, cellid, bc)
+            for bc in barcodes
+            if bc != "unassigned" }
+
+    return res
+
+def files_per_barcode(rundir, slot, cellid, barcode):
+    """Returns the location of the reads files for a given barcode, including "unassigned",
+       and checks they exits.
+    """
+    hifi = dict( bam = f"{slot}/hifi_reads/{cellid}.hifi_reads.{barcode}.bam",
+                 pbi = f"{slot}/hifi_reads/{cellid}.hifi_reads.{barcode}.bam.pbi",
+                 xml = f"{slot}/pb_formats/{cellid}.hifi_reads.{barcode}.consensusreadset.xml" )
+    fail = dict( bam = f"{slot}/fail_reads/{cellid}.fail_reads.{barcode}.bam",
+                 pbi = f"{slot}/fail_reads/{cellid}.fail_reads.{barcode}.bam.pbi",
+                 xml = f"{slot}/pb_formats/{cellid}.fail_reads.{barcode}.consensusreadset.xml" )
 
     assert all( os.path.exists(f"{rundir}/{f}")
                 for f in chain(hifi.values(), fail.values()) )
@@ -122,28 +139,59 @@ def scan_cells_sequel(rundir, cell_list):
         When run on a GSEG worker node this list will come out empty, but that's
         OK.
     """
-    all_done = [ b[:-len('.transferdone')] for b in glob(f"{rundir}/*/*.transferdone") ]
+    all_cells = { b.split('/')[-2]: b.split('/')[-1][:-len('.transferdone')]
+                  for b in glob(f"{rundir}/*/*.transferdone") }
 
     # Now see if I need to filter by cell_list.
     if cell_list:
-        all_done = [ s for s in all_done if s.split('/')[-2] in cell_list ]
+        all_cells = [ c for c in all_cells if c[0] in cell_list ]
 
     # Note that the list of cells could well be empty.
-    res = { r.split('/')[-1]: { 'slot':   r.split('/')[-2],
-                                'parts':  determine_parts(r)
-                              } for r in all_done }
+    res = { cellid: { 'slot':  slot,
+                      'parts': None,
+                      'meta':  f"{slot}/.{cellid}.metadata.xml"
+                    } for slot, cellid in all_cells.items() }
+
+    # Assume no barcodes, and all reads are "default".
+    # We don't really need this to work anyways - it's just for comparison.
+    for cellid, cellinfo in res.items():
+        assert os.path.exists(f"{rundir}/{cellinfo['meta']}")
+
+        parts = determine_parts_sequel(rundir, cellinfo['slot'], cellid)
+        cellinfo['parts'] = sorted(parts, reverse=True)
+        cellinfo['barcodes'] = dict(default=parts)
 
     return res
 
-def determine_parts(cellpath):
+def determine_parts_sequel(rundir, slot, cellid):
     """Work out if this is a ['subreads', 'scraps'] cell or a ['reads'] cell.
     """
-    bamfiles = glob(cellpath + '.*.bam')
-    parts = [ b[len(cellpath + '.'):-len('.bam')] for b in bamfiles ]
+    cellpath = f"{rundir}/{slot}/{cellid}"
+    bamfiles = glob(f"{cellpath}.*.bam")
+
+    def get_xml(slot, cellid, part):
+        if part == "subreads":
+            return dict(xml = f"{slot}/{cellid}.subreadset.xml")
+        elif part == "reads":
+            return dict(xml = f"{slot}/{cellid}.consensusreadset.xml")
+        else: # part == "scraps":
+            return dict()
+
+    parts = { part:
+              dict( bam = f"{slot}/{cellid}.{part}.bam",
+                    pbi = f"{slot}/{cellid}.{part}.bam.pbi",
+                    **get_xml(slot, cellid, part) )
+              for b in bamfiles
+              for part in [b[len(f"{cellpath}."):-len(".bam")]] }
 
     assert parts, f"No .bam files found matching {cellpath}.*.bam"
-    # Fix the order. This works.
-    return sorted(parts, reverse=True)
+    for p in parts:
+        for d in parts.values():
+            for f in d.values():
+                # Ensure file exists
+                os.stat(f"{rundir}/{f}")
+
+    return parts
 
 def parse_args(*args):
     description = """Scan the input files for all SMRT cells, to provide a work plan for Snakemake
