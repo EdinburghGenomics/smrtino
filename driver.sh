@@ -90,7 +90,13 @@ fi
 log(){ [ $# = 0 ] && cat >&5 || echo "$@" >&5 ; }
 
 # Debug means log only if VERBOSE is set
-debug(){ if [ "${VERBOSE:-0}" != 0 ] ; then log "$@" ; else [ $# = 0 ] && cat >/dev/null || true ; fi ; }
+debug() {
+    if [ "${VERBOSE:-0}" != 0 ] ; then
+        log "$@"
+    else
+        [ $# = 0 ] && cat >/dev/null || true
+    fi
+}
 
 # Furthermore $TO_LOCATION must have a .smrtino file in there. I added this as a sanity
 # check when moving the pbpipeline dir to the destination, since accidentally pointing
@@ -144,14 +150,12 @@ fi
 ###--->>> UTILITY FUNCTIONS USED BY THE ACTIONS <<<---###
 
 touch_atomic(){
-    # Create a file or files but it's an error if the file already existed.
-    for f in "$@" ; do
-        (set -o noclobber ; >"$f")
-    done
+    # Create a file but it's an error if the file already existed.
+    (set -o noclobber ; >"$1")
 }
 
 mv_atomic(){
-    # Used in place of "mv x.started x.done"
+    # Used in place of "mv x.started x.done" and fails if the target exists.
     # Doesn't actually move the file, just makes a new empty file.
     echo "renaming $1 -> $2"
     (set -o noclobber ; >"$2") && rm "$1"
@@ -220,9 +224,10 @@ action_new(){
 # in the state diagram and then only trigger on "idle_cell_ready".
 action_cell_ready(){
     # It's time for Snakefile.process_cells to process one or more cells.
-    ( cd "$RUN_OUTPUT" &&
-      touch_atomic $(awk '{ for(i=1; i<=NF; i++) print "pbpipeline/"$i".started" }' <<<"$CELLSREADY")
-    )
+    local cell
+    for cell in $CELLSREADY ; do
+        touch_atomic "$RUN_OUTPUT"/pbpipeline/${cell}.started
+    done
 
     log "\_CELL_READY $RUNID ($CELLSREADY). Kicking off processing."
     plog_start
@@ -261,8 +266,8 @@ action_cell_ready(){
       Snakefile.report -R "${always_run[@]}" \
                        --config cells="$CELLSREADY" -p report_main |& plog
 
-      for c in $CELLSREADY ; do
-          mv_atomic pbpipeline/${c}.started pbpipeline/${c}.done
+      for cell in $CELLSREADY ; do
+          mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
       done
 
     ) |& plog
@@ -358,14 +363,15 @@ action_reporting() {
 action_failed() {
     # failed runs need attention from an operator, so log the situatuion
     set +e
-    _reason=`cat "$RUN_OUTPUT"/pbpipeline/failed 2>/dev/null`
-    if [ -z "$_reason" ] ; then
+    local lastfail
+    local reason=`cat "$RUN_OUTPUT"/pbpipeline/failed 2>/dev/null`
+    if [ -z "$reason" ] ; then
         # Get the last lane failure message
-        _lastfail=`echo "$RUN_OUTPUT"/pbpipeline/*.failed`
-        _reason=`cat ${_lastfail##* } 2>/dev/null`
+        lastfail=`echo "$RUN_OUTPUT"/pbpipeline/*.failed`
+        reason=`cat ${lastfail##* } 2>/dev/null`
     fi
 
-    log "\_FAILED $RUNID ($_reason)"
+    log "\_FAILED $RUNID ($reason)"
 }
 
 action_stalled() {
@@ -374,12 +380,12 @@ action_stalled() {
     log "\_STALLED $RUNID"
 
     BREAK=1 # Maybe not necessary? But we do try to contact RT.
-    _matches=''
+    local matches=''
     for c in $CELLS ; do
-        _matches="$_matches`( shopt -s nullglob ; shopt -u failglob ; cd "$RUN_OUTPUT"/pbpipeline && echo ${c}.* )`"
+        matches="$matches`( shopt -s nullglob ; shopt -u failglob ; cd "$RUN_OUTPUT"/pbpipeline && echo ${c}.* )`"
     done
 
-    if [ -z "$_matches" ] ; then
+    if [ -z "$matches" ] ; then
         # Nope - abort the entire run and close the ticket
         echo "no activity for $STALL_TIME hours" > "$RUN_OUTPUT"/pbpipeline/aborted
 
@@ -390,9 +396,9 @@ action_stalled() {
         # So a partial run, we assume. Abort any remaining SMRT cells so the report (or whatever)
         # will be triggered on the next driver cycle
         for c in $CELLS ; do
-            _matches=`( shopt -s nullglob ; shopt -u failglob ; cd "$RUN_OUTPUT"/pbpipeline && echo ${c}.* )`
+            matches=`( shopt -s nullglob ; shopt -u failglob ; cd "$RUN_OUTPUT"/pbpipeline && echo ${c}.* )`
 
-            if [ -z "$_matches" ] ; then
+            if [ -z "$matches" ] ; then
                 echo "No activity in the last $STALL_TIME hours." > "$RUN_OUTPUT"/pbpipeline/${c}.aborted
             fi
         done
@@ -450,14 +456,15 @@ notify_run_complete(){
     # or if remaining cells are aborted. The notification should only happen once.
     if ! [ -e "$RUN_OUTPUT"/pbpipeline/notify_run_complete.done ] ; then
 
-        _cc=`wc -w <<<"$CELLS"`
-        _ca=`wc -w <<<"$CELLSABORTED"`
-        if [ $_ca -gt 0 ] ; then
-            _comment=$(( $_cc - $_ca))" SMRT cells have run. $_ca were aborted. Final report will follow soon."
+        local cc=`wc -w <<<"$CELLS"`
+        local ca=`wc -w <<<"$CELLSABORTED"`
+        local comment
+        if [ $ca -gt 0 ] ; then
+            comment=$(( $cc - $ca))" SMRT cells have run. $ca were aborted. Final report will follow soon."
         else
-            _comment="All $_cc SMRT cells have run on the instrument. Final report will follow soon."
+            comment="All $cc SMRT cells have run on the instrument. Final report will follow soon."
         fi
-        if rt_runticket_manager --subject processing --reply "$_comment" ; then
+        if rt_runticket_manager --subject processing --reply "$comment" ; then
             touch "$RUN_OUTPUT"/pbpipeline/notify_run_complete.done
         fi
     fi
@@ -476,11 +483,11 @@ upload_reports() {
     set +o | grep '+o errexit' && _ereset='set +e' || _ereset='set -e'
     set +e
 
-    _mode="$1"
+    local mode="$1"
 
     # Get a handle on logging.
     plog </dev/null
-    _plog="${per_run_log}"
+    local plog_file="${per_run_log}"
 
     # Push to server and capture the result.
     # We want stderr from upload_report.sh to go to stdout, so it gets plogged.
@@ -489,15 +496,15 @@ upload_reports() {
     rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt
     if ! upload_report.sh "$RUN_OUTPUT" 2>&1 \
             >"$RUN_OUTPUT"/pbpipeline/report_upload_url.txt  ; then
-        log "Upload error. See $_plog"
+        log "Upload error. See $plog_file"
         # Maybe notify RT? But this could well be a general network error.
         rm -f "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt
         return 1
     fi
 
-    if [ "$_mode" = NEW ] ; then
+    if [ "$mode" = NEW ] ; then
         send_summary_to_rt comment "new" "New run. Waiting for cells."
-    elif [ "$_mode" = FINAL ] ; then
+    elif [ "$mode" = FINAL ] ; then
         send_summary_to_rt reply "Finished pipeline" "All processing complete."
     else
         send_summary_to_rt reply "awaiting_cells" "Processing completed for cells $CELLSREADY."
@@ -518,23 +525,23 @@ send_summary_to_rt() {
     # Sends a summary to RT. It is assumed that "$RUN_OUTPUT"/pbpipeline/report_upload_url.txt is
     # in place and can be read by make_summary.py.
     # All cells on the run will be listed, with a report URL if we have one.
-    _reply_or_comment="${1}"
-    _run_status="${2:-}"
-    _preamble="${3:-A separate report will be produced per cell.}"
+    local reply_or_comment="${1}"
+    local run_status="${2:-}"
+    local preamble="${3:-A separate report will be produced per cell.}"
 
     # This was a problem before BASH 4.4 but now we should be fine.
     # https://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
-    if [ -n "$_run_status" ] ; then
-        _run_status=(--subject "$_run_status")
+    if [ -n "$run_status" ] ; then
+        run_status=(--subject "$run_status")
     else
-        _run_status=()
+        run_status=()
     fi
 
     echo "Sending new summary of cells on this PacBio run to RT."
     # Subshell needed to capture STDERR from make_summary.py
     # TODO - test that this works as advertised with different results from make_summary.py
-    ( rt_runticket_manager "${_run_status[@]}" --"${_reply_or_comment}" \
-        @<(echo "$_preamble" ; echo ;
+    ( rt_runticket_manager "${run_status[@]}" --"${reply_or_comment}" \
+        @<(echo "$preamble" ; echo ;
            make_summary.py --runid "$RUNID" --replinks "$RUN_OUTPUT/pbpipeline/report_upload_url.txt"  --txt - \
            || echo "Error while summarizing run contents." ) ) 2>&1
 }
@@ -543,7 +550,8 @@ pipeline_fail() {
     # Record a failure of the pipeline. The failure may be due to network outage so try
     # to report to RT but be prepared for that to fail too.
 
-    stage=${1:-Pipeline}
+    local stage=${1:-Pipeline}
+    local failure
 
     if [ -z "${2:-}" ] ; then
         # General failure
@@ -551,24 +559,24 @@ pipeline_fail() {
         # Mark the failure status
         echo "$stage on `date`" > "$RUN_OUTPUT"/pbpipeline/failed
 
-        _failure="$stage failed"
+        failure="$stage failed"
     else
         # Failure of a cell or cells
         for c in $2 ; do
             echo "$stage on `date`" > "$RUN_OUTPUT"/pbpipeline/$c.failed
         done
 
-        _failure="$stage failed for cells [$2]"
+        failure="$stage failed for cells [$2]"
     fi
 
     # Send an alert to RT.
     # Note that after calling 'plog' we can query '$per_run_log' since all shell vars are global.
     plog "Attempting to notify error to RT"
-    if rt_runticket_manager --subject failed --reply "$_failure. See log in $per_run_log" |& plog ; then
-        log "FAIL $_failure on $RUNID. See $per_run_log"
+    if rt_runticket_manager --subject failed --reply "$failure. See log in $per_run_log" |& plog ; then
+        log "FAIL $failure on $RUNID. See $per_run_log"
     else
         # RT failure. Complain to STDERR in the hope this will generate an alert mail via CRON
-        msg="FAIL $_failure on $RUNID, and also failed to report the error via RT. See $per_run_log"
+        msg="FAIL $failure on $RUNID, and also failed to report the error via RT. See $per_run_log"
         echo "$msg" >&2
         log "$msg"
     fi
@@ -577,16 +585,17 @@ pipeline_fail() {
 get_run_status() { # run_dir
   # invoke pb_run_status.py on $1 and collect some meta-information about the run.
   # We're passing this info to the state functions via global variables.
-  _run="$1"
+  local run="$1"
 
   # This construct allows error output to be seen in the log.
-  _runstatus="$(pb_run_status.py "$_run")" || pb_run_status.py "$_run" | log 2>&1
+  local rs="$(pb_run_status.py "$run")" || pb_run_status.py "$run" | log 2>&1
 
   # Capture the various parts into variables (see test/grs.sh in Hesiod)
-  for _v in RUNID/RunID INSTRUMENT/Instrument STATUS/PipelineStatus \
-            CELLS/Cells CELLSREADY/CellsReady CELLSDONE/CellsDone CELLSABORTED/CellsAborted ; do
-    _line="$(awk -v FS=":" -v f="${_v#*/}" '$1==f {gsub(/^[^:]*:[[:space:]]*/,"");print}' <<<"$_runstatus")"
-    eval "${_v%/*}"='"$_line"'
+  local v line
+  for v in RUNID/RunID INSTRUMENT/Instrument STATUS/PipelineStatus \
+           CELLS/Cells CELLSREADY/CellsReady CELLSDONE/CellsDone CELLSABORTED/CellsAborted ; do
+    line="$(awk -v FS=":" -v f="${v#*/}" '$1==f {gsub(/^[^:]*:[[:space:]]*/,"");print}' <<<"$rs")"
+    eval "${v%/*}"='"$line"'
   done
 
   if [ -z "${STATUS:-}" ] ; then
