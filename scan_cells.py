@@ -73,7 +73,7 @@ def scan_cells_revio(rundir, cell_list):
 
     # Now we can make a result, keyed off cell ID (not slot)
     res = { cellid: { 'slot': slot,
-                      'parts': ['reads_hifi', 'reads_fail'],
+                      'parts': ['hifi_reads', 'fail_reads'],
                       'barcodes': find_barcodes(rundir, slot, cellid),
                       'unassigned': files_per_barcode(rundir, slot, cellid, "unassigned"),
                       'meta': find_meta(rundir, slot, cellid)
@@ -117,8 +117,8 @@ def files_per_barcode(rundir, slot, cellid, barcode):
     assert all( os.path.exists(f"{rundir}/{f}")
                 for f in chain(hifi.values(), fail.values()) )
 
-    return dict( reads_hifi = hifi,
-                 reads_fail = fail )
+    return dict( hifi_reads = hifi,
+                 fail_reads = fail )
 
 def find_meta(rundir, slot, cellid):
     """Returns the location of the .metadata.xml, and checks it exists.

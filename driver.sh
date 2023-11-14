@@ -224,7 +224,7 @@ action_new(){
 # in the state diagram and then only trigger on "idle_cell_ready".
 action_cell_ready(){
     # It's time for Snakefile.process_cells to process one or more cells.
-    local cell
+    local cell always_run
     for cell in $CELLSREADY ; do
         touch_atomic "$RUN_OUTPUT"/pbpipeline/${cell}.started
     done
@@ -253,6 +253,9 @@ action_cell_ready(){
 
       # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
       cd "$RUN_OUTPUT"
+
+      # Compile info for all cells, not just the one being precessed.
+      scan_cells.py -c $CELLSREADY $CELLSDONE > sc_data.yaml
 
       always_run=(one_cell_info)
       Snakefile.process_cells -R "${always_run[@]}" \

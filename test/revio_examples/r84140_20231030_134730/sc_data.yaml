@@ -1,0 +1,32 @@
+cells:
+  m84140_231030_135502_s1:
+    barcodes:
+      default:
+        fail_reads:
+          bam: 1_A01/fail_reads/m84140_231030_135502_s1.fail_reads.default.bam
+          pbi: 1_A01/fail_reads/m84140_231030_135502_s1.fail_reads.default.bam.pbi
+          xml: 1_A01/pb_formats/m84140_231030_135502_s1.fail_reads.default.consensusreadset.xml
+        hifi_reads:
+          bam: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.default.bam
+          pbi: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.default.bam.pbi
+          xml: 1_A01/pb_formats/m84140_231030_135502_s1.hifi_reads.default.consensusreadset.xml
+    meta: 1_A01/metadata/m84140_231030_135502_s1.metadata.xml
+    parts:
+    - hifi_reads
+    - fail_reads
+    slot: 1_A01
+    unassigned:
+      fail_reads:
+        bam: 1_A01/fail_reads/m84140_231030_135502_s1.fail_reads.unassigned.bam
+        pbi: 1_A01/fail_reads/m84140_231030_135502_s1.fail_reads.unassigned.bam.pbi
+        xml: 1_A01/pb_formats/m84140_231030_135502_s1.fail_reads.unassigned.consensusreadset.xml
+      hifi_reads:
+        bam: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.unassigned.bam
+        pbi: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.unassigned.bam.pbi
+        xml: 1_A01/pb_formats/m84140_231030_135502_s1.hifi_reads.unassigned.consensusreadset.xml
+run:
+  fullname: r84140_20231030_134730
+  instrument: '84140'
+  platform: Revio
+  run_or_cell: run
+  rundate: 2023-10-30 13:47:30

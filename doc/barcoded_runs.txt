@@ -31,4 +31,9 @@ In SMRTino 2, we also have SC_DATA but this is generated from a function in the 
 has no barcode info.
 
 So I think task 1 is to break out scan_cells() from Snakfile.process_cells, and to make a
-version of scan_cells.py like what Hesiod has.
+version of scan_cells.py like what Hesiod has. Done.
+
+And now I need for compile_cell_info.py to handle all the barcodes. With Hesiod, there's a big
+get_cell_info() function right in the Snakefile, but for SMRTino we have compile_cell_info.py.
+I think to avoid complete rearrangement this needs to become "compile_bc_info.py" and then
+all these files will be merged into a final YAML (along with all the sc_data.yaml data).

@@ -11,6 +11,9 @@ from smrtino.ParseXML import get_readset_info, get_runmetadata_info
     essentially links Snakefile.process_cells and Snakefile.report by taking
     the info we get from the former and compiling it under the direction of
     the latter.
+
+    This Revio version is to be used per-barcode, and the multiple files
+    are later combined to get the full cell info.
 """
 
 def main(args):
@@ -22,21 +25,8 @@ def main(args):
     print(yaml.safe_dump(info, default_flow_style=False), end='')
 
 def gen_info(args):
-    # If a filter was applied then we actually want to look at the unfiltered version
-    # Splitting paths is always fiddly...
-    pbits = args.xmlfile[0].split('/')
-    fbits = pbits[-1].split('.')
-    if len(fbits) == 4:
-        L.debug("File was filtered. Loading unfiltered version.")
-        filtername = fbits[1]
-        pbits[-1] = f"{fbits[0]}.{fbits[2]}.{fbits[3]}"
-    else:
-        filtername = None
-    # Reconstruct path...
-    xmlfile = '/'.join(pbits)
-
-    # The penultimate part of the filename should be 'consensusreadset' or 'subreadset' but we'll
-    # get this info from the XML instead.
+    # Start with the consensusreadset.xml file
+    xmlfile, = args.xmlfile
 
     # Load the file then...
     L.debug(f"Reading from {xmlfile}")
@@ -45,7 +35,6 @@ def gen_info(args):
         L.debug(f"Also reading from {args.runxml}")
         info['_run'] = get_runmetadata_info(args.runxml)
 
-    info['filter_added'] = filtername
     info['_filename'] = os.path.basename(xmlfile)
 
     # Add plots if we have them
@@ -84,11 +73,11 @@ def parse_args(*args):
     argparser.add_argument("-r", "--runxml", nargs="?",
                             help="Optional run.metadata XML to be loaded")
     argparser.add_argument("-p", "--plots", nargs="*",
-                            help="Plots generated for this cell (YAML files)")
+                            help="Plots generated for this barcode (YAML files)")
     argparser.add_argument("-s", "--stats", nargs="*",
-                            help="Stats generated for this cell (YAML files)")
+                            help="Stats generated for this barcode (YAML files)")
     argparser.add_argument("-t", "--taxon", nargs="*",
-                            help="BLAST taxon guess for this cell (text file)")
+                            help="BLAST taxon guess for this barcode (text file)")
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 

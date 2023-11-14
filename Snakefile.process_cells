@@ -25,110 +25,86 @@ snakerun_drmaa "$0" "$@"
 
 "exit""" ### End of shell script part
 #!/usr/bin/env snakemake
-import yaml
 import xml.etree.ElementTree as ET
-from snakemake.utils import format
+from snakemake.io import Wildcards
 from glob import glob
+from hesiod import load_yaml, dump_yaml
 
-""" So, this is a recipe to process raw SMRT cells from the PacBio Sequel,
+
+""" This is a recipe to process raw SMRT cells from the PacBio Revio,
     and start to calculate some stats.
 
-    The script wants to be run in an output dir on /lustre.
+    The script wants to be run in an output dir under $TO_LOCATION
     It will process all SMRT cells specified by config['cells']
-    If should (!TESTME!) be possible to run multiple instances at once, so long as the
+    If should (maybe?) be possible to run multiple instances at once, so long as the
     cells are not conflicting.
 """
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
 PBCORETOOLS = TOOLBOX + " smrt python3 -m pbcoretools.tasks"
 
 # Other than that, ensure that scripts in the directory with this Snakefile are
-# in the PATH (we have to do it here as $PATH does not get preserved on cluster jobs):
-#   fasta_stats.py
+# in the PATH (we have to do it here as $PATH does not get preserved on cluster jobs).
 if ( not os.path.dirname(workflow.snakefile) in os.environ['PATH'].split(':') and
      not os.path.dirname(os.path.abspath(workflow.snakefile)) in os.environ['PATH'].split(':') ):
      os.environ['PATH'] += ':' + os.path.dirname(workflow.snakefile)
 
-# If not supplied, just assume the usual symlink will work...
+# Should not be necessary to give the run dir as pbpipeline/from should point to it...
 RUNDIR = config.get('rundir', 'pbpipeline/from')
 
-def scan_cells():
-    """ Work out all the cells to process based on config['cells'] and config['rundir']
-        and thus infer the base names  of the info.yml files that need to be made.
-        Return a dict of:
-            cell_id->{'slot': slot_id, 'filter': '', 'parts': [...]}.
-        This in turn allows me to work out everything else by pattern matching. Note that
-        no filter is currently supported but I left this feature in just in case.
-        When run on a GSEG worker node this list will come out empty, but that's
-        OK.
-    """
-    all_done = [ b[:-len('.transferdone')] for b in glob('{}/*/*.transferdone'.format(RUNDIR) ) ]
-
-    # Now see if I need to filter by config['cells']
-    if 'cells' in config:
-        res = [ s for s in all_done if s.split('/')[-2] in config['cells'].split() ]
-    else:
-        res = all_done
-
-    if not ('--no-hooks' in sys.argv or config.get('ignore_missing')):
-        # A hacky way of having an assertion only on the master process.
-        assert res, "No subreads found in {} matching cell [{}].".format(RUNDIR, config.get('cells', '*'))
-
-    return { r.split('/')[-1]: { 'slot':   r.split('/')[-2],
-                                 'filter': determine_filter(r),
-                                 'parts':  determine_parts(r) } for r in res }
-
-def determine_filter(cellpath):
-    """ Work out what filter needs to be applied to this cell. The cell is supplied
-        as a full path, since scan_cells() already worked that out.
-    """
-    # See git commit 1f5ab22383d355e112d31430cc0d8026fc6f5c17 for the last time
-    # this did anything
-    return ''
-
-def determine_parts(cellpath):
-    """Work out if this is a ['subreads', 'scraps'] cell or a ['reads'] cell.
-    """
-    bamfiles = glob(cellpath + '.*.bam')
-    parts = [ b[len(cellpath + '.'):-len('.bam')] for b in bamfiles ]
-
-    assert parts, 'No .bam files found matching ' + cellpath + '.*.bam'
-    # Fix the order. This works.
-    return sorted(parts, reverse=True)
-
-# And run the scan just once
-SC = scan_cells()
+# Load the info prepared by scan_cells.py
 try:
-    logger.info("SC = {!r}".format(SC))
-except NameError:
-    pass
+    SC = load_yaml(config.get("sc_data", "sc_data.yaml"))
+except Exception:
+    # Allow for cases where we just want to run one rule and don't care about the sc_data
+    SC = dict()
 
-def find_source_file(extn, prefix=''):
-    """ Shim to get me the source file by adding in the cell slot directory as discovered
-        by scan_cells()
-        I had a different workaround involving linking files but this is more direct.
+logger.info(f"SC =\n{SC!r}")
+
+def find_source_file(**args):
+    """ Shim to get me a source file by looking into SC.
+
         This returns a function which can be used as an input function.
-        prefix is useful for finding the XML files that start with a '.'
     """
-    def _ff(wildcards):
-        # allowing wildcards in the extension isn't actually used. Hmmm.
-        return "{}/{}/{}{}{}".format( RUNDIR,
-                                      SC[wildcards.cell]['slot'],
-                                      prefix,
-                                      wildcards.cell,
-                                      extn.format(**vars(wildcards)) )
-    return _ff
+    def _fsf(wildcards):
+        # combine args and wildcards. This is an undocumented use of the snakemake.io.Wildcards
+        # constructor to combine args with wildcards.
+        wc = Wildcards(wildcards, args)
+        try:
+            if wc.bc == "unassigned":
+                # Special case when "unassigned" is used as a barcode name.
+                fn = SC['cells'][wc.cell]['unassigned'][f'{wc.pf}_reads'][wc.part]
+            else:
+                fn = SC['cells'][wc.cell]['barcodes'][wc.bc][f'{wc.pf}_reads'][wc.part]
 
-def copy_all_files(i, o):
+        except AttributeError:
+            # No barcode. Must be the metadata file.
+            fn = SC['cells'][wc.cell][wc.part]
+
+        return f"{RUNDIR}/{fn}"
+
+    return _fsf
+
+def copy_all_files(i, o, keys=None):
     """ For rules that like to copy stuff
         i and o are dicts of filenames with common keys, which
         works for rule input/output with matched names
     """
-    for (infile, outfile) in ( (i[k], o[k]) for k in o.keys() ):
+    for (infile, outfile) in ( (i[k], o[k]) for k in (keys or o.keys()) ):
         shell("cp --no-preserve=all -Lv {infile} {outfile}")
 
+def link_all_files(i, o, keys=None):
+    """ Copying is not necessary if everything is on the same FS,
+        so have a symlink option. But probably we should have one
+        copy on /lustre-egdp and another on /lustre-gseg.
+        i and o are dicts of filenames with common keys, which
+        works for rule input/output with matched names
+    """
+    for (infile, outfile) in ( (i[k], o[k]) for k in (keys or o.keys()) ):
+        shell("ln -sn {infile} {outfile}")
+
 wildcard_constraints:
-    cell = r"\w+",
-    filter = r"\.[a-z]+|",
+    cell = r"m\w+",
+    pf   = r"hifi|fail",
 
 # Main target is one yml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
@@ -140,14 +116,16 @@ rule main:
 # This rule connects the .info.yml to all the bits of data we need and also generates
 # the .info.yml contents.
 def i_one_cell_info(wildcards):
-    """The inputs for one_cell_info get complex since we need to account for whether
-       filters need to be applied, and if so we need both the filtered and unfiltered .xml files.
-       Also we now need to worry about the difference between cells that have been CCS-processed
-       and the old subreads+scraps.
+    """See what we need for a single cell. This now needs to account for barcodes.
+       All the info we need is in SC.
     """
     # get slot + filter + type from SC
-    scinfo = SC[wildcards.cell]
-    cellbase = wildcards.cell + scinfo['filter']
+    cell = wildcards.cell
+    scinfo = SC['cells'][cell]
+    barcodes = scinfo['barcodes']
+    barcodes_and_unass = dict( unassigned = scinfo['unassigned'],
+                               **barcodes )
+
     res = dict( md5 = [],
                 cstats = [],
                 cou = [],
@@ -155,10 +133,11 @@ def i_one_cell_info(wildcards):
                 blobs = [],
                 taxon = [] )
 
-    # This will loop over ['subreads', 'scraps'] or ['reads']
-    for apart in scinfo['parts']:
-        res['md5'].append("md5sums/" + cellbase + "." + apart + ".bam.md5")
-        res['cstats'].append(cellbase + "." + apart + ".cstats.yml")
+    # This will loop over all the barcodes + unassigned, then over hifi_reads and fail_reads
+    for bc, parts in barcodes_and_unass.items():
+        for apart, part_files in parts.items():
+            res['md5'].append("md5sums/{cell}/{bc}/{...}.bam.md5")
+            res['cstats'].append("{cell}/{bc}/{...}.cstats.yml")
 
     # We may need 1 or 2 .subreadset.xml depending on the filter
     # For .consensusreadset.xml no filters are actually supported but they could be.
@@ -219,62 +198,31 @@ def relativize_xml(xfile):
     shell("{TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {xfile}")
     shell("rm -v {xfile}.orig")
 
-# This copies the files, then fixes up the XML.
-rule copy_subreads:
-    output:
-        bam    = "{cell}.subreads.bam",
-        pbi    = "{cell}.subreads.bam.pbi",
-        scraps = "{cell}.scraps.bam",
-        xml    = "{cell}.subreadset.xml",
-        runxml = "{cell}.run.metadata.xml"
-    input:
-        bam    = find_source_file(".subreads.bam"),
-        pbi    = find_source_file(".subreads.bam.pbi"),
-        scraps = find_source_file(".scraps.bam"),
-        xml    = find_source_file(".subreadset.xml"),
-        runxml = find_source_file(".run.metadata.xml", prefix='.')
-    resources:
-        nfscopy=1
-    run:
-        copy_all_files(input, output)
-        relativize_xml(output.xml)
-
-# Ditto for reads.bam
+# This copies/links the files for a given barcode, then fixes up the XML.
+# pf may be "hifi" (ie. pass) or "fail".
 rule copy_reads:
     output:
-        bam    = "{cell}.reads.bam",
-        pbi    = "{cell}.reads.bam.pbi",
-        xml    = "{cell}.consensusreadset.xml",
-        runxml = "{cell}.run.metadata.xml"
+        bam    = "{cell}/{barcode}/{cell}.{pf}_reads.{barcode}.bam",
+        pbi    = "{cell}/{barcode}/{cell}.{pf}_reads.{barcode}.bam.pbi",
+        xml    = "{cell}/{barcode}/{cell}.{pf}_reads.{barcode}.consensusreadset.xml",
     input:
-        bam    = find_source_file(".reads.bam"),
-        pbi    = find_source_file(".reads.bam.pbi"),
-        xml    = find_source_file(".consensusreadset.xml"),
-        runxml = find_source_file(".run.metadata.xml", prefix='.')
+        bam    = find_source_file(part="bam"),
+        pbi    = find_source_file(part="pbi"),
+        xml    = find_source_file(part="xml"),
     resources:
         nfscopy=1
     run:
-        copy_all_files(input, output)
+        link_all_files(input, output, keys="bam pbi".split())
+        copy_all_files(input, output, keys="xml".split())
         relativize_xml(output.xml)
 
-
-# This applies the control removal filter via bam2bam, resulting in files with .nocontrol added to
-# the name and new xml/pbi files.
-# Note that bam2bam is very much deprecated - nee note in toolbox!
-rule filter_control:
+rule copy_meta:
     output:
-        bam    = "{cell}.nocontrol.subreads.bam",
-        pbi    = "{cell}.nocontrol.subreads.bam.pbi",
-        scraps = "{cell}.nocontrol.scraps.bam",
-        xml    = "{cell}.nocontrol.subreadset.xml"
+        meta   = "{cell}.metadata.xml"
     input:
-        bam    = find_source_file(".subreads.bam"),
-        scraps = find_source_file(".scraps.bam"),
-    resources:
-        nfscopy=1
-    shell:
-        # Filter with standard sequences (would we ever use anything else??)
-        "{TOOLBOX} bam2bam {input.bam} {input.scraps} -o {wildcards.cell}.nocontrol"
+        meta   = find_source_file("meta")
+    run:
+        copy_all_files(input, output)
 
 # This script produces some headline stats as well as a histogram we can use
 # (but currently we don't)
@@ -287,24 +235,10 @@ rule get_contig_stats_yaml:
         "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta {input}) > {output.yaml}"
 
 
-# Prepare to export the HiFi reads
-HIFI_FILTER_ARGS = "--min-qv 20"
-
-localrules: hifi_readset
-rule hifi_readset:
-    output:
-        xml = "{cell}.hifireadset.xml"
-    input:
-        xml = "{cell}.consensusreadset.xml",
-        bam = "{cell}.reads.bam"
-    shell:
-        "{PBCORETOOLS}.dataset_filter {HIFI_FILTER_ARGS} {input.xml} {output.xml} ''"
-
-# Note the auto_ccs_outputs step should produce the .hifi_reads.fastq.gz file as the default output
-# name, it's not given explicitly.
+# Export the HiFi reads as FASTQ
 rule hifi_fastx:
     output:
-        fastq = "{cell}.hifi_reads.{x,fast.}.gz",
+        fastq = "{cell}.hifi_reads.fastq.gz",
     input:
         xml = "{cell}.hifireadset.xml",
         bam = "{cell}.reads.bam",
@@ -314,41 +248,6 @@ rule hifi_fastx:
         n_cpus = 4,
     shell:
         "{TOOLBOX} smrt bam2{wildcards.x} -j {threads} -o {wildcards.cell}.hifi_reads {input.xml}"
-
-# The old hifi_bam rule just filtered the reads, but now we want to run primrose too
-# Primrose is fussy about filenames, but let's see how it goes.
-# TODO - some sort of munging to fix the final xml, or do we not care?
-rule primrose_bam:
-    output:
-        xml   = "{cell}.primrose_consensusreadset.xml",
-        bam   = "{cell}.hifi_reads.bam",
-        bai   = "{cell}.hifi_reads.bam.bai",
-        pbi   = "{cell}.hifi_reads.bam.pbi",
-        rep   = "{cell}.primrose_report.json"
-    input:
-        xml = "{cell}.hifireadset.xml",
-        bam = "{cell}.reads.bam"
-    params:
-        log_level = "DEBUG"
-    shadow: "shallow"
-    threads: 4
-    resources:
-        mem_mb = 48000,
-        n_cpus = 8,
-    shell:
-       r"""cp -vP {input.xml} in.consensusreadset.xml
-           {TOOLBOX} smrt primrose \
-             --log-level {params.log_level} \
-             --num-threads {threads} \
-             --append-dataset-name ' (5mC)' \
-             --qv-histogram-report {output.rep} \
-             in.consensusreadset.xml out.consensusreadset.xml
-           ls -latrR >&2
-           mv -v out.consensusreadset.xml {output.xml}
-           mv -v out.bam {output.bam}
-           mv -v out.bam.pbi {output.pbi}
-           {TOOLBOX} samtools index -b {output.bam}
-        """
 
 # Make a .count file for the FASTQ file
 rule count_fastq:
