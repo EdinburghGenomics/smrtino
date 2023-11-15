@@ -28,7 +28,7 @@ snakerun_drmaa "$0" "$@"
 import xml.etree.ElementTree as ET
 from snakemake.io import Wildcards
 from glob import glob
-from hesiod import load_yaml, dump_yaml
+from smrtino import load_yaml, dump_yaml
 
 
 """ This is a recipe to process raw SMRT cells from the PacBio Revio,
@@ -56,7 +56,7 @@ try:
     SC = load_yaml(config.get("sc_data", "sc_data.yaml"))
 except Exception:
     # Allow for cases where we just want to run one rule and don't care about the sc_data
-    SC = dict()
+    SC = dict(cells={})
 
 logger.info(f"SC =\n{SC!r}")
 
@@ -158,7 +158,8 @@ def i_one_barcode_info(wc):
         res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.cstats.yaml")
 
         # Also the consensusreadset.xml
-        res['xml'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.consensusreadset.xml"
+        res['xml'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.consensusreadset.xml")
+
     for apart, rsname in dict( subreads = ".subreadset.xml",
                                reads    = ".consensusreadset.xml" ).items():
         if apart in scinfo['parts']:

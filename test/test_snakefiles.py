@@ -5,12 +5,23 @@ import unittest
 from unittest.mock import patch
 from glob import glob
 from io import StringIO
+import logging
 
 from snakemake.workflow import Workflow
+
+VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 class T(unittest.TestCase):
     """ Load all the snakefiles just to check I haven't let in some silly syntax error.
     """
+    @classmethod
+    def setUpClass(cls):
+        #Prevent the logger from printing messages - I like my tests to look pretty.
+        if VERBOSE:
+            logging.getLogger().setLevel(logging.DEBUG)
+        else:
+            logging.getLogger().setLevel(logging.CRITICAL)
+
     def setUp(self):
         os.environ['TOOLBOX'] = '/'
 
