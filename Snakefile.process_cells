@@ -142,8 +142,9 @@ def i_one_barcode_info(wc):
                                **barcodes )
     '''
     cell = wc.cell
-    barcode = wc.bc
-    parts = SC['cells'][cell]['parts']
+    barcode = wc.bam
+
+    # parts = SC['cells'][cell]['parts']
 
     res = dict( md5 = [],
                 cstats = [],
@@ -153,37 +154,25 @@ def i_one_barcode_info(wc):
                 taxon = [] )
 
     # We need md5sums and contig stats for hifi_reads and fail_reads
-    for part in parts:
+    for part in "hifi_reads fail_reads".split():
         res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.{part}.{barcode}.bam.md5")
         res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.cstats.yaml")
 
         # Also the consensusreadset.xml
         res['xml'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.consensusreadset.xml")
 
-    for apart, rsname in dict( subreads = ".subreadset.xml",
-                               reads    = ".consensusreadset.xml" ).items():
-        if apart in scinfo['parts']:
-            # this was input.xml2
-            res['xml'].append(cellbase + rsname)
+    # Also the metadata.xml file (which is per cell not per barcode)
+    res['metaxml'] = f"{cell}.metadata.xml"
 
-    # Also the .m64175e_221012_112607.run.metadata.xml file which we copy without the '.'
-    res['runxml'] = f"{wc.cell}.run.metadata.xml"
+    # For the HIFI reads we want the files in FASTQ format as well as BAM, and we want
+    # a .count file and md5sum for that fastq.
+    res['cou'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{barcode}.fastq.count")
+    res['cou'].append(f"md5sums/{cell}/{barcode}/{cell}.hifi_reads.{barcode}.fastq.gz.md5")
 
-    # If we have CCS reads then we also want to extract the HiFi reads and count
-    # the number of sequences. Also be running cstats on this.
-    if 'reads' in scinfo['parts']:
-        res['cou'].append(cellbase + ".hifi_reads.fastq.count")
-        res['md5'].append("md5sums/" + cellbase + ".hifi_reads.fastq.gz.md5")
-        # Javier confirms we want FASTA+FASTQ+BAM
-        res['md5'].append("md5sums/" + cellbase + ".hifi_reads.fasta.gz.md5")
-        res['md5'].append("md5sums/" + cellbase + ".hifi_reads.bam.md5")
-        # And we want stats for the BAM, as well as counts for the FASTQ
-        res['cstats'].append(cellbase + ".hifi_reads.cstats.yaml")
-
-    # Blobs or no?
+    # Blobs or no? Only on the HiFi reads.
     if str(config.get('blobs', '1')) != '0':
-        res['blobs'].append("blob/" + cellbase + ".plots.yaml")
-        res['taxon'].append("blob/" + cellbase + ".species.txt")
+        res['blobs'].append(f"blob/{cell}/{barcode}/{cell}.hifi_reads.{barcode}.plots.yaml")
+        res['taxon'].append(f"blob/{cell}/{barcode}/{cell}.hifi_reads.{barcode}.species.txt")
 
     return res
 
@@ -242,6 +231,7 @@ rule copy_reads:
         copy_all_files(input, output, keys="xml".split())
         relativize_xml(output.xml)
 
+# This file just gets copied.
 rule copy_meta:
     output:
         meta   = "{cell}.metadata.xml"
@@ -260,20 +250,16 @@ rule get_contig_stats_yaml:
     shell:
         "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta {input}) > {output.yaml}"
 
-
-# Export the HiFi reads as FASTQ
-rule hifi_fastx:
-    output:
-        fastq = "{cell}.hifi_reads.fastq.gz",
-    input:
-        xml = "{cell}.hifireadset.xml",
-        bam = "{cell}.reads.bam",
+# Export the HiFi reads (or any BAM file) as FASTQ
+rule bam_to_fastq:
+    output: "{foo}.fastq.gz"
+    input:  "{foo}.bam"
     threads: 4
     resources:
         mem_mb = 24000,
         n_cpus = 4,
     shell:
-        "{TOOLBOX} smrt bam2{wildcards.x} -j {threads} -o {wildcards.cell}.hifi_reads {input.xml}"
+        "{TOOLBOX} samtools fastq {input} | pigz -c -n -p {threads} > {output}"
 
 # Make a .count file for the FASTQ file
 rule count_fastq:
