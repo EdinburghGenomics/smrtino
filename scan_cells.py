@@ -131,13 +131,11 @@ def find_meta(rundir, slot, cellid):
 
 def scan_cells_sequel(rundir, cell_list):
     """ Work out all the cells to process based on config['cells'] and config['rundir']
-        and thus infer the base names  of the info.yml files that need to be made.
+        and thus infer the base names of the info.yaml files that need to be made.
         Return a dict of:
             cell_id->{'slot': slot_id, 'filter': '', 'parts': [...]}.
         This in turn allows me to work out everything else by pattern matching. Note that
         no filter is currently supported but I left this feature in just in case.
-        When run on a GSEG worker node this list will come out empty, but that's
-        OK.
     """
     all_cells = { b.split('/')[-2]: b.split('/')[-1][:-len('.transferdone')]
                   for b in glob(f"{rundir}/*/*.transferdone") }

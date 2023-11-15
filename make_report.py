@@ -8,7 +8,7 @@ from collections import OrderedDict
 from smrtino import load_yaml, aggregator
 
 """ Makes a report (in PanDoc format) for a cell. We will only report on
-    processed SMRT cells where the info.yml has been generated - so no
+    processed SMRT cells where the info.yaml has been generated - so no
     reading the XML directly.
     Associated files like the CSV stats will be loaded if found (maybe I
     should link these in the YAML?)
@@ -23,7 +23,7 @@ def load_input(yaml_file, links_file=None):
 
     # All YAML files have a 'cell_id' which should be globally unique
     if not yaml_info.get('cell_id'):
-        exit("info.yml file must include a cell_id - eg. m54321_200211_123456")
+        exit("info.yaml file must include a cell_id - eg. m54321_200211_123456")
 
     if links_file:
         yaml_info['_links'] = load_yaml(links_file)
@@ -276,7 +276,7 @@ def parse_args(*args):
     argparser = ArgumentParser( description=description,
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("-y", "--yaml", required=True,
-                            help="The info.yml file to use for this report.")
+                            help="The info.yaml file to use for this report.")
     argparser.add_argument("-l", "--links",
                             help="Optional links file used to make hyperlinks to SMRTLink.")
     argparser.add_argument("-r", "--report",

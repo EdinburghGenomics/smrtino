@@ -6,7 +6,7 @@ import yaml
 
 from smrtino.ParseXML import get_readset_info, get_runmetadata_info
 
-""" Emits .info.yml files for SMRT cells by parsing the xml files from
+""" Emits .info.yaml files for SMRT cells by parsing the xml files from
     SMRT link, among other things. This script, along with make_report.py,
     essentially links Snakefile.process_cells and Snakefile.report by taking
     the info we get from the former and compiling it under the direction of
@@ -50,7 +50,7 @@ def gen_info(args):
     # Add stats if we have them
     for s in args.stats or []:
         filename = '-'
-        if s.endswith(".cstats.yml"):
+        if s.endswith(".cstats.yaml"):
             filename = s.split('.')[-3].capitalize()
 
         with open(s) as sfh:

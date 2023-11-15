@@ -37,3 +37,5 @@ And now I need for compile_cell_info.py to handle all the barcodes. With Hesiod,
 get_cell_info() function right in the Snakefile, but for SMRTino we have compile_cell_info.py.
 I think to avoid complete rearrangement this needs to become "compile_bc_info.py" and then
 all these files will be merged into a final YAML (along with all the sc_data.yaml data).
+
+Yup.

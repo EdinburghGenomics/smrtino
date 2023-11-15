@@ -29,13 +29,13 @@ def main(args):
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
 
     # Load that YAML file
-    with open(args.info_yml) as yfh:
-        info_yml = yaml.safe_load(yfh)
+    with open(args.info_yaml) as yfh:
+        info_yaml = yaml.safe_load(yfh)
 
-    res = dict( run_dir = info_yml['run_id'],
-                cell_dir = info_yml['cell_id'],
-                cell_uuid = info_yml.get('cell_uuid'),
-                cell_type = info_yml.get('_readset_type') )
+    res = dict( run_dir = info_yaml['run_id'],
+                cell_dir = info_yaml['cell_id'],
+                cell_uuid = info_yaml.get('cell_uuid'),
+                cell_type = info_yaml.get('_readset_type') )
 
     if args.rc_section == 'none':
         L.warning("Running in no-connection mode as rc_section==none")
@@ -57,12 +57,12 @@ def main(args):
     try:
         cell_res = get_cell_id_and_type(res['cell_dir'], uuid=res['cell_uuid'])
 
-        # If we do have 'cell_uuid' and '_readset_type' in the info.yml then sanity check that
+        # If we do have 'cell_uuid' and '_readset_type' in the info.yaml then sanity check that
         # everything matches.
         for k, v in cell_res.items():
             info_v = res.get(k)
             if info_v and (info_v != v):
-                raise RuntimeError(f"Value for {k} in info.yml is {info_v} but SMRTLink says {v}")
+                raise RuntimeError(f"Value for {k} in info.yaml is {info_v} but SMRTLink says {v}")
         # Once happy, fold in the new values
         res.update(cell_res)
 
@@ -153,7 +153,7 @@ def get_run_uuid(run_dir, run_name=None):
 
 
 def parse_args(*args):
-    description = """Takes a .info.yml file and call the SMRTLink API to discover
+    description = """Takes a .info.yaml file and call the SMRTLink API to discover
                      appropriate links to the Run QC and Dataset. Dumps the result
                      in YAML format.
                      Connection to the API is as per ~/.smrtlinkrc
@@ -165,8 +165,8 @@ def parse_args(*args):
     argparser.add_argument("--rc_section", default=os.environ.get("SMRTLINKRC_SECTION", "smrtlink"),
                             help="Read specified section in .smrtlinkrc for connection details")
 
-    argparser.add_argument("info_yml",
-                           help=".info.yml file produced by compile_cell_info.py")
+    argparser.add_argument("info_yaml",
+                           help=".info.yaml file produced by compile_cell_info.py")
 
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
