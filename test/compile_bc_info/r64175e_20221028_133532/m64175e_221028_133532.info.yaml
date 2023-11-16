@@ -47,7 +47,6 @@ _plots:
 _readset_type: ccsreads
 cell_id: m64175e_221028_133532
 cell_uuid: 2cc09585-7912-45bc-a63a-aa6822c0bc5d
-filter_added: null
 readset_type: ConsensusReadSet (HiFi)
 run_id: r64175e_20221028_131705
 run_slot: 1_A01

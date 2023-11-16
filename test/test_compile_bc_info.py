@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Test the compile_cell_info.py script with a sample cell."""
+"""Test the compile_bc_info.py script with a sample barcode."""
 
 import sys, os, re
 import unittest
@@ -9,10 +9,10 @@ import yaml
 
 from unittest.mock import Mock
 
-DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/compile_cell_info')
+DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/compile_bc_info')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
-from compile_cell_info import gen_info
+from compile_bc_info import gen_info
 
 class T(unittest.TestCase):
 
@@ -44,24 +44,25 @@ class T(unittest.TestCase):
 
         return args
 
-    def test_sample1(self):
+    def test_sequel2(self):
         """Test the equivalent of the command:
 
-           $ compile_cell_info.py m64175e_221028_133532.consensusreadset.xml \
-                                  -s m64175e_221028_133532.*reads.cstats.yml \
-                                  -p m64175e_221028_133532.*plots.yml
+           $ compile_bc_info.py m64175e_221028_133532.consensusreadset.xml \
+                                -s m64175e_221028_133532.*reads.cstats.yaml \
+                                -p m64175e_221028_133532.*plots.yaml
 
-           Expected output is m64175e_221028_133532.info.yml
+           Expected output is m64175e_221028_133532.info.yaml
         """
+        ddir = f"{DATA_DIR}/r64175e_20221028_133532"
         cellid = "m64175e_221028_133532"
         args = self.get_mock_args()
-        args.xmlfile = [f"{DATA_DIR}/{cellid}.consensusreadset.xml"]
-        args.stats.extend([ f"{DATA_DIR}/{cellid}.reads.cstats.yml",
-                            f"{DATA_DIR}/{cellid}.hifi_reads.cstats.yml" ])
-        args.plots.extend([ f"{DATA_DIR}/{cellid}.histoplots.yml",
-                            f"{DATA_DIR}/{cellid}.blobplots.yml" ])
+        args.xmlfile = [f"{ddir}/{cellid}.consensusreadset.xml"]
+        args.stats.extend([ f"{ddir}/{cellid}.reads.cstats.yaml",
+                            f"{ddir}/{cellid}.hifi_reads.cstats.yaml" ])
+        args.plots.extend([ f"{ddir}/{cellid}.histoplots.yaml",
+                            f"{ddir}/{cellid}.blobplots.yaml" ])
 
-        with open(f"{DATA_DIR}/{cellid}.info.yml") as fh:
+        with open(f"{ddir}/{cellid}.info.yaml") as fh:
             expected = yaml.safe_load(fh)
 
         # Run the actual thing
@@ -69,20 +70,21 @@ class T(unittest.TestCase):
 
         self.assertEqual(info, expected)
 
-    def test_sample1_with_runxml(self):
+    def test_sequel2_with_runxml(self):
         """Test the equivalent of:
 
            $ compile_cell_info.py m64175e_221028_133532.consensusreadset.xml \
                                   -r m64175e_221028_133532.run.metadata.xml
 
-           Expected output is m64175e_221028_133532.info2.yml
+           Expected output is m64175e_221028_133532.info2.yaml
         """
+        ddir = f"{DATA_DIR}/r64175e_20221028_133532"
         cellid = "m64175e_221028_133532"
         args = self.get_mock_args()
-        args.xmlfile = [f"{DATA_DIR}/{cellid}.consensusreadset.xml"]
-        args.runxml = f"{DATA_DIR}/{cellid}.run.metadata.xml"
+        args.xmlfile = [f"{ddir}/{cellid}.consensusreadset.xml"]
+        args.runxml = f"{ddir}/{cellid}.run.metadata.xml"
 
-        with open(f"{DATA_DIR}/{cellid}.info2.yml") as fh:
+        with open(f"{ddir}/{cellid}.info2.yaml") as fh:
             expected = yaml.safe_load(fh)
 
         # Run the actual thing
