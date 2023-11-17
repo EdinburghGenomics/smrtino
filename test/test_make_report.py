@@ -221,8 +221,8 @@ class T(unittest.TestCase):
            # TODO - have a better test of load_input()
         """
         # When the files are good and the links all match
-        example_info = f"{DATA_DIR}/minimal.info.yml"
-        example_link = f"{DATA_DIR}/m64175e_220401_135226.link.yml"
+        example_info = f"{DATA_DIR}/minimal.info.yaml"
+        example_link = f"{DATA_DIR}/m64175e_220401_135226.link.yaml"
         loaded_info = load_input(example_info, example_link)
 
         if VERBOSE:

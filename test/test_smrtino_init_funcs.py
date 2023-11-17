@@ -30,7 +30,7 @@ class T(unittest.TestCase):
     ### THE TESTS ###
     def test_load_yaml(self):
 
-        ydata = load_yaml(DATA_DIR + "/m64175e_220401_135226.link.yml")
+        ydata = load_yaml(DATA_DIR + "/m64175e_220401_135226.link.yaml")
 
         self.assertEqual( [k for k in ydata.keys() if k.startswith('cell')],
                           "cell_dir cell_type cell_uuid".split() )

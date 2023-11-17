@@ -114,16 +114,19 @@ class RunStatus:
         for cell in cells:
             cellname = cell.rstrip('/').split('/')[-1]
 
-            if self._exists_to( 'pbpipeline/' + cellname + '.aborted' ):
+            if self._exists_to( f"pbpipeline/{cellname}.aborted" ):
                 res[cellname] = self.CELL_ABORTED
-            elif self._exists_to( 'pbpipeline/' + cellname + '.failed' ):
+            elif self._exists_to( f"pbpipeline/{cellname}.failed" ):
                 # Not sure if we need this?
                 res[cellname] = self.CELL_FAILED
-            elif self._exists_to( 'pbpipeline/' + cellname + '.done' ):
+            elif self._exists_to( f"pbpipeline/{cellname}.done" ):
                 res[cellname] = self.CELL_PROCESSED
-            elif self._exists_to( 'pbpipeline/' + cellname + '.started' ):
+            elif self._exists_to( f"pbpipeline/{cellname}.started" ):
                 res[cellname] = self.CELL_PROCESSING
-            elif self._exists_from( cellname + '/*.transferdone' ):
+            elif self._exists_from( f"{cellname}/metadata/*.transferdone" ):
+                res[cellname] = self.CELL_READY
+            elif self._exists_from( f"{cellname}/*.transferdone" ):
+                # Legacy pre-Revio
                 res[cellname] = self.CELL_READY
             else:
                 res[cellname] = self.CELL_PENDING

@@ -39,7 +39,8 @@ class T(unittest.TestCase):
 
 # This bit copied from test_base_mask_extractor in Illuminatus...
 # Now add the tests dynamically
-for snakefile in glob(os.path.join(os.path.dirname(__file__), '..', 'Snakefile.*')):
+for sf in "process_cells report".split():
+    snakefile = os.path.join(os.path.dirname(__file__), '..', f"Snakefile.{sf}")
 
     # Note the slightly contorted double-lambda syntax to make the closure.
     sfname = os.path.basename(snakefile).split('.')[1]

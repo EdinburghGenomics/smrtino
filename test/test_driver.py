@@ -107,21 +107,22 @@ class T(unittest.TestCase):
 
         return self.bm.last_stdout.split("\n")
 
-    def copy_run(self, run):
+    def copy_run(self, run, src="revio"):
         """Utility function to add a run from mock_examples into TMP/seqdata.
            Returns the path to the run copied.
         """
         self.run_name = run
-        run_dir = os.path.join(os.path.dirname(__file__), 'mock_examples', run)
+        run_dir = os.path.join(os.path.dirname(__file__), f"{src}_examples", run)
 
         # We want to know the expected output location
         self.to_path = os.path.join(self.temp_dir, 'pacbio_data', run)
+        self.from_path = os.path.join(self.temp_dir, 'sequel', run)
 
         # Annoyingly, copytree gives me no way to avoid running copystat on the files.
         # But that doesn't mean it's impossible...
         with patch('shutil.copystat', lambda *a, **kw: True):
             return copytree(run_dir,
-                            os.path.join(self.temp_dir, 'sequel', run),
+                            self.from_path,
                             symlinks = True )
 
     def assertInStdout(self, *words):
@@ -205,7 +206,7 @@ class T(unittest.TestCase):
     def test_no_seqdata(self):
         """If no FROM_LOCATION is set, expect a fast failure.
         """
-        test_data = self.copy_run("r54041_20180613_132039")
+        test_data = self.copy_run("r84140_20231030_134730")
 
         self.environment['FROM_LOCATION'] = 'meh'
         self.bm_rundriver(expected_retval=1)
@@ -226,12 +227,12 @@ class T(unittest.TestCase):
            And there should be a pipeline.log in the output folder.
         """
         if not test_data:
-            test_data = self.copy_run("r54041_20180613_132039")
+            test_data = self.copy_run("r84140_20231030_134730")
 
         self.bm_rundriver()
 
         # Run should be seen
-        self.assertInStdout("r54041_20180613_132039", "NEW")
+        self.assertInStdout("r84140_20231030_134730", "NEW")
 
         # Pipeline folder should appear
         self.assertTrue(os.path.isdir(self.to_path + '/pbpipeline'))
@@ -259,7 +260,7 @@ class T(unittest.TestCase):
     def test_in_pipeline(self):
         """ Run is already processing, nothing to do
         """
-        test_data = self.copy_run("r54041_20180613_132039")
+        test_data = self.copy_run("r84140_20231030_134730")
 
         # Mark the run as started, and let's say we're processing read1
         self.shell("mkdir -p " + self.to_path + "/pbpipeline")
@@ -268,7 +269,7 @@ class T(unittest.TestCase):
         self.shell("touch " + self.to_path + "/pbpipeline/notify_run_complete.done")
 
         self.bm_rundriver()
-        self.assertInStdout("r54041_20180613_132039", "PROCESSING")
+        self.assertInStdout(self.run_name, "PROCESSING")
 
         # Nothing should happen
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
@@ -278,7 +279,7 @@ class T(unittest.TestCase):
             the run has finished. This is the same as above but without
             the notify_run_complete.done file.
         """
-        test_data = self.copy_run("r54041_20180613_132039")
+        test_data = self.copy_run("r84140_20231030_134730")
 
         # Mark the run as started, and let's say we're processing cell 1
         self.shell("mkdir -p " + self.to_path + "/pbpipeline")
@@ -286,7 +287,7 @@ class T(unittest.TestCase):
         self.shell("touch " + self.to_path + "/pbpipeline/1_A01.started")
 
         self.bm_rundriver()
-        self.assertInStdout("r54041_20180613_132039", "PROCESSING")
+        self.assertInStdout(self.run_name, "PROCESSING")
         self.assertNotInStdout("Exception")
 
         # Message should be sent
@@ -301,15 +302,16 @@ class T(unittest.TestCase):
     def test_run_was_stalled_1(self):
         """ Simulate a stalled run, which needs to be aborted.
         """
-        test_data = self.copy_run("r54041_20180613_132039")
+        run = "r84140_20231030_134730"
+        test_data = self.copy_run(run)
 
         self.environment['STALL_TIME'] = '0'
         self.bm_rundriver()
-        self.assertInStdout("r54041_20180613_132039", "NEW")
+        self.assertInStdout(run, "NEW")
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline"))
 
         self.bm_rundriver()
-        self.assertInStdout("r54041_20180613_132039", "STALLED")
+        self.assertInStdout(run, "STALLED")
 
         expected_calls = self.bm.empty_calls()
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd(
@@ -319,25 +321,26 @@ class T(unittest.TestCase):
 
         # Now it should be aborted - since we're in verbose mode we do see this,
         self.bm_rundriver()
-        self.assertInStdout("r54041_20180613_132039", 'status=aborted')
+        self.assertInStdout(run, 'status=aborted')
 
     def test_run_was_stalled_2(self):
         """ Simulate a stalled run, which has partially worked.
         """
-        # Copy run and simulate 2 cells done.
-        test_data = self.copy_run("r54041_20180518_131155")
+        run = "r84140_20231018_154254"
+
+        # Copy run which has 1 cell ready, one pending. Make the ready cell done.
+        test_data = self.copy_run(run)
         self.shell("mkdir -p " + self.to_path + "/pbpipeline")
         self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
-        self.shell("touch " + self.to_path + "/pbpipeline/1_B01.done")
-        self.shell("touch " + self.to_path + "/pbpipeline/2_C01.done")
+        self.shell("touch " + self.to_path + "/pbpipeline/1_D01.done")
 
         self.environment['STALL_TIME'] = '1'
         self.bm_rundriver()
-        self.assertInStdout("r54041_20180518_131155", "IDLE_AWAITING_CELLS")
+        self.assertInStdout(run, "IDLE_AWAITING_CELLS")
 
         self.environment['STALL_TIME'] = '0'
         self.bm_rundriver()
-        self.assertInStdout("r54041_20180518_131155", "STALLED")
+        self.assertInStdout(run, "STALLED")
 
         # A this point, nothing much should happen. (flags are written to pbpipeline)
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
@@ -346,7 +349,7 @@ class T(unittest.TestCase):
         # Except that 'upload_report.sh' will appear to fail, so there will be an error.
         # I could add a side effect to the call, maybe.
         self.bm_rundriver()
-        self.assertInStdout("r54041_20180518_131155", "PROCESSED")
+        self.assertInStdout(run, "PROCESSED")
 
         # The second to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
         last_reply_fd = self.bm.last_calls['rt_runticket_manager.py'][-1][-1]
@@ -357,22 +360,22 @@ class T(unittest.TestCase):
         expected_calls['upload_report.sh'] = [[self.to_path]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd( 'processing',
                                                        '--reply',
-                                                       '2 SMRT cells have run. 5 were aborted. Final report will follow soon.' ),
+                                                       '1 SMRT cells have run. 1 were aborted. Final report will follow soon.' ),
                                                      self.rt_cmd( 'Finished pipeline',
                                                        '--reply', last_reply_fd )]
         self.assertEqual(self.bm.last_calls, expected_calls)
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
 
-        # Now it should be in status COMPLETE because two of the cells did work
-        # (note this check relies on the driver always being run in VERBOSE mode)
+        # Now it should be in status COMPLETE because run of the cells did work
+        # (note this check relies on driver.sh always being run in VERBOSE mode)
         self.bm_rundriver()
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
-        self.assertInStdout("r54041_20180518_131155", "status=complete")
+        self.assertInStdout(run, "status=complete")
 
     def test_process_run_partial(self):
         """ Test processing a run when one cell is ready
         """
-        test_data = self.copy_run("r64175e_20210528_111111")
+        test_data = self.copy_run("r84140_20231018_154254")
 
         # Run the pipeline once to setup the output directory
         self.bm_rundriver()
@@ -384,15 +387,15 @@ class T(unittest.TestCase):
         self.assertNotInStdout("Exception")
 
         # Check the touch files all appear
-        for cell in "1_A01".split():
+        for cell in "1_D01".split():
             self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
-        for cell in "2_B01 3_C01".split():
+        for cell in "1_C01".split():
             self.assertFalse(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
 
         # Report should be made on just the one cell
         self.assertEqual(self.bm.last_calls["Snakefile.report"],
                          [ ['-R', 'list_projects', 'make_report',
-                            '--config', 'cells=1_A01',
+                            '--config', 'cells=1_D01',
                             '-p', 'report_main'] ])
 
         for r in "report.started report.done".split():
@@ -401,7 +404,9 @@ class T(unittest.TestCase):
     def test_process_run_ok(self):
         """ Test processing a run when the cells are ready
         """
-        test_data = self.copy_run("r64175e_20210528_333333")
+        test_data = self.copy_run("r84140_20231018_154254")
+        self.shell(f"touch {self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone")
+        self.shell(f"touch {self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone")
 
         # Run the pipeline once to setup the output directory
         self.bm_rundriver()
@@ -413,20 +418,23 @@ class T(unittest.TestCase):
         self.assertNotInStdout("Exception")
 
         # Check the touch files all appear
-        for cell in "1_A01 2_B01 3_C01".split():
+        for cell in "1_C01 1_D01".split():
             self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
 
         # Check the right things were called.
         self.assertEqual(self.bm.last_calls["Snakefile.report"],
                          [ ['-R', 'list_projects', 'make_report',
-                            '--config', 'cells=1_A01 2_B01 3_C01',
+                            '--config', 'cells=1_C01 1_D01',
                             '-p', 'report_main'] ])
 
 
     def test_process_run_fail(self):
         """ Test error handling when Snakefile.process_cells fails
         """
-        test_data = self.copy_run("r64175e_20210528_333333")
+        test_data = self.copy_run("r84140_20231018_154254")
+        self.shell(f"touch {self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone")
+        self.shell(f"touch {self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone")
+
         self.bm.add_mock("Snakefile.process_cells", fail=True)
 
         # Run the pipeline once to setup the output directory
@@ -442,7 +450,7 @@ class T(unittest.TestCase):
         if VERBOSE:
             os.system(f"ls {self.to_path}/pbpipeline")
 
-        for cell in "1_A01 2_B01 3_C01".split():
+        for cell in "1_C01 1_D01".split():
             for sf in "started failed".split():
                 self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.{sf}"))
 
@@ -451,10 +459,10 @@ class T(unittest.TestCase):
 
         expected_calls['is_testrun.sh'] = [[]]
         expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info",
-                                                       "--config", "cells=1_A01 2_B01 3_C01", "blobs=1", "-p" ]]
+                                                       "--config", "cells=1_C01 1_D01", "blobs=1", "-p" ]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
                                                      self.rt_cmd("failed", "--reply",
-                                                                  "Processing_cells failed for cells [1_A01 2_B01 3_C01]. See log in"
+                                                                  "Processing_cells failed for cells [1_C01 1_D01]. See log in"
                                                                   f" {self.to_path}/pipeline.log") ]
 
         # Doctor self.bm.last_calls because we don't know the FD
@@ -468,7 +476,7 @@ class T(unittest.TestCase):
     def test_detect_self_test_1(self):
         """Self test runs should be detected and not processed further.
         """
-        test_data = self.copy_run("r64175e_20210528_333333")
+        test_data = self.copy_run("r64175e_20210528_333333", src="mock")
         self.bm.add_mock("is_testrun.sh", fail=False)
 
         # Run the pipeline once
@@ -496,7 +504,7 @@ class T(unittest.TestCase):
         """If the test run is not picked up on the original scan,
            then it should be detected when the first cell is ready, and shut down.
         """
-        test_data = self.copy_run("r64175e_20210528_333333")
+        test_data = self.copy_run("r64175e_20210528_333333", src="mock")
 
         # Run the pipeline once to setup the output directory
         self.bm_rundriver()

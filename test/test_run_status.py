@@ -11,7 +11,7 @@ import logging as L
 from pb_run_status import RunStatus
 import yaml
 
-DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/mock_examples')
+DATA_DIR = os.path.abspath(os.path.dirname(__file__))
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))
@@ -19,7 +19,7 @@ L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))
 class T(unittest.TestCase):
 
     #Helper functions:
-    def use_run(self, run_id, copy=False, make_run_info=True):
+    def use_run(self, run_id, copy=False, make_run_info=True, src="mock"):
         """Inspect a run.
            If copy=True, copies the selected run into a temporary folder first.
            Sets self.current_run to the run id and
@@ -27,6 +27,7 @@ class T(unittest.TestCase):
            Also returns a RunStatus object for you.
         """
         self.cleanup_run()
+        self.data_dir = f"{DATA_DIR}/{src}_examples"
 
         # Make a temp dir each time
         self.tmp_dir = mkdtemp()
@@ -36,11 +37,11 @@ class T(unittest.TestCase):
             os.mkdir(self.runs_dir)
 
             # Clone the run folder into it
-            copytree( os.path.join(DATA_DIR, run_id),
+            copytree( os.path.join(self.data_dir, run_id),
                       os.path.join(self.runs_dir, run_id),
                       symlinks=True )
         else:
-            self.runs_dir = DATA_DIR
+            self.runs_dir = self.data_dir
 
         # Set the current_run variable
         self.current_run = run_id
@@ -306,6 +307,22 @@ class T(unittest.TestCase):
                             'RunID': 'r64175e_20210528_333333',
                             'StartTime': 'unknown',
                           } )
+
+    def test_revio(self):
+        """Revio runs need dome slightly (but not massively) different detection rules
+        """
+        run_info = self.use_run("r84140_20231018_154254", copy=True, src="revio")
+
+        self.assertEqual(run_info.get_cells(), {'1_C01': run_info.CELL_PENDING,
+                                                '1_D01': run_info.CELL_READY})
+
+        self.touch("1_C01/metadata/m84140_231018_155043_s3.transferdone")
+        run_info._clear_cache()
+        self.assertEqual(run_info.get_cells(), {'1_C01': run_info.CELL_READY,
+                                                '1_D01': run_info.CELL_READY})
+
+        # Start time should be something (we're not sure what)
+        self.assertEqual(len(run_info.get_start_time()), len('Thu Jan  1 01:00:00 1970'))
 
 def dictify(s):
     """ Very very dirty minimal YAML parser is OK for testing.
