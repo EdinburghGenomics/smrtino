@@ -266,7 +266,7 @@ class RunStatus:
 
     def get_cells_aborted(self):
         """ Get a list of the cells that were aborted, if any.
-            Note that this is distinct from aborting the whoel run, or it being a testrun.
+            Note that this is distinct from aborting the whole run, or it being a testrun.
         """
         return [c for c, v in self.get_cells().items() if v == self.CELL_ABORTED]
 

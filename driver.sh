@@ -206,13 +206,6 @@ action_new(){
         return
     fi
 
-    # Check for auto-test pseudo-runs, though we may not be able to spot it
-    # until the cell is actually ready.
-    if is_testrun.sh ; then
-        abort_testrun
-        return
-    fi
-
     # Trigger a summary to be sent to RT as a comment, which should create
     # the new RT ticket.
     # Do this via upload_reports even though there will be 0 reports.
@@ -234,12 +227,6 @@ action_cell_ready(){
 
     # Log the start in a way a script can easily read back (humans can check the main log!)
     save_start_time
-
-    # Check for auto-test pseudo-runs
-    if is_testrun.sh ; then
-        abort_testrun
-        BREAK=1 ; return
-    fi
 
     # Do we want an RT message for every cell? Well, just a comment.
     send_summary_to_rt comment processing "Cell(s) ready to process: $CELLSREADY." |& plog
@@ -415,6 +402,8 @@ action_aborted() {
 
 action_testrun() {
     # self-test pseudo runs also require no further reporting
+    # Note that on the Revio we don't seem to have test runs like this, but we can still
+    # manually flag a run as a test.
     true
 }
 
@@ -438,20 +427,6 @@ save_start_time(){
 # Wrapper for ticket manager that sets the run and queue
 rt_runticket_manager(){
     rt_runticket_manager.py -r "$RUNID" -Q pbrun "$@"
-}
-
-abort_testrun() {
-    # Test runs are aborted and not processed further. We do use an explicit state "testrun" to
-    # distinguish them from failed runs but the logic is the same as for aborted.
-    # If this function is called, assume that the is_testrun.sh check has passed.
-    log  "~~This is a test run. Writing pbpipeline/testrun."
-    plog "This is a test run and needs no further processing. Writing pbpipeline/testrun."
-
-    echo "detected by is_testrun.sh" > "$RUN_OUTPUT"/pbpipeline/testrun
-
-    # If notifying RT fails don't attempt to do anything else. We can close the ticket manually.
-    rt_runticket_manager --subject testrun --no_create --status resolved \
-        --reply "This auto-test run may be ignored. Ticket closed." |& plog
 }
 
 notify_run_complete(){

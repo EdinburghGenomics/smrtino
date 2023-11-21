@@ -38,4 +38,22 @@ get_cell_info() function right in the Snakefile, but for SMRTino we have compile
 I think to avoid complete rearrangement this needs to become "compile_bc_info.py" and then
 all these files will be merged into a final YAML (along with all the sc_data.yaml data).
 
-Yup.
+Yup. (And I should break this function out of Hesiod at some point too!)
+
+--
+
+Random thought. Is there any scenario where we'd just tell SMRTLink we used the whole barcode kit,
+rather than selecting specific barcodes, and then just use it like we do with SMRTino where all
+runs have all barcodes? Maybe?
+
+But anyway for now we'll just proceed to report and deliver the barcodes we have.
+
+Test plan:
+
+1) Copy (or rather, link the actual) runs seen under revio_examples to ~/test_sequel
+
+2) Run the pipeline
+
+3) Fix everything, and see if the report looks sane comparated to SMRTino 3
+
+4) Flags and delivery. Hmmm.
