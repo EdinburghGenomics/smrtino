@@ -26,7 +26,6 @@ PROGS_TO_MOCK = {
     "Snakefile.report"        : True,
     "rt_runticket_manager.py" : "echo STDERR rt_runticket_manager.py >&2",
     "upload_report.sh"        : "echo STDERR upload_report.sh >&2",
-    "is_testrun.sh"           : False,
 }
 
 class T(unittest.TestCase):
@@ -242,7 +241,6 @@ class T(unittest.TestCase):
         expected_calls = self.bm.empty_calls()
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("new", "--comment", "@???")]
         expected_calls['upload_report.sh'] = [[self.to_path]]
-        expected_calls['is_testrun.sh'] = [[]]
 
         # The call to rt_runticket_manager.py is non-deterministic, so we have to doctor it...
         self.bm.last_calls['rt_runticket_manager.py'][0][-1] = re.sub(
@@ -457,7 +455,6 @@ class T(unittest.TestCase):
         # Check that upload_reports.sh is not called
         expected_calls = self.bm.empty_calls()
 
-        expected_calls['is_testrun.sh'] = [[]]
         expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info",
                                                        "--config", "cells=1_C01 1_D01", "blobs=1", "-p" ]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
@@ -473,64 +470,6 @@ class T(unittest.TestCase):
 
         self.assertEqual(self.bm.last_calls, expected_calls)
 
-    def test_detect_self_test_1(self):
-        """Self test runs should be detected and not processed further.
-        """
-        test_data = self.copy_run("r64175e_20210528_333333", src="mock")
-        self.bm.add_mock("is_testrun.sh", fail=False)
-
-        # Run the pipeline once
-        self.bm_rundriver()
-
-        self.assertInStdout("This is a test run.")
-
-        expected_calls = self.bm.empty_calls()
-        expected_calls['is_testrun.sh'] = [[]]
-        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("testrun", "--no_create",
-                                                                  "--status", "resolved", "--reply",
-                                                                  "This auto-test run may be ignored. Ticket closed.")]
-
-        self.assertEqual(self.bm.last_calls, expected_calls)
-
-        with open(f"{self.to_path}/pbpipeline/testrun") as fh:
-            self.assertEqual( fh.read(),
-                              "detected by is_testrun.sh\n" )
-
-        # Run driver again to confirm the status
-        self.bm_rundriver()
-        self.assertInStdout("r64175e_20210528_333333", "status=testrun")
-
-    def test_detect_self_test_2(self):
-        """If the test run is not picked up on the original scan,
-           then it should be detected when the first cell is ready, and shut down.
-        """
-        test_data = self.copy_run("r64175e_20210528_333333", src="mock")
-
-        # Run the pipeline once to setup the output directory
-        self.bm_rundriver()
-
-        # Run again to try processing the cells, but make it so this is now detected
-        # as a PacBio self test run.
-        self.bm.add_mock("is_testrun.sh", fail=False)
-        self.bm_rundriver()
-
-        self.assertInStdout("This is a test run.")
-
-        expected_calls = self.bm.empty_calls()
-        expected_calls['is_testrun.sh'] = [[]]
-        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("testrun", "--no_create",
-                                                                 "--status", "resolved", "--reply",
-                                                                 "This auto-test run may be ignored. Ticket closed.")]
-
-        self.assertEqual(self.bm.last_calls, expected_calls)
-
-        with open(f"{self.to_path}/pbpipeline/testrun") as fh:
-            self.assertEqual( fh.read(),
-                              "detected by is_testrun.sh\n" )
-
-        # Run driver again to confirm the status
-        self.bm_rundriver()
-        self.assertInStdout("r64175e_20210528_333333", "status=testrun")
 
 if __name__ == '__main__':
     unittest.main()
