@@ -11,7 +11,8 @@ import xml.etree.ElementTree as ET
 
 _ns = dict( pbmeta  = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
             pb      = 'http://pacificbiosciences.com/PacBioDatasets.xsd',
-            pbmodel = 'http://pacificbiosciences.com/PacBioDataModel.xsd' )
+            pbmodel = 'http://pacificbiosciences.com/PacBioDataModel.xsd',
+            pbsi    = 'http://pacificbiosciences.com/PacBioSampleInfo.xsd', )
 
 rs_constants = dict( ConsensusReadSet = \
                         dict( label = 'ConsensusReadSet (HiFi)',
@@ -52,9 +53,69 @@ def get_runmetadata_info(xmlfile):
 
     return res
 
+def get_metadata_info(xmlfile, smrtlink_base=None):
+    """ Glean info from the metadata.xml file for a Revio SMRT cell
+    """
+    # First thing is, in SMRTLink 12 the files claim to be utf-16. But they are not. FFS.
+    def munge_xmldecl(filename):
+        with open(filename) as fh:
+            for n, aline in enumerate(fh):
+                if n == 0:
+                    aline = re.sub(r"utf-16", r"utf-8", aline)
+                yield(aline)
+
+    root = ET.fromstringlist(munge_xmldecl(xmlfile))
+
+    try:
+        rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')
+        cmd = root.find('.//pbmeta:CollectionMetadata', _ns).attrib
+    except AttributeError:
+        rf = "/unknown/unknown"
+        cmd = {'Context': 'unknown'}
+
+    info = { 'run_id': rf.split('/')[-2],
+             'run_slot': rf.split('/')[-1], # Also could get this from TimeStampedName
+             'cell_id': cmd.get('Context'),
+             'cell_uuid' : cmd.get('UniqueId', 'no-uuid') }
+
+    # For Revio we're always a "Revio (HiFi)" readset, until we're not.
+    info['readset_type'] = "Revio (HiFi)"
+    info['_readset_type'] = "ccsreads"
+    info['_parts'] = ["reads"]
+
+    # See what's actually loaded on the cell (this is the same as for Sequel)
+    well_samples = root.findall(".//pbmeta:WellSample", _ns)
+    # There should be 1!
+    L.debug(f"Found {len(well_samples)} WellSample records")
+
+    if len(well_samples) == 1:
+        ws, = well_samples
+
+        info['ws_name'] = ws.attrib.get('Name', '')
+        info['ws_desc'] = ws.attrib.get('Description', '')
+
+        mo = re.search(r'\b(\d{5,})', info['ws_name'])
+        if mo:
+            info['ws_project'] = mo.group(1)
+
+        # And see if we have barcodes
+        dna_barcodes = ws.findall(".//pbsi:DNABarcodes", _ns)
+
+        if dna_barcodes:
+            info['barcodes'] = [ bc.attrib.get('Name', 'unknown')
+                                 for dna in dna_barcodes
+                                 for bc in dna ]
+
+    if smrtlink_base:
+        info['_link'] = get_smrtlink_link(root, smrtlink_base)
+
+    return info
+
 def get_readset_info(xmlfile, smrtlink_base=None):
     """ Glean info from a readset file for a SMRT cell
     """
+    # FIXME - delete this once get_metadata_info() is working, as it's not needed
+    # for Revio
     root = ET.parse(xmlfile).getroot()
 
     try:

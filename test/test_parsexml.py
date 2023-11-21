@@ -6,18 +6,41 @@ import glob
 from pprint import pprint
 import logging as L
 
-# Adding this to sys.path makes the test work if you just run it directly.
-from smrtino.ParseXML import get_readset_info
+from smrtino.ParseXML import get_readset_info, get_metadata_info
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/mock_examples')
+DATA_REVIO = os.path.abspath(os.path.dirname(__file__) + '/revio_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))
 
 class T(unittest.TestCase):
 
-    xmlfiles = [ DATA_DIR + "/r54041_20180613_132039/1_A01/subreadset.xml",
-                 DATA_DIR + "/r64175e_20201211_163702/1_A01/m64175e_201211_164938.consensusreadset.xml" ]
+    xmlfiles = [ f"{DATA_DIR}/r54041_20180613_132039/1_A01/subreadset.xml",
+                 f"{DATA_DIR}/r64175e_20201211_163702/1_A01/m64175e_201211_164938.consensusreadset.xml" ]
+
+    revio_meta_xml = [ f"{DATA_REVIO}/r84140_20231018_154254/1_C01/metadata/m84140_231018_155043_s3.metadata.xml",
+                       f"{DATA_REVIO}/r84140_20231018_154254/1_D01/metadata/m84140_231018_162059_s4.metadata.xml",
+                       f"{DATA_REVIO}/r84140_20231030_134730/1_A01/metadata/m84140_231030_135502_s1.metadata.xml" ]
+
+    def test_revio_meta(self):
+        """Try reading the new XML format from the Revio
+        """
+        info = get_metadata_info( self.revio_meta_xml[0] )
+
+        self.assertEqual(info, {
+                        'cell_id':       "m84140_231018_155043_s3",
+                        'cell_uuid':     "b29fa499-96e9-4973-ae0a-085a75a08f9e",
+                        '_parts':        ["reads"],
+                        'readset_type':  "Revio (HiFi)",
+                        '_readset_type': "ccsreads",
+                        'run_id':        "r84140_20231018_154254",
+                        'run_slot':      "1_C01",
+                        'ws_desc':       "",
+                        'ws_name':       "28850RL0004L02",
+                        'ws_project':    "28850",
+                        'barcodes':      ["bc1002--bc1002"],
+                         })
 
     def test_subreadset(self):
         """ Load an XML file from one of our examples.

@@ -231,14 +231,14 @@ rule copy_reads:
         copy_all_files(input, output, keys="xml".split())
         relativize_xml(output.xml)
 
-# This file just gets copied.
+# This file just gets copied. Except that we have to fix the XML declaration.
 rule copy_meta:
     output:
         meta   = "{cell}.metadata.xml"
     input:
         meta   = find_source_file(fmt="meta")
-    run:
-        copy_all_files(input, output)
+    shell:
+        "sed '1s/utf-16/utf-8/' {infile} > {outfile}"
 
 # This script produces some headline stats as well as a histogram we can use
 # (but currently we don't)

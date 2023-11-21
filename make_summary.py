@@ -4,7 +4,7 @@ import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino import glob, aggregator
-from smrtino.ParseXML import get_readset_info
+from smrtino.ParseXML import get_metadata_info
 
 """ Makes a summary (in text format) for a run.
     This is somewhat similar to make_report.py, but it runs on the original directory
@@ -36,13 +36,13 @@ def main(args):
         all_info[slot] = dict()
 
         # Load the XML, if found
-        srs_xml = glob(f"{slot_dir}/*.*readset.xml")
-        if len(srs_xml) > 1:
-            L.error(f"Multiple .*readset.xml found for slot {slot}")
-        elif srs_xml:
-            srs_xml, = srs_xml
+        metadata_xml = glob(f"{slot_dir}/metadata/*.metadata.xml")
+        if len(metadata_xml) > 1:
+            L.error(f"Multiple metadata.xml found for slot {slot}")
+        elif metadata_xml:
+            metadata_xml, = metadata_xml
 
-            xml_info = get_readset_info(srs_xml)
+            xml_info = get_metadata_info(metadata_xml)
 
             all_info[slot].update(xml_info)
 
@@ -89,7 +89,7 @@ def format_summary(all_info, run_id=None, run_dir='.'):
     """
     # Sanity check all_info has some info
     if not all_info:
-        return [f"No SMRT Cells found in {os.getcwd()}"]
+        return [f"No SMRT Cells found in {run_dir}"]
 
     # Sanity-check the run_id is consistently reported.
     run_id_set = set(i['run_id'] for i in all_info.values() if i.get('run_id'))
@@ -105,13 +105,30 @@ def format_summary(all_info, run_id=None, run_dir='.'):
 
     for k, v in sorted(all_info.items()):
 
+        # Fix the way barcodes are displayed
+        cell_barcodes = display_barcodes(v.get('barcodes', []))
+
         replines()
         replines(f"Slot *{k}*:")
         replines(f"  Cell ID: {v.get('cell_id', 'unknown')}")
         replines(f"  Sample : {v.get('ws_name', 'unknown')}")
+        replines(f"  Barcodes : {cell_barcodes}")
         replines(f"  Report : {v.get('report') or 'none yet'}")
 
     return replines
+
+def display_barcodes(bclist):
+
+    res = []
+
+    for bc in bclist:
+        mo = re.match(r"(.*)--(.*)", bc)
+        if mo and mo.group(1) == mo.group(2):
+            res.append(mo.group(1))
+        else:
+            res.append(bc)
+
+    return ",".join(sorted(res))
 
 def parse_args(*args):
     description = """ Makes a summary (in text format) for a run, by scanning the directory.
