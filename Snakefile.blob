@@ -1,4 +1,5 @@
 ## BLOB plotter rules ##
+# vim: ft=python
 
 # I'll copy the logic from Snakefile.common_denovo here
 
@@ -75,18 +76,33 @@ rule fasta_to_complexity:
     shell:
         "{TOOLBOX} dustmasker -level {params.level} -in {input} -outfmt fasta 2>/dev/null | count_dust.py > {output}"
 
-# Combine all the 100 blast reports into one
+# Combine all the 100 (or however many) blast reports into one
+# I'm filtering out repeated rows to reduce the size of the BLOB DB - there can
+# be a _lot_ of repeats so this may be worth running on the cluster.
 localrules: merge_blast_reports
+def i_merge_blast_reports(wildcards):
+    """Return a list of BLAST reports to be merged based upon how many chunks
+       were outputted by split_fasta_in_chunks.
+    """
+    chunks_list_file = checkpoints.split_fasta_in_chunks.get(**wildcards).output.list
+    with open(chunks_list_file) as fh:
+        fasta_chunks = [ l.rstrip('\n') for l in fh ]
+    # Munge the list of FASTA chunks to get the list of required BLAST chunks
+    return dict( bparts =
+                    [ re.sub(r'\.fasta_parts/', '.blast_parts/',
+                             re.sub(r'\.fasta$', '.bpart', c))
+                      for c in fasta_chunks ] )
+
 rule merge_blast_reports:
-    output: "{foo}.blast"
-    input: [ "{{foo}}.blast_part_{:04d}".format(n) for n in range(BLOB_CHUNKS) ]
+    output: "blob/{foo}.blast"
+    input:  unpack(i_merge_blast_reports)
     shell:
-        "cat {input} > {output}"
+        'LC_ALL=C ; ( for i in {input.bparts} ; do sort -u -k1,2 "$i" ; done ) > {output}'
 
 # BLAST a chunk. Note the 'blast_nt' wrapper determines the database to search.
 rule blast_chunk:
-    output: temp("{foo}.blast_part_{chunk}")
-    input: "{foo}.fasta_part_{chunk}"
+    output: temp("blob/{foo}.blast_parts/{chunk}.bpart")
+    input:  "blob/{foo}.fasta_parts/{chunk}.fasta"
     threads: 4
     resources:
         mem_mb = 24000,
@@ -100,29 +116,32 @@ rule blast_chunk:
            mv {output}.tmp {output}
         """
 
-# Split the FASTA in a fixed number of chunks. All files must be made, even if empty
-# {foo} is blob/{cell}.subreads or blob/{cell}.scraps
-rule split_fasta_in_chunks:
+# Split the FASTA into (at most) BLOB_CHUNKS chunks. The number may be less than BLOB_CHUNKS so this
+# is a checkpoint rule, and merge_blast_reports then responds to the variable number of outputs. Note
+# this will even 'split' a completely empty file if you ask it to, and make zero output files plus
+# an empty output.parts.
+checkpoint split_fasta_in_chunks:
     output:
-        parts = [ temp("{{foo}}.fasta_part_{:04d}".format(n)) for n in range(BLOB_CHUNKS) ],
-        list = "{foo}.fasta_parts"
-    input: "{foo}.fasta"
+        list = "blob/{foo}.fasta_parts_list",
+        parts = temp(directory("blob/{foo}.fasta_parts")),
+    input: "blob/{foo}.fasta"
     params:
         chunksize = BLOB_SUBSAMPLE // BLOB_CHUNKS
     shell:
-        """awk 'BEGIN {{n_seq=0;n_file=0;}} \
+        """mkdir {output.parts}
+           touch {output.parts}/list
+           awk 'BEGIN {{n_seq=0;n_file=0;}} \
                   /^>/ {{if(n_seq%{params.chunksize}==0){{ \
-                         file=sprintf("{wildcards.foo}.fasta_part_%04d", n_file); n_file++; \
-                         print file >> "{output.list}"; \
+                         file=sprintf("{output.parts}/part_%04d.fasta", n_file); n_file++; \
+                         print file >> "{output.parts}/list"; \
                        }} \
                        print >> file; n_seq++; next; \
                   }} \
                   {{ print >> file; }}' {input}
-           touch {output.list} {output.parts}
+           mv {output.parts}/list {output.list}
         """
 
 # Makes a blob db per FASTA using the complexity file as a COV file.
-# {foo} is {cell}.subreads or {cell}.scraps
 rule blob_db:
     output:
         json = "blob/{foo}.blobDB.json",

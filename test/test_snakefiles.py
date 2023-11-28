@@ -6,6 +6,7 @@ from unittest.mock import patch
 from glob import glob
 from io import StringIO
 import logging
+from pprint import pprint
 
 from snakemake.workflow import Workflow
 
@@ -29,13 +30,19 @@ class T(unittest.TestCase):
     def syntax_check(self, sf, mock_stdout):
         """ Check that I can load a given workflow OK
         """
-        wf = Workflow(sf, overwrite_config=dict( noyaml=True,
-                                                 workdir='.',
-                                                 rundir = '.',
-                                                 ignore_missing=True))
+        wf = Workflow(sf, overwrite_config=dict( noyaml  = True,
+                                                 workdir = '.',
+                                                 rundir  = '.',
+                                                 ignore_missing = True))
         wf.include(sf)
 
         self.assertTrue(len(wf.rules) > 1)
+
+        # Avoids a resource warning
+        try:
+            wf.sourcecache.runtime_cache.cleanup()
+        except Exception:
+            pass
 
 # This bit copied from test_base_mask_extractor in Illuminatus...
 # Now add the tests dynamically
@@ -44,10 +51,6 @@ for sf in "process_cells report".split():
 
     # Note the slightly contorted double-lambda syntax to make the closure.
     sfname = os.path.basename(snakefile).split('.')[1]
-
-    #if any (re.match(b+'$', sfname) for b in BLACKLIST):
-    #    continue
-
     setattr(T, 'test_sf_' + sfname, (lambda d: lambda self: self.syntax_check(d))(snakefile))
 
 

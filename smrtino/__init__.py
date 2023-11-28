@@ -6,7 +6,7 @@ from datetime import datetime
 from glob import glob as _glob
 
 # And some YAML enhancement
-from smrtino.yaml_ordered import yaml, yamlloader
+from smrtino.yaml_ordered import yaml, yamlloader, dictify
 from smrtino.aggregator import aggregator
 
 def glob(pattern):
@@ -104,11 +104,13 @@ def parse_run_name(name):
 
 # YAML convenience functions that use the ordered loader/saver
 # yamlloader is basically the same as my yaml_ordered hack. It will go away with Py3.7.
-def load_yaml(filename):
+def load_yaml(filename, dictify_result=False):
     """Load YAML from a file (not a file handle).
     """
     with open(filename) as yfh:
-        return yaml.ordered_load(yfh)
+        y = yaml.ordered_load(yfh)
+
+        return dictify(y) if dictify_result else y
 
 def dump_yaml(foo, filename=None):
     """Return YAML string and optionally dump to a file (not a file handle)."""

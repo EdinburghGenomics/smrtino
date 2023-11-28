@@ -47,3 +47,21 @@ class yaml:
         return real_yaml.dump(*args, Dumper=yamlloader.ordereddict.CSafeDumper, **kwargs)
 
 yamlloader.ordereddict.CSafeDumper.add_representer(defaultdict, real_yaml.dumper.SafeDumper.represent_dict)
+
+def dictify(s):
+    """Utility function to change all OrderedDict in a structure
+       into a dict.
+    """
+    if any(isinstance(s, t) for t in [str, int, float, bool]):
+        return s
+    try:
+        # Convert dict and dict-like things.
+        return {k: dictify(v) for k, v in s.items()}
+    except AttributeError:
+        try:
+            # List-like things that aren't strings
+            return [ dictify(i) for i in s ]
+        except Exception:
+            # Give up and convert s to a str
+            return str(s)
+

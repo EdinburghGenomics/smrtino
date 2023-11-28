@@ -29,7 +29,6 @@ from snakemake.io import Wildcards
 from glob import glob
 from smrtino import load_yaml, dump_yaml
 
-
 """ This is a recipe to process raw SMRT cells from the PacBio Revio,
     and start to calculate some stats.
 
@@ -51,11 +50,11 @@ if ( not os.path.dirname(workflow.snakefile) in os.environ['PATH'].split(':') an
 RUNDIR = config.get('rundir', 'pbpipeline/from')
 
 # Load the info prepared by scan_cells.py
-try:
-    SC = load_yaml(config.get("sc_data", "sc_data.yaml"))
-except Exception:
+if config.get('noyaml'):
     # Allow for cases where we just want to run one rule and don't care about the sc_data
     SC = dict(cells={})
+else:
+    SC = load_yaml(config.get("sc_data", "sc_data.yaml"), dictify_result=True)
 
 logger.info(f"SC =\n{SC!r}")
 
@@ -92,14 +91,15 @@ def copy_all_files(i, o, keys=None):
         shell("cp --no-preserve=all -Lv {infile} {outfile}")
 
 def link_all_files(i, o, keys=None):
-    """ Copying is not necessary if everything is on the same FS,
-        so have a symlink option. But probably we should have one
-        copy on /lustre-egdp and another on /lustre-gseg.
-        i and o are dicts of filenames with common keys, which
-        works for rule input/output with matched names
+    """ Copying is not necessary if everything is on the same FS, so have a symlink option.
+        But probably we should have one copy on /lustre-egdp and another on /lustre-gseg.
+        i and o are dicts of filenames with common keys, which works for rule
+        input/output with matched names
     """
     for (infile, outfile) in ( (i[k], o[k]) for k in (keys or o.keys()) ):
-        shell("ln -sn {infile} {outfile}")
+        # ln -r resolves out the symlink, so this nasty hack instead...
+        ifprefix = "../" * outfile.count("/")
+        shell("ln -sn {ifprefix}{infile} {outfile}")
 
 wildcard_constraints:
     cell = r"m\w+",
@@ -227,6 +227,9 @@ rule copy_reads:
     resources:
         nfscopy=1
     run:
+        # Un-silence sys.stderr in sub-jobs:
+        logger.quiet.discard('all')
+
         link_all_files(input, output, keys="bam pbi".split())
         copy_all_files(input, output, keys="xml".split())
         relativize_xml(output.xml)

@@ -141,3 +141,19 @@ think it helps me much.
 Hmmmm.
 
 Right, time to make a new "revio" branch in Git and start working on that.
+
+--- On 28th Nov. The Revio branch is being tested. We're using example runs:
+
+r84140_20231018_154254 (2 cells, using barcodes)
+r84140_20231030_134730 (1 cell, no barcodes)
+
+It looks like the Snakefile is running and doing all the bits. I need to:
+
+1) Check the report looks reasonable.
+2) Check that projects_ready.txt looks OK
+3) Check that get_pbdata_for_project.py works and links all the bits
+4) Check I'm still getting the stats_per_cell and stats_per_library
+   (note - we don't get this for Nanopore. Should we? I guess we can do it at the Experiment level in Hesiod)
+5) Make a test case for delivery
+6) Delivery. And remember to fix the Information.txt. Do we need to be able to deliver both Sequel and Revio?
+   Probably, yes.

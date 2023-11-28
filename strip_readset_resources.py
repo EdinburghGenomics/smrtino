@@ -6,7 +6,7 @@
 # 2) Prune out the pbds:ConsensusReadSet/pbbase:ExternalResources/pbbase:ExternalResource/pbbase:ExternalResources node
 # 3) Print the result
 
-import sys
+import sys, re
 import xml.etree.ElementTree as ET
 
 # What to get rid of...
@@ -27,8 +27,22 @@ def main(fh):
     for p in prune:
         remove_path(tree, None, p.split('/'))
 
+    chop_resourceids(tree.getroot())
+
+    print('<?xml version="1.0" encoding="utf-8"?>')
     tree.write(sys.stdout, "unicode")
     print()
+
+def chop_resourceids(elem):
+    """Walk the whole XML tree and if we see a ResourceId attribute that
+       starts with "../\w+_reads/" then chop that off.
+    """
+    if 'ResourceId' in elem.attrib:
+        elem.attrib['ResourceId'] = re.sub(r"^\.\./\w+_reads/", "", elem.attrib['ResourceId'])
+
+    # Drill down
+    for child in elem:
+        chop_resourceids(child)
 
 def remove_path(pnode, ppnode, path):
     """Remove all nodes matching the path. For consistency, apply at all levels.

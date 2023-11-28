@@ -3,7 +3,7 @@ import sys, os, re
 import unittest
 from collections import OrderedDict, defaultdict
 
-from smrtino.yaml_ordered import yaml
+from smrtino.yaml_ordered import yaml, dictify
 
 class TestYAMLOrderded(unittest.TestCase):
 
@@ -46,6 +46,18 @@ class TestYAMLOrderded(unittest.TestCase):
         #print(repr(adefdict_restored))
         self.assertEqual(type(adefdict_restored), dict)
         self.assertEqual(adefdict_restored, dict(foo=0, bar=1, baz=2))
+
+    def test_dictify(self):
+
+        atestdict = dict( foo = defaultdict(int),
+                          bar = OrderedDict([('x', 123.456),('y',789.001)]),
+                          baz = range(5) )
+
+        self.assertEqual( dictify(atestdict),
+                          dict( foo = dict(),
+                                bar = dict(x = 123.456, y = 789.001),
+                                baz = [0, 1, 2, 3, 4] ) )
+
 
 if __name__ == '__main__':
     unittest.main()
