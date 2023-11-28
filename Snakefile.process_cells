@@ -71,13 +71,13 @@ def find_source_file(**args):
         try:
             if wc.barcode == "unassigned":
                 # Special case when "unassigned" is used as a barcode name.
-                fn = SC['cells'][wc.cell]['unassigned'][wc.part][wc.extn]
+                fn = SC['cells'][wc.cell]['unassigned'][wc.part][wc.fmt]
             else:
-                fn = SC['cells'][wc.cell]['barcodes'][wc.barcode][wc.part][wc.extn]
+                fn = SC['cells'][wc.cell]['barcodes'][wc.barcode][wc.part][wc.fmt]
 
         except AttributeError:
             # No barcode. Must be the metadata file.
-            fn = SC['cells'][wc.cell][wc.part]
+            fn = SC['cells'][wc.cell][wc.fmt]
 
         return f"{RUNDIR}/{fn}"
 
@@ -141,7 +141,7 @@ def i_one_barcode_info(wc):
                                **barcodes )
     '''
     cell = wc.cell
-    barcode = wc.bam
+    barcode = wc.bc
 
     # parts = SC['cells'][cell]['parts']
 
@@ -170,8 +170,8 @@ def i_one_barcode_info(wc):
 
     # Blobs or no? Only on the HiFi reads.
     if str(config.get('blobs', '1')) != '0':
-        res['blobs'].append(f"blob/{cell}/{barcode}/{cell}.hifi_reads.{barcode}.plots.yaml")
-        res['taxon'].append(f"blob/{cell}/{barcode}/{cell}.hifi_reads.{barcode}.species.txt")
+        res['blobs'].append(f"blob/{cell}.hifi_reads.{barcode}.plots.yaml")
+        res['taxon'].append(f"blob/{cell}.hifi_reads.{barcode}.species.txt")
 
     return res
 
@@ -191,8 +191,8 @@ rule one_barcode_info:
     shell:
        # What needs to go into the YML? Stuff from the XML and also some stuff from the
        # stats, maybe? At present the script will discover extra files automagically.
-       r"""compile_barcode_info.py {input.xml[0]} \
-             --runxml {input.runxml} \
+       r"""compile_bc_info.py {input.xml[0]} \
+             --runxml {input.metaxml} \
              --stats  {input.cstats} \
              --taxon  {input.taxon} \
              --plots  {input.blobs} > {output}
@@ -238,7 +238,7 @@ rule copy_meta:
     input:
         meta   = find_source_file(fmt="meta")
     shell:
-        "sed '1s/utf-16/utf-8/' {infile} > {outfile}"
+        "sed '1s/utf-16/utf-8/' {input.meta} > {output.meta}"
 
 # This script produces some headline stats as well as a histogram we can use
 # (but currently we don't)
