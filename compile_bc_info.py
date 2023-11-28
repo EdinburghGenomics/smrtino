@@ -2,9 +2,9 @@
 import os, sys
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-import yaml
 
 from smrtino.ParseXML import get_readset_info, get_runmetadata_info
+from smrtino import load_yaml, dump_yaml
 
 """ Emits .info.yaml files for SMRT cells by parsing the xml files from
     SMRT link, among other things. This script, along with make_report.py,
@@ -22,7 +22,7 @@ def main(args):
 
     info = gen_info(args)
 
-    print(yaml.safe_dump(info, default_flow_style=False), end='')
+    dump_yaml(info)
 
 def gen_info(args):
     # Start with the consensusreadset.xml file
@@ -39,8 +39,7 @@ def gen_info(args):
 
     # Add plots if we have them
     for p in args.plots or []:
-        with open(p) as yfh:
-            info.setdefault('_plots', []).append(yaml.safe_load(yfh))
+        info.setdefault('_plots', []).append(load_yaml(p, dictify_result=True))
 
     # Add taxon if supplied
     for t in args.taxon or []:
@@ -51,13 +50,14 @@ def gen_info(args):
     for s in args.stats or []:
         filename = '-'
         if s.endswith(".cstats.yaml"):
-            filename = s.split('.')[-3].capitalize()
+            barcode = s.split('.')[-3]
+            hifi_or_fail = s.split('.')[-4].capitalize()
+            filename = f"{hifi_or_fail} for {barcode}"
 
-        with open(s) as sfh:
-            stats = yaml.safe_load(sfh)
-            stats['File'] = filename
-            stats['_headings'] = ['File'] + stats['_headings']
-            info.setdefault('_cstats', []).append(stats)
+        stats = load_yaml(s, dictify_result=True)
+        stats['File'] = filename
+        stats['_headings'] = ['File'] + stats['_headings']
+        info.setdefault('_cstats', []).append(stats)
 
     # Return the info dictionary
     return info

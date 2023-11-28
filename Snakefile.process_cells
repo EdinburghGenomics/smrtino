@@ -54,9 +54,9 @@ if config.get('noyaml'):
     # Allow for cases where we just want to run one rule and don't care about the sc_data
     SC = dict(cells={})
 else:
-    SC = load_yaml(config.get("sc_data", "sc_data.yaml"), dictify_result=True)
+    SC = load_yaml(config.get("sc_data", "sc_data.yaml"))
 
-logger.info(f"SC =\n{SC!r}")
+logger.info(f"SC loaded with cells: {list(SC['cells'])}")
 
 def find_source_file(**args):
     """ Shim to get me a source file by looking into SC.
@@ -179,10 +179,13 @@ rule one_cell_info:
     output: "{cell}.info.yaml"
     input:  unpack(i_one_cell_info)
     shell:
-       r"""combine_cell_info.py \
+       # The output here is just going to be a YAML file linking to all the other
+       # YAML files - there is no point in copying the actual data over.
+       r"""compile_cell_info.py \
                 --sc_data {input.sc_data} \
                 --unass {input.unass} \
-                {input.bc} > {output}
+                {input.bc} \
+                > {output}
         """
 
 rule one_barcode_info:
@@ -195,7 +198,8 @@ rule one_barcode_info:
              --runxml {input.metaxml} \
              --stats  {input.cstats} \
              --taxon  {input.taxon} \
-             --plots  {input.blobs} > {output}
+             --plots  {input.blobs} \
+             > {output}
         """
 
 # On GSEG this had to be on the login node as the worker nodes can't see FluidFS.
@@ -255,15 +259,18 @@ rule get_contig_stats_yaml:
 
 # Export the HiFi reads (or any BAM file) as FASTQ. Assumes all FASTQ files are derived from
 # BAM files.
+# My logic on using $(( {threads} / 2 }} for both compression and decompression is that
+# decompression is faster but the FASTQ (which has no kinetics) is much smaller. But I've
+# not really tested if this is optimal.
 rule bam_to_fastq:
     output: "{foo}.fastq.gz"
     input:  "{foo}.bam"
-    threads: 4
+    threads: 16
     resources:
-        mem_mb = 24000,
-        n_cpus = 4,
+        mem_mb = 108000,
+        n_cpus = 16,
     shell:
-        "{TOOLBOX} samtools fastq {input} | pigz -c -n -p {threads} > {output}"
+        "{TOOLBOX} samtools fastq -@ $(( {threads} / 2 )) {input} | pigz -c -n -p $(( {threads} / 2 }} > {output}"
 
 # Make a .count file for the FASTQ file
 rule count_fastq:

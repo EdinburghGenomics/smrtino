@@ -1,6 +1,8 @@
 ## BLOB plotter rules ##
 # vim: ft=python
 
+from smrtino import load_yaml, dump_yaml
+
 # I'll copy the logic from Snakefile.common_denovo here
 
 # Default is that there will be 10000 sequences subsampled
@@ -34,6 +36,9 @@ rule list_blob_plots:
                                  thumb = ['.__thumb', ''] ),
         subs = "blob/{cell}.{part}.{barcode}+sub" + str(BLOB_SUBSAMPLE) + ".fasta",
     run:
+        # Un-silence sys.stderr in sub-jobs:
+        logger.quiet.discard('all')
+
         wc = wildcards
         # We want to know how big the subsample actually was, so check the FASTQ
         count_from_fastq = int(next(shell("grep -o '^>' {input.subs} | wc -l", iterable=True)))
@@ -48,8 +53,8 @@ rule list_blob_plots:
                                                 barcode = [wc.barcode],
                                                 taxlevel = BLOB_LEVELS,
                                                 extn = "read_cov.cov0 cov0".split()) )
-        with open(output[0], 'w') as ofh:
-            print(yaml.safe_dump([plots]), file=ofh)
+
+        dump_yaml([plots], filename=str(output))
 
 rule get_blob_species:
     output: "blob/{cell}.{part}.{barcode}.species.txt"
@@ -62,8 +67,12 @@ rule get_blob_species:
 rule bam_to_subsampled_fasta:
     output: "blob/{cell}.{part}.{barcode}+sub{n}.fasta"
     input:  "{cell}/{barcode}/{cell}.{part}.{barcode}.bam"
+    threads: 8
+    resources:
+        mem_mb = 44000,
+        n_cpus = 8,
     shell:
-        "{TOOLBOX} samtools fasta {input} | {TOOLBOX} seqtk sample - {wildcards.n} | sed 's,/,_,g' > {output}"
+        "{TOOLBOX} samtools fasta -@ {threads} {input} | {TOOLBOX} seqtk sample - {wildcards.n} | sed 's,/,_,g' > {output}"
 
 
 # Makes a .complexity file for our FASTA file

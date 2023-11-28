@@ -48,7 +48,7 @@ class T(unittest.TestCase):
         """Test the equivalent of the command:
 
            $ compile_bc_info.py m64175e_221028_133532.consensusreadset.xml \
-                                -s m64175e_221028_133532.*reads.cstats.yaml \
+                                -s m64175e_221028_133532.*reads.foo.cstats.yaml \
                                 -p m64175e_221028_133532.*plots.yaml
 
            Expected output is m64175e_221028_133532.info.yaml
@@ -57,8 +57,8 @@ class T(unittest.TestCase):
         cellid = "m64175e_221028_133532"
         args = self.get_mock_args()
         args.xmlfile = [f"{ddir}/{cellid}.consensusreadset.xml"]
-        args.stats.extend([ f"{ddir}/{cellid}.reads.cstats.yaml",
-                            f"{ddir}/{cellid}.hifi_reads.cstats.yaml" ])
+        args.stats.extend([ f"{ddir}/{cellid}.reads.foo.cstats.yaml",
+                            f"{ddir}/{cellid}.hifi_reads.foo.cstats.yaml" ])
         args.plots.extend([ f"{ddir}/{cellid}.histoplots.yaml",
                             f"{ddir}/{cellid}.blobplots.yaml" ])
 
