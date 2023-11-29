@@ -22,7 +22,7 @@ def main(args):
 
     info = gen_info(args)
 
-    dump_yaml(info)
+    dump_yaml(info, fh=sys.stdout)
 
 def gen_info(args):
     # Start with the consensusreadset.xml file

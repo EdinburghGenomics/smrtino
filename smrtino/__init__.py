@@ -112,9 +112,11 @@ def load_yaml(filename, dictify_result=False):
 
         return dictify(y) if dictify_result else y
 
-def dump_yaml(foo, filename=None):
-    """Return YAML string and optionally dump to a file (not a file handle)."""
+def dump_yaml(foo, filename=None, fh=None):
+    """Return YAML string and optionally dump to a file (or a file handle)."""
     ydoc = yaml.safe_dump(foo, default_flow_style=False)
+    if fh:
+        print(ydoc, file=fh, end='')
     if filename:
         with open(filename, 'w') as yfh:
             print(ydoc, file=yfh, end='')
