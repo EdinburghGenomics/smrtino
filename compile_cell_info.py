@@ -19,7 +19,19 @@ def main(args):
 
     info = gen_info(args)
 
+    if args.extract_ids:
+        info.update(extract_ids(args.bcfiles[0]))
+
     dump_yaml(info, fh=sys.stdout)
+
+def extract_ids(yaml_file):
+    """Pull some bits needed for link_to_smrtlink.py
+    """
+
+    ydata = load_yaml(yaml_file)
+
+    return { k: ydata[k]
+             for k in "run_id cell_id cell_uuid".split() }
 
 def gen_info(args):
 
@@ -55,6 +67,8 @@ def parse_args(*args):
                             help="Print more verbose debugging messages.")
     argparser.add_argument("-c", "--check_exists", action="store_true",
                             help="Check that the files exist.")
+    argparser.add_argument("-x", "--extract_ids", action="store_true",
+                            help="Add the run_id, cell_id, cell_uuid from the first info file")
 
     return argparser.parse_args(*args)
 

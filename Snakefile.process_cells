@@ -181,7 +181,7 @@ rule one_cell_info:
     shell:
        # The output here is just going to be a YAML file linking to all the other
        # YAML files - there is no point in copying the actual data over.
-       r"""compile_cell_info.py \
+       r"""compile_cell_info.py -x \
                 --sc_data {input.sc_data} \
                 --unass {input.unass} \
                 {input.bc} \

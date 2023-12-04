@@ -104,9 +104,12 @@ def parse_run_name(name):
 
 # YAML convenience functions that use the ordered loader/saver
 # yamlloader is basically the same as my yaml_ordered hack. It will go away with Py3.7.
-def load_yaml(filename, dictify_result=False):
+def load_yaml(filename, dictify_result=False, relative_to=None):
     """Load YAML from a file (not a file handle).
     """
+    if relative_to:
+        filename = os.path.join(os.path.dirname(relative_to), filename)
+
     with open(filename) as yfh:
         y = yaml.ordered_load(yfh)
 

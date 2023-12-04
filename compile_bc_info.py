@@ -37,6 +37,9 @@ def gen_info(args):
 
     info['_filename'] = os.path.basename(xmlfile)
 
+    # Get the barcode from the file name
+    info['barcode'] = info['_filename'].split('.')[-3]
+
     # Add plots if we have them
     for p in args.plots or []:
         info.setdefault('_plots', []).append(load_yaml(p, dictify_result=True))
@@ -48,15 +51,16 @@ def gen_info(args):
 
     # Add stats if we have them
     for s in args.stats or []:
-        filename = '-'
+        hifi_or_fail = "-"
+        barcode = "-"
         if s.endswith(".cstats.yaml"):
             barcode = s.split('.')[-3]
             hifi_or_fail = s.split('.')[-4].capitalize()
-            filename = f"{hifi_or_fail} for {barcode}"
 
         stats = load_yaml(s, dictify_result=True)
-        stats['File'] = filename
-        stats['_headings'] = ['File'] + stats['_headings']
+        stats['Barcode'] = barcode
+        stats['File'] = hifi_or_fail
+        stats['_headings'] = ['Barcode', 'File'] + stats['_headings']
         info.setdefault('_cstats', []).append(stats)
 
     # Return the info dictionary

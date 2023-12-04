@@ -25,6 +25,16 @@ def load_input(yaml_file, links_file=None):
     if not yaml_info.get('cell_id'):
         exit("info.yaml file must include a cell_id - eg. m54321_200211_123456")
 
+    # Some of the items in the YAML will be references to other YAML files,
+    # but we only need to look down one level.
+    for k, v in yaml_info.items():
+        if type(v) == str and v.startswith("@"):
+            yaml_info[k] = load_yaml(v[1:], relative_to=yaml_file)
+        elif type(v) == list:
+            for idx in range(len(v)):
+                if v[idx].startswith("@"):
+                    v[idx] = load_yaml(v[idx][1:], relative_to=yaml_file)
+
     if links_file:
         yaml_info['_links'] = load_yaml(links_file)
 
@@ -79,8 +89,8 @@ def main(args):
     # And some more of that
     status_info = load_status_info(args.status)
 
-    # Re-jig the status_info into the format we want to display in the
-    # "About this run" section.
+    # Re-jig the status_info dict into the format we want to display in the
+    # "About the whole run" section.
     run_status = rejig_status_info( status_info, yaml_data )
 
     rep = format_report( yaml_data,
@@ -214,24 +224,59 @@ def format_cell(cdict, cell_link=None):
             # Add the hyperlink
             rep(f"<dt>{k}</dt>")
             rep(f"<dd>[{escape_md(v)}]({cell_link})</dd>")
+        elif k == 'barcodes':
+            rep(f"<dt>{k}</dt>")
+            bc_str = ' ,'.join([b.get('barcode', "???") for b in v])
+            rep(f"<dd>{escape_md(bc_str)}</dd>")
+        elif type(v) != str:
+            # Leave this for now
+            pass
         elif not(k.startswith('_')):
             rep(f"<dt>{k}</dt>")
             rep(f"<dd>{escape_md(v)}</dd>")
     # If there is no project, we should make this explicit
     if not 'ws_project' in cdict:
         rep("<dt>ws_project</dt>")
-        rep("<dd><span style='color: Tomato;'>None</span></dd>")
+        projects_str = ', '.join(sorted(set([ b.get('ws_project', '???')
+                                              for b in cdict.get('barcodes', [])
+                                            ])))
+        if projects_str:
+            ep(f"<dd>{escape_md(projects_str)}</dd>")
+        else:
+            rep("<dd><span style='color: Tomato;'>None</span></dd>")
     rep('</dl>')
 
     # Now add the stats table for stuff produced by fasta_stats.py
-    if cdict.get('_cstats'):
+    # This needs to be compiled for all barcodes plus unassigned
+    all_cstats = [ stats_line
+                   for bc in cdict.get('barcodes', [])
+                   for stats_line in bc.get('_cstats', []) ]
+    if cdict.get('unassigned'):
+        all_cstats.extend(cdict['unassigned'].get('_cstats', []))
+    if all_cstats:
         rep('', *make_table(cdict['_cstats']))
 
-    rep("", "# SMRT cell QC", "")
+    # Now the per-barcode formatting
+    for bc in cdict.get('barcodes', []):
+        format_per_barcode(bc, aggr=rep)
+
+    if cdict.get('unassigned'):
+        format_per_barcode(cdict['unassigned'], aggr=rep)
+
+    return rep
+
+def format_per_barcode(bc, aggr):
+    """Add the plots or whatever for a single barcode to the report.
+
+       aggr is an active aggregator object.
+    """
+    rep = aggr
+
+    rep("", f"# Barcode {bc['barcode']} QC", "")
 
     # Now add the blob and histo plots. The input data defines the plot order
     # and placement.
-    for plot_section in cdict.get('_plots', []):
+    for plot_section in bc.get('_plots', []):
         for plot_group in plot_section:
             rep(f"\n### {plot_group['title']}\n")
 
@@ -245,6 +290,7 @@ def format_cell(cdict, cell_link=None):
                     ))
                 rep("</div>")
 
+    # Return val is redundant since the lines will be added to the report.
     return rep
 
 def make_table(rows):

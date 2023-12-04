@@ -9,6 +9,7 @@ import yaml
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino.SMRTLink import SMRTLinkClient
+from smrtino import load_yaml
 
 """ I want to return something like...
 
@@ -29,13 +30,12 @@ def main(args):
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
 
     # Load that YAML file
-    with open(args.info_yaml) as yfh:
-        info_yaml = yaml.safe_load(yfh)
+    info_yaml = load_yaml(args.info_yaml)
 
     res = dict( run_dir = info_yaml['run_id'],
                 cell_dir = info_yaml['cell_id'],
                 cell_uuid = info_yaml.get('cell_uuid'),
-                cell_type = info_yaml.get('_readset_type') )
+                cell_type = info_yaml.get('_readset_type', "ccsreads") )
 
     if args.rc_section == 'none':
         L.warning("Running in no-connection mode as rc_section==none")
