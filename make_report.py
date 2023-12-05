@@ -241,7 +241,7 @@ def format_cell(cdict, cell_link=None):
                                               for b in cdict.get('barcodes', [])
                                             ])))
         if projects_str:
-            ep(f"<dd>{escape_md(projects_str)}</dd>")
+            rep(f"<dd>{escape_md(projects_str)}</dd>")
         else:
             rep("<dd><span style='color: Tomato;'>None</span></dd>")
     rep('</dl>')
@@ -254,7 +254,7 @@ def format_cell(cdict, cell_link=None):
     if cdict.get('unassigned'):
         all_cstats.extend(cdict['unassigned'].get('_cstats', []))
     if all_cstats:
-        rep('', *make_table(cdict['_cstats']))
+        rep('', *make_table(all_cstats))
 
     # Now the per-barcode formatting
     for bc in cdict.get('barcodes', []):
@@ -272,7 +272,7 @@ def format_per_barcode(bc, aggr):
     """
     rep = aggr
 
-    rep("", f"# Barcode {bc['barcode']} QC", "")
+    rep("", f"# QC for barcode {bc['barcode']}", "")
 
     # Now add the blob and histo plots. The input data defines the plot order
     # and placement.
@@ -316,8 +316,8 @@ def make_table(rows):
     return res
 
 def parse_args(*args):
-    description = """ Makes a report (in PanDoc format) for a run, by compiling the info from the
-                      YAML files and also any extra info discovered.
+    description = """Makes a report (in PanDoc format) for a run, by compiling the info from the
+                     YAML files and also any extra info discovered.
                   """
     argparser = ArgumentParser( description=description,
                                 formatter_class = ArgumentDefaultsHelpFormatter )

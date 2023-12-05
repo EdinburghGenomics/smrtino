@@ -247,15 +247,19 @@ rule copy_meta:
     shell:
         "sed '1s/utf-16/utf-8/' {input.meta} > {output.meta}"
 
-# This script produces some headline stats as well as a histogram we can use
+# This script produces some headline stats as well as a histogram we could use
 # (but currently we don't)
-rule get_contig_stats_yaml:
+rule get_cstats_yaml:
     output:
         yaml = "{bam}.cstats.yaml",
         histo = "histo/{bam}.length_histo.tsv"
     input:  "{bam}.bam"
+    threads: 6
+    resources:
+        mem_mb = 36000,
+        n_cpus = 6,
     shell:
-        "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta {input}) > {output.yaml}"
+        "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta -@ {threads} {input}) > {output.yaml}"
 
 # Export the HiFi reads (or any BAM file) as FASTQ. Assumes all FASTQ files are derived from
 # BAM files.

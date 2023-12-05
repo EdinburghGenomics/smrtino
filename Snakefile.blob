@@ -45,14 +45,17 @@ rule list_blob_plots:
 
         # I need to emit the plots in order in pairs. Unfortunately expand() won't quite
         # cut it here but I can make a nested list comprehension.
+        plot_files = [ expand( "{cell}.{part}.{barcode}.{taxlevel}.{extn}.png",
+                               cell     = [wc.cell],
+                               part     = [wc.part],
+                               barcode  = [wc.barcode],
+                               taxlevel = BLOB_LEVELS,
+                               extn     = [extn] )
+                       for extn in "read_cov.cov0 cov0".split() ]
+
         plots = dict(title = f"Taxonomy for {wc.part} {wc.barcode} ({count_from_fastq} sequences)"
                              f" by {', '.join(BLOB_LEVELS)}",
-                     files = expand("{cell}.{part}.{barcode}.{taxlevel}.{extn}.png",
-                                                cell = [wc.cell],
-                                                part = [wc.part],
-                                                barcode = [wc.barcode],
-                                                taxlevel = BLOB_LEVELS,
-                                                extn = "read_cov.cov0 cov0".split()) )
+                     files = plot_files )
 
         dump_yaml([plots], filename=str(output))
 

@@ -31,7 +31,7 @@ def extract_ids(yaml_file):
     ydata = load_yaml(yaml_file)
 
     return { k: ydata[k]
-             for k in "run_id cell_id cell_uuid".split() }
+             for k in "run_id run_slot cell_id cell_uuid".split() }
 
 def gen_info(args):
 
