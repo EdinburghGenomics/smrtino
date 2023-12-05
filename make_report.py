@@ -226,7 +226,7 @@ def format_cell(cdict, cell_link=None):
             rep(f"<dd>[{escape_md(v)}]({cell_link})</dd>")
         elif k == 'barcodes':
             rep(f"<dt>{k}</dt>")
-            bc_str = ' ,'.join([b.get('barcode', "???") for b in v])
+            bc_str = ', '.join([b.get('barcode', "???") for b in v])
             rep(f"<dd>{escape_md(bc_str)}</dd>")
         elif type(v) != str:
             # Leave this for now
@@ -237,14 +237,15 @@ def format_cell(cdict, cell_link=None):
     # If there is no project, we should make this explicit
     if not 'ws_project' in cdict:
         rep("<dt>ws_project</dt>")
-        projects_str = ', '.join(sorted(set([ b.get('ws_project', '???')
+        projects_str = ', '.join(sorted(set([ b['ws_project']
                                               for b in cdict.get('barcodes', [])
+                                              if 'ws_project' in b
                                             ])))
         if projects_str:
             rep(f"<dd>{escape_md(projects_str)}</dd>")
         else:
             rep("<dd><span style='color: Tomato;'>None</span></dd>")
-    rep('</dl>')
+    rep("</dl>")
 
     # Now add the stats table for stuff produced by fasta_stats.py
     # This needs to be compiled for all barcodes plus unassigned
@@ -270,15 +271,24 @@ def format_per_barcode(bc, aggr):
 
        aggr is an active aggregator object.
     """
-    rep = aggr
+    rep = aggr or aggregator()
 
     rep("", f"# QC for barcode {bc['barcode']}", "")
+
+    # Info that is barcode-specific
+    # TODO - maybe the list of headings should be in the YAML itself?
+    rep('<dl class="dl-horizontal">')
+    for k in "readset_type ws_project ws_name ws_desc guessed_taxon".split():
+        if k in bc:
+            rep(f"<dt>{k}</dt>")
+            rep(f"<dd>{escape_md(bc.get(k,''))}</dd>")
+    rep("</dl>")
 
     # Now add the blob and histo plots. The input data defines the plot order
     # and placement.
     for plot_section in bc.get('_plots', []):
         for plot_group in plot_section:
-            rep(f"\n### {plot_group['title']}\n")
+            rep("", f"\n### {plot_group['title']}\n")
 
             # plot_group['files'] will be a list of lists, so plot
             # each list a s a row.

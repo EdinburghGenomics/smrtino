@@ -1,5 +1,6 @@
 _cstats:
-- File: Reads for foo
+- Barcode: foo
+  File: Reads
   GC %: 58.41320451989805
   Max read length: 356691
   Mean length: 5714.027579896195
@@ -7,6 +8,7 @@ _cstats:
   Reads: 6482693
   Total bases: 37042286594
   _headings:
+  - Barcode
   - File
   - Max read length
   - Reads
@@ -14,7 +16,8 @@ _cstats:
   - N50
   - GC %
   - Mean length
-- File: Hifi_reads for foo
+- Barcode: foo
+  File: Hifi_reads
   GC %: 41.451156915931506
   Max read length: 6831
   Mean length: 1273.6169079816625
@@ -22,6 +25,7 @@ _cstats:
   Reads: 3996160
   Total bases: 5089576943
   _headings:
+  - Barcode
   - File
   - Max read length
   - Reads

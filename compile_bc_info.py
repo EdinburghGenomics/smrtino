@@ -39,6 +39,9 @@ def gen_info(args):
 
     # Get the barcode from the file name
     info['barcode'] = info['_filename'].split('.')[-3]
+    # But if that just gives us the cell ID then ignore it
+    if info['barcode'] == info['cell_id']:
+        del info['barcode']
 
     # Add plots if we have them
     for p in args.plots or []:

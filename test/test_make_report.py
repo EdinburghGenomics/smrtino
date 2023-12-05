@@ -18,7 +18,7 @@ VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 # from lib_or_script import functions
 from make_report import ( make_table, format_cell, blockquote, format_report,
-                          load_input,
+                          format_per_barcode, load_input,
                           get_pipeline_metadata, load_status_info, rejig_status_info,
                           escape_md )
 
@@ -80,13 +80,25 @@ class T(unittest.TestCase):
                          <dt>ws_project</dt>
                          <dd><span style='color: Tomato;'>None</span></dd>
                          </dl>
-
-                         # SMRT cell QC
                       """)
 
         res = format_cell(dict())
-        self.assertEqual("\n".join(res), expected)
+        self.assertEqual("\n".join(res) + "\n", expected)
 
+    def test_format_barcode(self):
+        """Another function that makes PanDoc output.
+           Again, test with minimal input for now.
+        """
+        expected = dd("""\
+
+                         # QC for barcode x
+
+                         <dl class="dl-horizontal">
+                         </dl>
+                      """)
+
+        res = format_per_barcode(dict(barcode="x"), None)
+        self.assertEqual("\n".join(res) + "\n", expected)
 
     def test_blockquote(self):
         expected = dd("""\
@@ -100,7 +112,10 @@ class T(unittest.TestCase):
     def test_format_report(self):
         """This is a complex function but we'll at least check that the base case works.
         """
-        empty_rep  = format_report( dict(cell_id="test_cell_id"),
+        empty_bc = dict( barcode = "bc1",
+                         ws_name = "test_ws_name" )
+        empty_rep  = format_report( dict( cell_id = "test_cell_id",
+                                          barcodes = [empty_bc] ),
                                     pipedata = dict(),
                                     run_status = dict(),
                                     rep_time = datetime(2000,11,2) )
@@ -121,14 +136,20 @@ class T(unittest.TestCase):
             # SMRT cell info
 
             <dl class="dl-horizontal">
+            <dt>barcodes</dt>
+            <dd>bc1</dd>
             <dt>cell_id</dt>
             <dd>test\\_cell\\_id</dd>
             <dt>ws_project</dt>
             <dd><span style='color: Tomato;'>None</span></dd>
             </dl>
 
-            # SMRT cell QC
+            # QC for barcode bc1
 
+            <dl class="dl-horizontal">
+            <dt>ws_name</dt>
+            <dd>test\_ws\_name</dd>
+            </dl>
 
             *~~~*
             """)
