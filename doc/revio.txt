@@ -157,3 +157,10 @@ It looks like the Snakefile is running and doing all the bits. I need to:
 5) Make a test case for delivery
 6) Delivery. And remember to fix the Information.txt. Do we need to be able to deliver both Sequel and Revio?
    Probably, yes.
+
+1) DONE
+2) Nope... OK now it is.
+3) Will get to this!
+4) ditto
+5) I'll do the release first and process the older runs.
+6) Aye.

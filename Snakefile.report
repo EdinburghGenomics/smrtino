@@ -51,6 +51,23 @@ def scan_cells(filter_by_config=True):
 
     return [ (v['slot'], k) for k, v in all_info.items() ]
 
+def find_projects_from_yaml(filename):
+    """Get all the projects from all the barcodes.
+    """
+    ydata = load_yaml(filename)
+
+    if 'barcodes' in ydata:
+        # Resolve the @ lines
+        for idx in range(len(ydata['barcodes'])):
+            v = ydata['barcodes'][idx]
+            if type(v) == str and v.startswith("@"):
+                ydata['barcodes'][idx] = load_yaml(v[1:], relative_to=filename)
+
+        # What should I do here if some barcodes have a project and others do not?
+        # I'll make it an error for now.
+        return (bc['ws_project'] for bc in ydata['barcodes'])
+    else:
+        return (ydata['ws_project'],)
 
 # Global wildcard patterns
 wildcard_constraints:
@@ -75,12 +92,15 @@ rule list_projects:
     input:  lambda wc: expand("{c[1]}.info.yaml", c=scan_cells(False))
     priority: 100
     run:
+        # Un-silence sys.stderr in sub-jobs:
+        logger.quiet.discard('all')
+
         plist = set()
         for y in input:
             try:
-                plist.add(load_yaml(y)['ws_project'])
+                plist.update(find_projects_from_yaml(y))
             except KeyError:
-                logger.error("No ws_project in {} - indicates no 5-digit project name found in readset XML".format(y))
+                logger.error(f"No ws_project in {y} - indicates no 5-digit project name found in readset XML")
         with open(output[0], "w") as ofh:
             print( *sorted(plist), file=ofh, sep='\n' )
 
@@ -100,6 +120,9 @@ rule smrtlink_pdf_report:
     output: "all_reports/pdf/{cell}.pdf"
     input:  "{cell}.link.yaml"
     run:
+        # Un-silence sys.stderr in sub-jobs:
+        logger.quiet.discard('all')
+
         # Setting SMRTLINKRC_SECTION=none will cause an empty report file to be made
         cell_uuid = load_yaml(str(input))['cell_uuid']
         shell("smrtlink_pdf_report.py -o {output} --empty_on_missing {cell_uuid}")
