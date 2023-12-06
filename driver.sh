@@ -247,7 +247,8 @@ action_cell_ready(){
 
       always_run=(one_cell_info)
       Snakefile.process_cells -R "${always_run[@]}" \
-                              --config cells="$CELLSREADY" blobs="${BLOBS:-1}" -p |& plog
+                              --config cells="$CELLSREADY" blobs="${BLOBS:-1}" cleanup=1 \
+                              -p |& plog
 
       # Now we can have a report. This bit runs locally.
       plog "Processing done. Now for Snakefile.report"

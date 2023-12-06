@@ -213,6 +213,12 @@ rule blob_plot_png:
             {TOOLBOX} convert {output.plotr[0]} -resize {params.thumbsize}'>' {output.plotr[1]}
         """
 
+# The blob/*.fasta_parts directories are not getting removed. I think this is because they are outputs of
+# a checkpoint rule. Remove them here.
+onsuccess:
+    logger.quiet.discard('all')
+    if config.get('cleanup'):
+        shell("rm -rvf ./blob/*.fasta_parts")
 
 ## End of BLOB plotter rules ##
 
