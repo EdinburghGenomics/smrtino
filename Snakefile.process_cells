@@ -274,7 +274,10 @@ rule bam_to_fastq:
         mem_mb = 108000,
         n_cpus = 16,
     shell:
-        "{TOOLBOX} samtools fastq -@ $(( {threads} / 2 )) {input} | pigz -c -n -p $(( {threads} / 2 )) > {output}"
+       r"""sam_threads=$((  ({threads} > 4) ? ({threads} / 4)     : 1 ))
+           pigz_threads=$(( ({threads} > 2) ? (3 * {threads} / 4) : 1 ))
+           {TOOLBOX} samtools fastq -@ $sam_threads {input} | pigz -c -n -p $pigz_threads > {output}
+        """
 
 # Make a .count file for the FASTQ file
 rule count_fastq:
