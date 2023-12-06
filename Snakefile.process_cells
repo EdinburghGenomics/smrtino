@@ -107,7 +107,7 @@ wildcard_constraints:
 
 # Main target is one yaml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
-localrules: main, one_cell_info
+localrules: main, one_cell_info, one_barcode_info, copy_meta
 rule main:
     input:
         yaml     = [ f"{c}.info.yaml" for c in SC['cells'] ]
@@ -274,7 +274,7 @@ rule bam_to_fastq:
         mem_mb = 108000,
         n_cpus = 16,
     shell:
-        "{TOOLBOX} samtools fastq -@ $(( {threads} / 2 )) {input} | pigz -c -n -p $(( {threads} / 2 }} > {output}"
+        "{TOOLBOX} samtools fastq -@ $(( {threads} / 2 )) {input} | pigz -c -n -p $(( {threads} / 2 )) > {output}"
 
 # Make a .count file for the FASTQ file
 rule count_fastq:

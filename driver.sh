@@ -228,7 +228,8 @@ action_cell_ready(){
     # Log the start in a way a script can easily read back (humans can check the main log!)
     save_start_time
 
-    # Do we want an RT message for every cell? Well, just a comment.
+    # Do we want an RT message for every cell? Well, just a comment. And continue on error.
+    set +e
     send_summary_to_rt comment processing "Cell(s) ready to process: $CELLSREADY." |& plog
 
     # If $CELLSREADY + $CELLSDONE + $CELLSABORTED == $CELLS then this will complete the run.
