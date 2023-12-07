@@ -259,21 +259,26 @@ def format_cell(cdict, cell_link=None):
 
     # Now the per-barcode formatting
     for bc in cdict.get('barcodes', []):
-        format_per_barcode(bc, aggr=rep)
+        format_per_barcode( bc,
+                            aggr = rep)
 
     if cdict.get('unassigned'):
-        format_per_barcode(cdict['unassigned'], aggr=rep)
+        format_per_barcode( cdict['unassigned'],
+                            aggr = rep,
+                            title = "QC for unassigned reads" )
 
     return rep
 
-def format_per_barcode(bc, aggr):
+def format_per_barcode(bc, aggr, title=None):
     """Add the plots or whatever for a single barcode to the report.
 
        aggr is an active aggregator object.
     """
     rep = aggr or aggregator()
+    if title is None:
+        title = f"QC for barcode {bc['barcode']}"
 
-    rep("", f"# QC for barcode {bc['barcode']}", "")
+    rep("", f"# {title}", "")
 
     # Info that is barcode-specific
     # TODO - maybe the list of headings should be in the YAML itself?
