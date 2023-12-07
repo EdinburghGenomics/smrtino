@@ -455,7 +455,7 @@ class T(unittest.TestCase):
         # Check that upload_reports.sh is not called
         expected_calls = self.bm.empty_calls()
 
-        expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info",
+        expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "list_blob_plots",
                                                        "--config", "cells=1_C01 1_D01", "blobs=1", "cleanup=1", "-p" ]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
                                                      self.rt_cmd("failed", "--reply",
