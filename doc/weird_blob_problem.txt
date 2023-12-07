@@ -1,0 +1,40 @@
+So I was processing run r84140_20231204_172854 with SMRTino and a weird thing
+happened.
+
+The blob_chunk jobs were taking ages, and then I realised that every chunk
+contained all 10000 sequences (and all 100 files were identical).
+
+Also, some files were missing under m84140_231204_180701_s2.hifi_reads.unassigned+sub10000.fasta_parts
+and the file timestamps are in random order, not sequential.
+
+Very strange. I can't see any way that the split_fast_in_chunks could produce such a thing.
+
+However, 3 of the four cells were processed first but failed, then the fourth cell was picked
+up and processed. That fourth cell seems to have worked fine, but then it would have deleted
+the fasta_parts directories for the partly run cells.
+
+So when I resumed the three failed cells, the fasta_parts_list would have been there, but the
+actual fasta_parts would have been missing.
+
+So what happens if a part_XXXX.fasta is missing? Does Snakemake somehow magically recreate it?
+Is there a smoking gun in the log?
+
+Yes - the file is being recreated by "bam_to_subsampled_fasta" because it was removed while
+Snakemake was still running as noted above. Oops.
+
+I can see that wildcards.n="10000.fasta_parts/part_0036" and somehow "seqtk sample" accepts this.
+
+So I need to:
+
+    1) Ensure that "onsuccess" cleanup happens only for the cells being processed, not all cells
+    2) Ensure that bam_to_subsampled_fasta does not think it can make files under
+       .fasta_parts/ directories directly.
+
+Both easy fixes. And I should be able to test this fairly easily.
+
+--
+
+Also, I realised if you remove the blob directory then the blob plots for completed cells won't
+be recreated. I need to force a re-run of list_blob_plots to be sure. So...
+
+    3) Make it so that removing the blob directory to force a rerun of the blob plots is OK

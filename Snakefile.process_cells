@@ -102,6 +102,7 @@ def link_all_files(i, o, keys=None):
         shell("ln -sn {ifprefix}{infile} {outfile}")
 
 wildcard_constraints:
+    n    = r"\d+",
     cell = r"m\w+",
     part = r"hifi_reads|fail_reads",
 

@@ -218,7 +218,12 @@ rule blob_plot_png:
 onsuccess:
     logger.quiet.discard('all')
     if config.get('cleanup'):
-        shell("rm -rvf ./blob/*.fasta_parts")
+        try:
+            for cell in SC['cells']:
+                shell("rm -rvf ./blob/{cell}.*.fasta_parts")
+        except (NameError, KeyError) as e:
+            # This should only happen in testing
+            logger.warning("cleanup failed to read SC['cells']")
 
 ## End of BLOB plotter rules ##
 
