@@ -38,3 +38,15 @@ Also, I realised if you remove the blob directory then the blob plots for comple
 be recreated. I need to force a re-run of list_blob_plots to be sure. So...
 
     3) Make it so that removing the blob directory to force a rerun of the blob plots is OK
+
+--
+
+OK I tested but it's still not fixed. On trying to re-run /lustre-gseg/pacbio/pacbio_data/r84140_20231204_172854
+I get MissingInputException for blast_chunk:
+    blob/m84140_231204_173639_s1.hifi_reads.unassigned+sub10000.fasta_parts/part_0000.fasta
+
+The file is gone because the Snakefile.process_cells worked and cleaned up the fasta_parts, but then the
+Snakefile.report failed because some blob plots were missing. Now I was hoping the missing blob plots would
+be recreated but not the ones for s1. Why is Snakemake trying to re-blast?
+
+Maybe I can fix this by just removing the .fasta_parts_list files as well as the directories? Well let's see...

@@ -221,6 +221,7 @@ onsuccess:
         try:
             for cell in SC['cells']:
                 shell("rm -rvf ./blob/{cell}.*.fasta_parts")
+                shell("rm -vf  ./blob/{cell}.*.fasta_parts_list")
         except (NameError, KeyError) as e:
             # This should only happen in testing
             logger.warning("cleanup failed to read SC['cells']")
