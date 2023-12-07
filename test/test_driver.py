@@ -459,8 +459,8 @@ class T(unittest.TestCase):
                                                        "--config", "cells=1_C01 1_D01", "blobs=1", "cleanup=1", "-p" ]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
                                                      self.rt_cmd("failed", "--reply",
-                                                                  "Processing_cells failed for cells [1_C01 1_D01]. See log in"
-                                                                  f" {self.to_path}/pipeline.log") ]
+                                                                  "Processing_cells failed for cells [1_C01 1_D01].\n"
+                                                                  f"See log in {self.to_path}/pipeline.log") ]
 
         # Doctor self.bm.last_calls because we don't know the FD
         for cl in self.bm.last_calls['rt_runticket_manager.py']:

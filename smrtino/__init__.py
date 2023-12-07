@@ -113,7 +113,7 @@ def load_yaml(filename, dictify_result=False, relative_to=None):
     with open(filename) as yfh:
         y = yaml.ordered_load(yfh)
 
-        return dictify(y) if dictify_result else y
+    return dictify(y) if dictify_result else y
 
 def dump_yaml(foo, filename=None, fh=None):
     """Return YAML string and optionally dump to a file (or a file handle)."""

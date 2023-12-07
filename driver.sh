@@ -552,7 +552,8 @@ pipeline_fail() {
     # Send an alert to RT.
     # Note that after calling 'plog' we can query '$per_run_log' since all shell vars are global.
     plog "Attempting to notify error to RT"
-    if rt_runticket_manager --subject failed --reply "$failure. See log in $per_run_log" |& plog ; then
+    br=$'\n'
+    if rt_runticket_manager --subject failed --reply "$failure.${br}See log in $per_run_log" |& plog ; then
         log "FAIL $failure on $RUNID. See $per_run_log"
     else
         # RT failure. Complain to STDERR in the hope this will generate an alert mail via CRON

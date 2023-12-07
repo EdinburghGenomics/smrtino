@@ -12,7 +12,7 @@ drmaa: >-
 jobname: '{{rulename}}.snakejob.{{jobid}}.sh'
 jobscript: '{TOOLBOX}/snakemake_jobscript.sh'
 keep-going: true
-jobs: 200
+jobs: 120
 cores: 400
 local-cores: 4
 latency-wait: 10
