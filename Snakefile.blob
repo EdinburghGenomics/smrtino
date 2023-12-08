@@ -220,8 +220,8 @@ onsuccess:
     if config.get('cleanup'):
         try:
             for cell in SC['cells']:
-                shell("rm -rvf ./blob/{cell}.*.fasta_parts")
                 shell("rm -vf  ./blob/{cell}.*.fasta_parts_list")
+                shell("rm -rvf ./blob/{cell}.*.fasta_parts")
         except (NameError, KeyError) as e:
             # This should only happen in testing
             logger.warning("cleanup failed to read SC['cells']")
