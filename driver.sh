@@ -634,7 +634,7 @@ while [[ "${#candidate_run_list[@]}" > 0 ]] ; do
     done
 
     # Failing all that, we can prune this directory from further searching
-    echo "Ignoring $run_basename"
+    debug "Ignoring $run_basename"
     continue
   fi
 
