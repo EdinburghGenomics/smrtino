@@ -81,7 +81,9 @@ def get_metadata_info(xmlfile, smrtlink_base=None):
     # For Revio we're always a "Revio (HiFi)" readset, until we're not.
     info['readset_type'] = "Revio (HiFi)"
     info['_readset_type'] = "ccsreads"
-    info['_parts'] = ["reads"]
+
+    # FIXME - should really get this from sc_data, not hard-coded
+    info['parts'] = ["hifi_reads", "fail_reads"]
 
     # See what's actually loaded on the cell (this is the same as for Sequel)
     well_samples = root.findall(".//pbmeta:WellSample", _ns)

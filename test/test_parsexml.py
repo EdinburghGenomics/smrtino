@@ -31,7 +31,7 @@ class T(unittest.TestCase):
         self.assertEqual(info, {
                         'cell_id':       "m84140_231018_155043_s3",
                         'cell_uuid':     "b29fa499-96e9-4973-ae0a-085a75a08f9e",
-                        '_parts':        ["reads"],
+                        'parts':         ["hifi_reads", "fail_reads"],
                         'readset_type':  "Revio (HiFi)",
                         '_readset_type': "ccsreads",
                         'run_id':        "r84140_20231018_154254",
