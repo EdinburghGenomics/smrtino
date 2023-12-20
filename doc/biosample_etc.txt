@@ -1,0 +1,22 @@
+I need to properly formalise where the names of samples come from in PacBio land.
+
+We have:
+
+Names from the LIMS (as matched to internal sample name)
+Names from ConsensusReadSet.Name
+Names from BioSample
+
+Looking at:
+/lustre-gseg/pacbio/pacbio_data/r84140_20231004_115851/m84140_231004_123717_s2/bc1010/m84140_231004_123717_s2.hifi_reads.bc1010.consensusreadset.xml
+
+It's a test dataset, so not a good production example, but still:
+
+ConsensusReadSet.Name is "23391TA-Cell2 (23391TA RF)"
+BioSample name is "23391TA RF"
+
+I'm not sure is this was inputted twice or copied by SMRTLink. Hmmm.
+
+Anyway, the "23391TA RF" part should probably be saved into the info.yaml and available for
+use as the external_id, for when the LIMS completely packs in.
+
+Anyway, I can worry about this later.

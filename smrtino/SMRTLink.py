@@ -31,10 +31,16 @@ class OAUTHClient:
         """Base class minimal init. No auto connecting.
         """
         self.host = None
-        self.verify_ssl = True
         self.access_token = None
         self.refresh_token = None
         self.scopes = ()
+
+        self.verify_ssl = True
+        self.http_timeout = 30
+
+    @property
+    def conn_flags(self):
+        return dict(verify=self.verify_ssl, timeout=self.http_timeout)
 
     def get_auth(self, secret, key):
         """ Returns auth header for token call as bytes
@@ -60,8 +66,8 @@ class OAUTHClient:
             import urllib3
             urllib3.disable_warnings()
 
-        # set verify to false to disable the SSL cert verification
-        r = requests.post(url, payload, headers=headers, verify=self.verify_ssl)
+        # request an access token
+        r = requests.post(url, payload, headers=headers, **self.conn_flags)
 
         # Any other errors?
         r.raise_for_status()
@@ -114,7 +120,7 @@ class OAUTHClient:
         response = requests.get( full_url,
                                  params = params,
                                  headers = headers,
-                                 verify = self.verify_ssl)
+                                 **self.conn_flags )
         response.raise_for_status()
 
         return response.json()
@@ -138,7 +144,7 @@ class OAUTHClient:
                                  params = params,
                                  headers = headers,
                                  stream = True,
-                                 verify = self.verify_ssl)
+                                 **self.conn_flags )
         response.raise_for_status()
 
         res = { 'Content-Length' : 0 }
@@ -169,7 +175,7 @@ class OAUTHClient:
                                   data = json.dumps(body),
                                   params = params,
                                   headers = headers,
-                                  verify = self.verify_ssl )
+                                  **self.conn_flags )
         response.raise_for_status()
 
         return response.json()
@@ -184,7 +190,7 @@ class OAUTHClient:
         response = requests.delete( full_url,
                                     params = params,
                                     headers = headers,
-                                    verify = self.verify_ssl )
+                                    **self.conn_flags )
         response.raise_for_status()
 
         return True
