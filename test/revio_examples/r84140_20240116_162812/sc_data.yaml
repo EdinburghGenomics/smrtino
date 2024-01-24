@@ -1,6 +1,15 @@
 cells:
   m84140_240116_163605_s1:
-    barcodes: {}
+    barcodes:
+      all:
+        fail_reads:
+          bam: 1_A01/fail_reads/m84140_240116_163605_s1.fail_reads.bam
+          pbi: 1_A01/fail_reads/m84140_240116_163605_s1.fail_reads.bam.pbi
+          xml: 1_A01/pb_formats/m84140_240116_163605_s1.fail_reads.consensusreadset.xml
+        hifi_reads:
+          bam: 1_A01/hifi_reads/m84140_240116_163605_s1.hifi_reads.bam
+          pbi: 1_A01/hifi_reads/m84140_240116_163605_s1.hifi_reads.bam.pbi
+          xml: 1_A01/pb_formats/m84140_240116_163605_s1.hifi_reads.consensusreadset.xml
     meta: 1_A01/metadata/m84140_240116_163605_s1.metadata.xml
     parts:
     - hifi_reads

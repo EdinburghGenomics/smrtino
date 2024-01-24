@@ -79,11 +79,14 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone"):
                       'barcodes': find_barcodes(rundir, slot, cellid),
                       'meta': find_meta(rundir, slot, cellid)
                     } for slot, cellid in all_cells.items() }
-    # Add unassigned, possibly
+    # Add unassigned, and unbarcoded ('all'), possibly
     for cellid, v in res.items():
-        unassigned = files_per_unassigned(rundir, v['slot'], cellid)
-        if unassigned:
-            v['unassigned'] = unassigned
+        if 'unassigned' in v['barcodes']:
+            # Move it out
+            v['unassigned'] = v['barcodes']['unassigned']
+            del v['barcodes']['unassigned']
+
+        v['barcodes'].update(find_unbarcoded(rundir, v['slot'], cellid))
 
     return res
 
@@ -104,8 +107,7 @@ def find_barcodes(rundir, slot, cellid):
                  for f in xmlfiles ]
 
     res = { bc: files_per_barcode(rundir, slot, cellid, bc)
-            for bc in barcodes
-            if bc != "unassigned" }
+            for bc in barcodes }
 
     return res
 
@@ -115,15 +117,15 @@ def find_unbarcoded(rundir, slot, cellid):
     """
     # I guess I could stick with the logic of Hesiod and make a bracode named "." but
     # I think this ended up being a bit confusing.
+    # We have to look for the BAM file directly because even barcoded runs have a
+    # combined hifi_reads.consensusreadset.xml file.
 
-    xmlpath = f"{rundir}/{slot}/pb_formats"
-    xmlfiles = glob(f"{xmlpath}/{cellid}.hifi_reads.consensusreadset.xml")
+    hifipath = f"{rundir}/{slot}/hifi_reads"
+    bamfiles = glob(f"{hifipath}/{cellid}.hifi_reads.bam")
 
-    if xmlfiles:
-        return {'all': files_per_barcode(rundir, slot, cellid, "")}
-    res = { bc: files_per_barcode(rundir, slot, cellid, bc)
-            for bc in barcodes
-            if bc != "unassigned" }
+    res = {}
+    if bamfiles:
+        res['all'] = files_per_barcode(rundir, slot, cellid, None)
 
     return res
 
@@ -131,35 +133,21 @@ def files_per_barcode(rundir, slot, cellid, barcode, check_exist=True):
     """Returns the location of the reads files for a given barcode,
        and checks they exist.
     """
-    hifi = dict( bam = f"{slot}/hifi_reads/{cellid}.hifi_reads.{barcode}.bam",
-                 pbi = f"{slot}/hifi_reads/{cellid}.hifi_reads.{barcode}.bam.pbi",
-                 xml = f"{slot}/pb_formats/{cellid}.hifi_reads.{barcode}.consensusreadset.xml" )
-    fail = dict( bam = f"{slot}/fail_reads/{cellid}.fail_reads.{barcode}.bam",
-                 pbi = f"{slot}/fail_reads/{cellid}.fail_reads.{barcode}.bam.pbi",
-                 xml = f"{slot}/pb_formats/{cellid}.fail_reads.{barcode}.consensusreadset.xml" )
+    barcode = f".{barcode}" if barcode else ""
+
+    hifi = dict( bam = f"{slot}/hifi_reads/{cellid}.hifi_reads{barcode}.bam",
+                 pbi = f"{slot}/hifi_reads/{cellid}.hifi_reads{barcode}.bam.pbi",
+                 xml = f"{slot}/pb_formats/{cellid}.hifi_reads{barcode}.consensusreadset.xml" )
+    fail = dict( bam = f"{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam",
+                 pbi = f"{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam.pbi",
+                 xml = f"{slot}/pb_formats/{cellid}.fail_reads{barcode}.consensusreadset.xml" )
 
     if check_exist:
-        assert all( os.path.exists(f"{rundir}/{f}")
-                    for f in chain(hifi.values(), fail.values()) )
+        for f in chain(hifi.values(), fail.values()):
+            assert os.path.exists(f"{rundir}/{f}"), f"missing {rundir}/{f}"
 
     return dict( hifi_reads = hifi,
                  fail_reads = fail )
-
-def files_per_unassigned(rundir, slot, cellid):
-    """Returns the location of the reads files for the unassigned reads. If there are none return None,
-       but if there are some that's an error.
-    """
-    res = files_per_barcode(rundir, slot, cellid, "unassigned", check_exist=False)
-
-    # Do our own check. If any file is found then all must be found.
-    if any( os.path.exists(f"{rundir}/{f}")
-            for f in chain(*[x.values() for x in res.values()]) ):
-        assert all( os.path.exists(f"{rundir}/{f}")
-                    for f in chain(*[x.values() for x in res.values()]) )
-        return res
-
-    # else
-    return None
 
 def find_meta(rundir, slot, cellid):
     """Returns the location of the .metadata.xml, and checks it exists.
