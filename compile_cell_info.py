@@ -7,8 +7,8 @@ from smrtino import load_yaml, dump_yaml
 
 """ The info needed to report on a SMRT cell consists of several YAML files:
         sc_data.yaml about the files in the upstream
-        unassigned.yaml about the unassigned reads (even with no barcode in use!)
-        bc1.ymal bc2.yaml about the barcodes.
+        unassigned.yaml about the unassigned reads (if applicable)
+        bc1.yaml bc2.yaml about the barcodes.
 
     This super-simple script just outputs a file linking to these other files.
 """
@@ -36,9 +36,10 @@ def extract_ids(yaml_file):
 def gen_info(args):
 
     res = dict()
-    for x in ['sc_data', 'unassigned']:
-        if getattr(args, x):
-            res[x] = check_exists(getattr(args, x), args.check_exists)
+    for k in ['sc_data', 'unassigned']:
+        v = getattr(args, x)
+        if v and v != "-":
+            res[x] = check_exists(v, args.check_exists)
 
     res['barcodes'] = [ check_exists(f, args.check_exists) for f in args.bcfiles ]
 

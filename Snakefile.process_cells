@@ -121,8 +121,10 @@ def i_one_cell_info(wc):
     cell = wc.cell
     cell_barcodes = sorted(SC['cells'][cell]['barcodes'])
 
-    res = dict( sc_data = "sc_data.yaml",
-                unass   = f"{cell}/unassigned/{cell}.info.unassigned.yaml")
+    res = dict( sc_data = "sc_data.yaml" )
+
+    if 'unassigned' in SC['cells'][cell]:
+        res['unass'] = f"{cell}/unassigned/{cell}.info.unassigned.yaml"
 
     res['bc'] = [ f"{cell}/{bc}/{cell}.info.{bc}.yaml"
                   for bc in cell_barcodes ]
@@ -135,12 +137,6 @@ def i_one_barcode_info(wc):
     """See what we need to generate for a single barcode. This used to be for a cell but now
        accounts for barcodes by processing each barcode singly.
     """
-    '''
-    scinfo = SC['cells'][cell]
-    barcodes = scinfo['barcodes']
-    barcodes_and_unass = dict( unassigned = scinfo['unassigned'],
-                               **barcodes )
-    '''
     cell = wc.cell
     barcode = wc.bc
 
@@ -179,15 +175,26 @@ def i_one_barcode_info(wc):
 rule one_cell_info:
     output: "{cell}.info.yaml"
     input:  unpack(i_one_cell_info)
-    shell:
-       # The output here is just going to be a YAML file linking to all the other
-       # YAML files - there is no point in copying the actual data over.
-       r"""compile_cell_info.py -x \
-                --sc_data {input.sc_data} \
-                --unass {input.unass} \
-                {input.bc} \
-                > {output}
-        """
+    run:
+        # Un-silence sys.stderr in sub-jobs:
+        logger.quiet.discard('all')
+
+        # The output here is just going to be a YAML file linking to all the other
+        # YAML files - there is no point in copying the actual data over.
+        try:
+            input.unass
+            shell("""compile_cell_info.py -x \
+                        --sc_data {input.sc_data} \
+                        --unassigned {input.unass} \
+                        {input.bc} > {output}
+                  """)
+        except KeyError:
+            # Version with no unassigned
+            shell("""compile_cell_info.py -x \
+                        --sc_data {input.sc_data} \
+                        {input.bc} > {output}
+                  """)
+
 
 rule one_barcode_info:
     output: "{cell}/{bc}/{cell}.info.{bc}.yaml"
