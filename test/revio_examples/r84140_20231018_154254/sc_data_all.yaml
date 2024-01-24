@@ -1,4 +1,29 @@
 cells:
+  m84140_231018_155043_s3:
+    barcodes:
+      bc1002:
+        fail_reads:
+          bam: 1_C01/fail_reads/m84140_231018_155043_s3.fail_reads.bc1002.bam
+          pbi: 1_C01/fail_reads/m84140_231018_155043_s3.fail_reads.bc1002.bam.pbi
+          xml: 1_C01/pb_formats/m84140_231018_155043_s3.fail_reads.bc1002.consensusreadset.xml
+        hifi_reads:
+          bam: 1_C01/hifi_reads/m84140_231018_155043_s3.hifi_reads.bc1002.bam
+          pbi: 1_C01/hifi_reads/m84140_231018_155043_s3.hifi_reads.bc1002.bam.pbi
+          xml: 1_C01/pb_formats/m84140_231018_155043_s3.hifi_reads.bc1002.consensusreadset.xml
+    meta: 1_C01/metadata/m84140_231018_155043_s3.metadata.xml
+    parts:
+    - hifi_reads
+    - fail_reads
+    slot: 1_C01
+    unassigned:
+      fail_reads:
+        bam: 1_C01/fail_reads/m84140_231018_155043_s3.fail_reads.unassigned.bam
+        pbi: 1_C01/fail_reads/m84140_231018_155043_s3.fail_reads.unassigned.bam.pbi
+        xml: 1_C01/pb_formats/m84140_231018_155043_s3.fail_reads.unassigned.consensusreadset.xml
+      hifi_reads:
+        bam: 1_C01/hifi_reads/m84140_231018_155043_s3.hifi_reads.unassigned.bam
+        pbi: 1_C01/hifi_reads/m84140_231018_155043_s3.hifi_reads.unassigned.bam.pbi
+        xml: 1_C01/pb_formats/m84140_231018_155043_s3.hifi_reads.unassigned.consensusreadset.xml
   m84140_231018_162059_s4:
     barcodes:
       bc1011:

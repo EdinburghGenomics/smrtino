@@ -1,0 +1,48 @@
+cells:
+  m84140_240116_163605_s1:
+    barcodes: {}
+    meta: 1_A01/metadata/m84140_240116_163605_s1.metadata.xml
+    parts:
+    - hifi_reads
+    - fail_reads
+    slot: 1_A01
+  m84140_240116_183509_s2:
+    barcodes:
+      bc1003:
+        fail_reads:
+          bam: 1_B01/fail_reads/m84140_240116_183509_s2.fail_reads.bc1003.bam
+          pbi: 1_B01/fail_reads/m84140_240116_183509_s2.fail_reads.bc1003.bam.pbi
+          xml: 1_B01/pb_formats/m84140_240116_183509_s2.fail_reads.bc1003.consensusreadset.xml
+        hifi_reads:
+          bam: 1_B01/hifi_reads/m84140_240116_183509_s2.hifi_reads.bc1003.bam
+          pbi: 1_B01/hifi_reads/m84140_240116_183509_s2.hifi_reads.bc1003.bam.pbi
+          xml: 1_B01/pb_formats/m84140_240116_183509_s2.hifi_reads.bc1003.consensusreadset.xml
+      bc1008:
+        fail_reads:
+          bam: 1_B01/fail_reads/m84140_240116_183509_s2.fail_reads.bc1008.bam
+          pbi: 1_B01/fail_reads/m84140_240116_183509_s2.fail_reads.bc1008.bam.pbi
+          xml: 1_B01/pb_formats/m84140_240116_183509_s2.fail_reads.bc1008.consensusreadset.xml
+        hifi_reads:
+          bam: 1_B01/hifi_reads/m84140_240116_183509_s2.hifi_reads.bc1008.bam
+          pbi: 1_B01/hifi_reads/m84140_240116_183509_s2.hifi_reads.bc1008.bam.pbi
+          xml: 1_B01/pb_formats/m84140_240116_183509_s2.hifi_reads.bc1008.consensusreadset.xml
+    meta: 1_B01/metadata/m84140_240116_183509_s2.metadata.xml
+    parts:
+    - hifi_reads
+    - fail_reads
+    slot: 1_B01
+    unassigned:
+      fail_reads:
+        bam: 1_B01/fail_reads/m84140_240116_183509_s2.fail_reads.unassigned.bam
+        pbi: 1_B01/fail_reads/m84140_240116_183509_s2.fail_reads.unassigned.bam.pbi
+        xml: 1_B01/pb_formats/m84140_240116_183509_s2.fail_reads.unassigned.consensusreadset.xml
+      hifi_reads:
+        bam: 1_B01/hifi_reads/m84140_240116_183509_s2.hifi_reads.unassigned.bam
+        pbi: 1_B01/hifi_reads/m84140_240116_183509_s2.hifi_reads.unassigned.bam.pbi
+        xml: 1_B01/pb_formats/m84140_240116_183509_s2.hifi_reads.unassigned.consensusreadset.xml
+run:
+  fullname: r84140_20240116_162812
+  instrument: '84140'
+  platform: Revio
+  run_or_cell: run
+  rundate: 2024-01-16 16:28:12

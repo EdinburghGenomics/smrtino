@@ -43,18 +43,20 @@ def scan_main(args):
     res = dict( run = parsed_run_name,
                 cells = {} )
 
+    extn_to_scan = ".metadata.xml" if args.xmltrigger else ".transferdone"
+
     assert parsed_run_name['run_or_cell'] == 'run'
     if parsed_run_name['platform'].startswith("Sequel"):
-        sc = scan_cells_sequel(args.rundir, args.cells)
+        sc = scan_cells_sequel(args.rundir, args.cells, extn_to_scan)
     else:
-        sc = scan_cells_revio(args.rundir, args.cells)
+        sc = scan_cells_revio(args.rundir, args.cells, extn_to_scan)
 
     res['cells'].update(sc)
 
     return res
 
 
-def scan_cells_revio(rundir, cell_list):
+def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone"):
     """ Here's what we want to find, per cell.
         .transferdone - is under metadata
         {cell}.reads.bam - under hifi_reads. I guess the fail reads are the <Q20 reads
@@ -65,8 +67,8 @@ def scan_cells_revio(rundir, cell_list):
         .{cell}.run.metadata.xml - Seems to be gone? Or is it m84140_230823_180019_s1.metadata.xml?
     """
     # Get a dict of slot: cell for all cells
-    all_cells = { b.split('/')[-3]: b.split('/')[-1][:-len('.transferdone')]
-                  for b in glob(f"{rundir}/*/metadata/*.transferdone") }
+    all_cells = { b.split('/')[-3]: b.split('/')[-1][:-len(extn_to_scan)]
+                  for b in glob(f"{rundir}/*/metadata/*{extn_to_scan}") }
 
     if cell_list:
         all_cells = { k:all_cells[k] for k in cell_list }
@@ -75,9 +77,13 @@ def scan_cells_revio(rundir, cell_list):
     res = { cellid: { 'slot': slot,
                       'parts': ['hifi_reads', 'fail_reads'],
                       'barcodes': find_barcodes(rundir, slot, cellid),
-                      'unassigned': files_per_barcode(rundir, slot, cellid, "unassigned"),
                       'meta': find_meta(rundir, slot, cellid)
                     } for slot, cellid in all_cells.items() }
+    # Add unassigned, possibly
+    for cellid, v in res.items():
+        unassigned = files_per_unassigned(rundir, v['slot'], cellid)
+        if unassigned:
+            v['unassigned'] = unassigned
 
     return res
 
@@ -103,9 +109,27 @@ def find_barcodes(rundir, slot, cellid):
 
     return res
 
-def files_per_barcode(rundir, slot, cellid, barcode):
-    """Returns the location of the reads files for a given barcode, including "unassigned",
-       and checks they exits.
+def find_unbarcoded(rundir, slot, cellid):
+    """With SMRTLink 13 we're back to having unbarcoded files. But to avoid a load of
+       if/else logic I'm going to assign these to a barcode named "all".
+    """
+    # I guess I could stick with the logic of Hesiod and make a bracode named "." but
+    # I think this ended up being a bit confusing.
+
+    xmlpath = f"{rundir}/{slot}/pb_formats"
+    xmlfiles = glob(f"{xmlpath}/{cellid}.hifi_reads.consensusreadset.xml")
+
+    if xmlfiles:
+        return {'all': files_per_barcode(rundir, slot, cellid, "")}
+    res = { bc: files_per_barcode(rundir, slot, cellid, bc)
+            for bc in barcodes
+            if bc != "unassigned" }
+
+    return res
+
+def files_per_barcode(rundir, slot, cellid, barcode, check_exist=True):
+    """Returns the location of the reads files for a given barcode,
+       and checks they exist.
     """
     hifi = dict( bam = f"{slot}/hifi_reads/{cellid}.hifi_reads.{barcode}.bam",
                  pbi = f"{slot}/hifi_reads/{cellid}.hifi_reads.{barcode}.bam.pbi",
@@ -114,22 +138,39 @@ def files_per_barcode(rundir, slot, cellid, barcode):
                  pbi = f"{slot}/fail_reads/{cellid}.fail_reads.{barcode}.bam.pbi",
                  xml = f"{slot}/pb_formats/{cellid}.fail_reads.{barcode}.consensusreadset.xml" )
 
-    assert all( os.path.exists(f"{rundir}/{f}")
-                for f in chain(hifi.values(), fail.values()) )
+    if check_exist:
+        assert all( os.path.exists(f"{rundir}/{f}")
+                    for f in chain(hifi.values(), fail.values()) )
 
     return dict( hifi_reads = hifi,
                  fail_reads = fail )
+
+def files_per_unassigned(rundir, slot, cellid):
+    """Returns the location of the reads files for the unassigned reads. If there are none return None,
+       but if there are some that's an error.
+    """
+    res = files_per_barcode(rundir, slot, cellid, "unassigned", check_exist=False)
+
+    # Do our own check. If any file is found then all must be found.
+    if any( os.path.exists(f"{rundir}/{f}")
+            for f in chain(*[x.values() for x in res.values()]) ):
+        assert all( os.path.exists(f"{rundir}/{f}")
+                    for f in chain(*[x.values() for x in res.values()]) )
+        return res
+
+    # else
+    return None
 
 def find_meta(rundir, slot, cellid):
     """Returns the location of the .metadata.xml, and checks it exists.
     """
     res = f"{slot}/metadata/{cellid}.metadata.xml"
 
-    assert os.path.exists(f"{rundir}/{res}")
+    assert os.path.exists(f"{rundir}/{res}"), f"missing {rundir}/{res}"
 
     return res
 
-def scan_cells_sequel(rundir, cell_list):
+def scan_cells_sequel(rundir, cell_list, extn_to_scan=".transferdone"):
     """ Work out all the cells to process based on config['cells'] and config['rundir']
         and thus infer the base names of the info.yaml files that need to be made.
         Return a dict of:
@@ -137,8 +178,8 @@ def scan_cells_sequel(rundir, cell_list):
         This in turn allows me to work out everything else by pattern matching. Note that
         no filter is currently supported but I left this feature in just in case.
     """
-    all_cells = { b.split('/')[-2]: b.split('/')[-1][:-len('.transferdone')]
-                  for b in glob(f"{rundir}/*/*.transferdone") }
+    all_cells = { b.split('/')[-2]: b.split('/')[-1][:-len(extn_to_scan)]
+                  for b in glob(f"{rundir}/*/*{extn_to_scan}") }
 
     # Now see if I need to filter by cell_list.
     if cell_list:
@@ -205,9 +246,8 @@ def parse_args(*args):
                         help = "Cells to look at. If not specified, all will be scanned."
                                " Give the slot not the cell ID - eg. 1_A01" )
 
-    # TODO. Delete this, I think. Maybe? None-ready cells are just invisible,
-    #parser.add_argument("-r", "--cellsready", nargs='+',
-    #                    help="Cells to process now. If not specified, the script will check.")
+    parser.add_argument("-x", "--xmltrigger", action="store_true",
+                        help="Identify ready cells by .metadata.xml presence, not .transferdone.")
 
     # The point of this is that if the pipeline is being re-run, ./pbpipeline/from may have been
     # deleted but we can still look at the outut files to reconstruct the info. But unless the
