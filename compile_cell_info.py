@@ -37,7 +37,7 @@ def gen_info(args):
 
     res = dict()
     for k in ['sc_data', 'unassigned']:
-        v = getattr(args, x)
+        v = getattr(args, k)
         if v and v != "-":
             res[x] = check_exists(v, args.check_exists)
 

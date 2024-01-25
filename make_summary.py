@@ -35,13 +35,16 @@ def main(args):
             continue
         all_info[slot] = dict()
 
-        # Load the XML, if found
-        metadata_xml = glob(f"{slot_dir}/metadata/*.metadata.xml")
-        if len(metadata_xml) > 1:
-            L.error(f"Multiple metadata.xml found for slot {slot}")
-        elif metadata_xml:
-            metadata_xml, = metadata_xml
+        # Load the XML, if found. We now get the call name from *.sts.xml because
+        # there are multiple metadata files.
+        sts_xml = glob(f"{slot_dir}/metadata/*.sts.xml")
 
+        if len(sts_xml) > 1:
+            L.error(f"Multiple sts.xml found for slot {slot}")
+        elif sts_xml:
+            metadata_xml = re.sub(r"\.sts(?=\.xml$)", ".metadata", sts_xml[0])
+
+            assert metadata_xml != sts_xml[0]
             xml_info = get_metadata_info(metadata_xml)
 
             all_info[slot].update(xml_info)

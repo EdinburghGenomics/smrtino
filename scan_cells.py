@@ -43,7 +43,8 @@ def scan_main(args):
     res = dict( run = parsed_run_name,
                 cells = {} )
 
-    extn_to_scan = ".metadata.xml" if args.xmltrigger else ".transferdone"
+    # We can't scan for metadata as there are multiple of those files
+    extn_to_scan = ".sts.xml" if args.xmltrigger else ".transferdone"
 
     assert parsed_run_name['run_or_cell'] == 'run'
     if parsed_run_name['platform'].startswith("Sequel"):
@@ -235,7 +236,7 @@ def parse_args(*args):
                                " Give the slot not the cell ID - eg. 1_A01" )
 
     parser.add_argument("-x", "--xmltrigger", action="store_true",
-                        help="Identify ready cells by .metadata.xml presence, not .transferdone.")
+                        help="Identify ready cells by .sts.xml presence, not .transferdone.")
 
     # The point of this is that if the pipeline is being re-run, ./pbpipeline/from may have been
     # deleted but we can still look at the outut files to reconstruct the info. But unless the
