@@ -92,7 +92,9 @@ def copy_all_files(i, o, keys=None):
 
 def link_all_files(i, o, keys=None):
     """ Copying is not necessary if everything is on the same FS, so have a symlink option.
-        But probably we should have one copy on /lustre-egdp and another on /lustre-gseg.
+        (But probably we should have one copy on /lustre-egdp and another on /lustre-gseg.
+        Also, copying sorts out the ownership allowing hard-linking for delivery.)
+
         i and o are dicts of filenames with common keys, which works for rule
         input/output with matched names
     """
@@ -242,7 +244,7 @@ rule copy_reads:
         # Un-silence sys.stderr in sub-jobs:
         logger.quiet.discard('all')
 
-        link_all_files(input, output, keys="bam pbi".split())
+        copy_all_files(input, output, keys="bam pbi".split())
         copy_all_files(input, output, keys="xml".split())
         relativize_xml(output.xml)
 
