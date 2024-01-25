@@ -188,7 +188,7 @@ rule one_cell_info:
                         --unassigned {input.unass} \
                         {input.bc} > {output}
                   """)
-        except KeyError:
+        except AttributeError:
             # Version with no unassigned
             shell("""compile_cell_info.py -x \
                         --sc_data {input.sc_data} \

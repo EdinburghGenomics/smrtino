@@ -292,10 +292,15 @@ class RunStatus:
             return 'unknown'
 
     def get_start_time(self):
-        """ Look for the oldest *.txt or *.xml file in any subdirectory.
+        """ Look for the oldest *.txt or *.xml file in any cell directory.
+
+            We could just decode the run ID, but I believe this is the setup
+            time rather than the actual run start time.
         """
-        txtfiles = [ f for extn in ['txt', 'xml'] for f in
-                     glob(os.path.join(self.from_path, '[0-9]_???/*.'+extn)) ]
+        txtfiles = [ f for extn in ['txt', 'xml']
+                       for subdir in ['/', '/metadata/']
+                       for f in
+                     glob(os.path.join(self.from_path, f"[0-9]_???{subdir}*.{extn}")) ]
 
         try:
             oldest_time = min( os.stat(t).st_mtime for t in txtfiles )

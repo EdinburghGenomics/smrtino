@@ -309,7 +309,7 @@ class T(unittest.TestCase):
                           } )
 
     def test_revio(self):
-        """Revio runs need dome slightly (but not massively) different detection rules
+        """Revio runs need some slightly (but not massively) different detection rules
         """
         run_info = self.use_run("r84140_20231018_154254", copy=True, src="revio")
 
@@ -322,6 +322,14 @@ class T(unittest.TestCase):
                                                 '1_D01': run_info.CELL_READY})
 
         # Start time should be something (we're not sure what)
+        self.assertEqual(len(run_info.get_start_time()), len('Thu Jan  1 01:00:00 1970'))
+
+    def test_revio_start_time(self):
+        """Run r84140_20240116_162812 was coming up with an unknown start time
+        """
+        run_info = self.use_run("r84140_20240116_162812", copy=False, src="revio")
+
+        # Start time should be some date (we're not sure what as it depends on the file mtime)
         self.assertEqual(len(run_info.get_start_time()), len('Thu Jan  1 01:00:00 1970'))
 
 def dictify(s):
