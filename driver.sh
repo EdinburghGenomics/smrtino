@@ -43,12 +43,13 @@ if [ -e "$ENVIRON_SH" ] ; then
     popd >/dev/null
 
     # Saves having to put 'export' on every line in the config.
-    export CLUSTER_PARTITION  FROM_LOCATION     TO_LOCATION \
-           RT_SYSTEM          RT_SETTINGS       GENOLOGICSRC \
-           PROJECT_NAME_LIST  PROJECT_PAGE_URL  REPORT_DESTINATION  REPORT_LINK \
-           RSYNC_CMD          STALL_TIME        VERBOSE             FILTER_LOCALLY \
-           BLOBS              BLAST_SCRIPT \
-           EXTRA_SNAKE_FLAGS  EXTRA_SLURM_FLAGS SMRTLINKRC_SECTION
+    export CLUSTER_PARTITION  FROM_LOCATION      TO_LOCATION \
+           RT_SYSTEM          RT_SETTINGS        GENOLOGICSRC \
+           PROJECT_NAME_LIST  PROJECT_PAGE_URL   REPORT_DESTINATION  REPORT_LINK \
+           RSYNC_CMD          STALL_TIME         VERBOSE    \
+           FILTER_LOCALLY     BLOBS \
+           EXTRA_SNAKE_FLAGS  EXTRA_SNAKE_CONFIG EXTRA_SLURM_FLAGS \
+           SMRTLINKRC_SECTION
 fi
 
 # LOG_DIR is ignored if MAINLOG is set explicitly.
@@ -248,7 +249,7 @@ action_cell_ready(){
       always_run=(one_cell_info list_blob_plots)
       Snakefile.process_cells -R "${always_run[@]}" \
                               --config cells="$CELLSREADY" blobs="${BLOBS:-1}" cleanup=1 \
-                                       blast_script="${BLAST_SCRIPT:-blast_nt}" \
+                                       ${EXTRA_SNAKE_CONFIG:-} \
                               -p |& plog
 
       # Now we can have a report. This bit runs locally.

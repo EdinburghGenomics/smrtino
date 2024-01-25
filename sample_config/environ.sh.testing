@@ -28,7 +28,7 @@ RUN_NAME_REGEX=('K[0-9]+/r64175e_.+_.+' 'r64175e_.+_.+')
 VERBOSE=${VERBOSE:-1}
 
 # Faster BLAST
-BLAST_SCRIPT=blast_landmark
+EXTRA_SNAKE_CONFIG="blast_script=blast_landmark"
 
 # Send reports to web1.
 #REPORT_DESTINATION='localhost:test_pacbio_data/uploaded_reports'

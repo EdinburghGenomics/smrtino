@@ -7,7 +7,8 @@ from smrtino import load_yaml, dump_yaml
 
 # Default is that there will be 10000 sequences subsampled
 # and they will be blasted in 100 chunks.
-# To override set, eg., EXTRA_SNAKE_FLAGS="--config blob_subsample=1234"
+# To override the things below set EXTRA_SNAKE_CONFIG
+#  eg. EXTRA_SNAKE_CONFIG="blob_subsample=1234"
 
 # BLAST S sequences in C chunks
 BLOB_SUBSAMPLE = int(config.get('blob_subsample', 10000))

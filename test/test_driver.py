@@ -459,7 +459,6 @@ class T(unittest.TestCase):
                                                        "--config", "cells=1_C01 1_D01",
                                                                    "blobs=1",
                                                                    "cleanup=1",
-                                                                   "blast_script=blast_nt",
                                                        "-p" ]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
                                                      self.rt_cmd("failed", "--reply",
