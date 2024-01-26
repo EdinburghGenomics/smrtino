@@ -4,7 +4,7 @@ import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino import glob, aggregator
-from smrtino.ParseXML import get_metadata_info
+from smrtino.ParseXML import get_metadata_summary
 
 """ Makes a summary (in text format) for a run.
     This is somewhat similar to make_report.py, but it runs on the original directory
@@ -45,7 +45,7 @@ def main(args):
             metadata_xml = re.sub(r"\.sts(?=\.xml$)", ".metadata", sts_xml[0])
 
             assert metadata_xml != sts_xml[0]
-            xml_info = get_metadata_info(metadata_xml)
+            xml_info = get_metadata_summary(metadata_xml)
 
             all_info[slot].update(xml_info)
 

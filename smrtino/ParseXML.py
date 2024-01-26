@@ -3,10 +3,12 @@ import re
 import logging as L
 import xml.etree.ElementTree as ET
 
-""" Parses the subreadset.xml files based upon our interpretation.
-    To use:
-        from smrtino.ParseXML import get_readset_info
-        info = get_readset_info(filename)
+""" For each cell we have a metadata.xml file which has info on the whole cell
+    (and the run).
+    For each barcode we have a readset.xml file which has info on the sample,
+    but also some info on the whole cell.
+
+    If you run a function on the wrong type of file you'll get an error.
 """
 
 _ns = dict( pbmeta  = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
@@ -23,40 +25,14 @@ rs_constants = dict( ConsensusReadSet = \
                               shortname = 'subreads',
                               parts = ['subreads', 'scraps'] ) )
 
-def get_runmetadata_info(xmlfile):
-    """ Read some stuff from the run.metadata.xml file
-    """
-    res = dict(ExperimentId = 'unknown')
+def get_metadata_summary(xmlfile, smrtlink_base=None):
+    """ Glean info from the metadata.xml file for a whole Revio SMRT cell
 
-    root = ET.parse(xmlfile).getroot()
-
-    # attribute if one was set.
-    ec = root.find('pbmodel:ExperimentContainer', _ns)
-    if ec:
-        res['ExperimentId'] = ec.attrib.get('ExperimentId', 'none set')
-
-    # And there should be a Run element which provides us, eg.
-    # ChipType="8mChip" InstrumentType="Sequel2e" CreatedBy="rfoster2"
-    run = root.find('.//pbmodel:Run', _ns)
-    if run:
-        for i in "ChipType InstrumentType CreatedBy TimeStampedName".split():
-            res[i] = run.attrib.get(i, 'unknown')
-
-    # And there should be a CollectionMetadata element which gives us the InstrumentId
-    cmd = root.find('.//pbmeta:CollectionMetadata', _ns)
-    if cmd:
-        for i in ["InstrumentId"]:
-            res[i] = cmd.attrib.get(i, 'unknown')
-
-        if "InstrumentType" in res:
-            res["Instrument"] = f"{res['InstrumentType']}_{res['InstrumentId']}"
-
-    return res
-
-def get_metadata_info(xmlfile, smrtlink_base=None):
-    """ Glean info from the metadata.xml file for a Revio SMRT cell
+        This is used to get the info before the pipeline actually runs.
     """
     # First thing is, in SMRTLink 12 the files claim to be utf-16. But they are not. FFS.
+    # We fix the file as we copy it, but this function needs to be able to run on the
+    # original file. SMRTLink 13 has fixed this.
     def munge_xmldecl(filename):
         with open(filename) as fh:
             for n, aline in enumerate(fh):
@@ -112,6 +88,39 @@ def get_metadata_info(xmlfile, smrtlink_base=None):
         info['_link'] = get_smrtlink_link(root, smrtlink_base)
 
     return info
+
+def get_metadata_info(xmlfile):
+    """ Read some stuff from the metadata/{cellid}.metadata.xml file
+    """
+    run_info = dict(ExperimentId = 'unknown')
+
+    root = ET.parse(xmlfile).getroot()
+
+    # attribute if one was set.
+    ec = root.find('pbmodel:ExperimentContainer', _ns)
+    if ec:
+        run_info['ExperimentId'] = ec.attrib.get('ExperimentId', 'none set')
+
+    # And there should be a Run element which provides us, eg.
+    # ChipType="8mChip" InstrumentType="Sequel2e" CreatedBy="rfoster2"
+    run = root.find('.//pbmodel:Run', _ns)
+    if run:
+        for i in "ChipType InstrumentType CreatedBy TimeStampedName".split():
+            run_info[i] = run.attrib.get(i, 'unknown')
+
+    # And there should be a CollectionMetadata element which gives us the InstrumentId
+    cmd = root.find('.//pbmeta:CollectionMetadata', _ns)
+    if cmd:
+        for i in ["InstrumentId"]:
+            run_info[i] = cmd.attrib.get(i, 'unknown')
+
+        if "InstrumentType" in run_info:
+            run_info["Instrument"] = f"{run_info['InstrumentType']}_{run_info['InstrumentId']}"
+
+    # Get the WellSample name which is presumably the pool name
+
+    return dict( run = run_info,
+                 ws_name = ws_name )
 
 def get_readset_info(xmlfile, smrtlink_base=None):
     """ Glean info from a readset file for a SMRT cell

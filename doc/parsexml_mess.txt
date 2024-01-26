@@ -1,0 +1,96 @@
+Oh dear.
+
+In smrtino/ParseXML.py I have three functions:
+
+*** 1 ***
+
+get_runmetadata_info(xmlfile)
+
+This is called by compile_bc_info.py to get information about the run,
+but it's being used to read files like:
+
+1_B01/metadata/m84140_240116_183509_s2.metadata.xml
+(actully it's called on the copy in the root of the output dir)
+
+And these files have info about the cell, but also about the run.
+
+Returns:
+ExperimentId ChipType InstrumentType CreatedBy TimeStampedName
+
+So it is getting run info, but it's getting it from the per-cell file.
+
+This function does not account for the utf-16 bug. And yet it looks like it was run
+on runs like r84140_20231018_154254 and worked. What the heck is going on?
+
+If I run the script manually it fails:
+
+/lustre-gseg/home/pipeline/smrtino/v3.1.1/compile_bc_info.py ~/test_sequel/r84140_20231018_154254/1_C01/pb_formats/m84140_231018_155043_s3.hifi_reads.bc1002.consensusreadset.xml -r ~/test_sequel/r84140_20231018_154254/1_C01/metadata/m84140_231018_155043_s3.metadata.xml
+
+So did I make a fixed version of the XML, or did it fail in the 2023 runs and I didn't notice, or what?
+
+I make a fixed version of the XML in the output dir. So it worked in the pipeline. Right.
+
+*** 2 ***
+
+get_metadata_info(xmlfile)
+
+This is called by make_summary.py and it does need to have the UTF fix because
+make_summary.py reads the original version of the file.
+
+Returns run and cell info as well as the barcodes for the cell.
+
+*** 3 ***
+
+get_readset_info(xmlfile)
+
+This is now called by compile_bc_info.py which runs it on the .consensusreadset.xml file. It yields
+info like:
+
+_filename: m84140_231018_155043_s3.hifi_reads.bc1002.consensusreadset.xml
+_parts:
+- reads
+_readset_type: ccsreads
+barcode: bc1002  (* see note below)
+cell_id: m84140_231018_155043_s3
+cell_uuid: 3933601b-9710-4836-94ea-75803cc8f0f2
+readset_type: ConsensusReadSet (HiFi)
+run_id: r84140_20231018_154254
+run_slot: 1_C01
+ws_desc: ''
+ws_name: 28850RL0004L02
+ws_project: '28850'
+
+So a "readset" is one barcode (or unassigned or all). The comments say that this can be deleted but clearly
+it cannot as it's the only function that reads this file. The file does tell us the barcode under
+BioSample/DNABarcodes but compile_bc_info.py does not read this - instead it infers the barcode from
+the file name.
+
+As an aside, for the cell m84140_240116_183509_s2 would I have got the right sample name if I'd read the
+BioSample rather than the WellSample? Yes - the BioSample name is 28850RL0006L01 but the WellSample
+is 28850RLpool01.
+
+But for cell m84140_231018_155043_s3 the WellSample name and the BioSample name are both 28850RL0004L02,
+and to get the pool name I look in... oh, wait, that's a singleton.
+
+What about cell m84140_231018_162059_s4? Here the pool name is in the WellSample name but the library
+name is in the BioSample name. Right, so it's consistent. And my code is wrong.
+
+This is going to take some unpicking, but it's maybe not as bad as I feared.
+
+First question - am I parsing XML anywhere else in this code?
+No, apart from in strip_readset_resources which is a thing in itself.
+
+So, to do:
+
+1) Rename the functions to:
+
+get_metadata_summary() - for use on the raw input data
+
+get_metadata_info() - for use at the processing stage
+
+get_readset_info() - ditto
+
+And for the last of this, get both the ws_name and the bs_name, and audit all use
+of ws_name to make sure I have this right. Cool.
+
+I've fixed up the tests first.

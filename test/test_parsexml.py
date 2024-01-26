@@ -6,29 +6,52 @@ import glob
 from pprint import pprint
 import logging as L
 
-from smrtino.ParseXML import get_readset_info, get_metadata_info
-
-DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/mock_examples')
-DATA_REVIO = os.path.abspath(os.path.dirname(__file__) + '/revio_examples')
+DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/revio_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))
 
+from smrtino.ParseXML import get_metadata_summary, get_metadata_info, get_readset_info
+
+# The three functions are:
+#  get_metadata_summary() - need to read the unmodified metadata files
+#  get_metadata_info()    - gets the per-cell info for compile_bc_info.py
+#  get_readset_info()     - gets the per-barcode info for compile_bc_info.py
+
 class T(unittest.TestCase):
 
-    xmlfiles = [ f"{DATA_DIR}/r54041_20180613_132039/1_A01/subreadset.xml",
-                 f"{DATA_DIR}/r64175e_20201211_163702/1_A01/m64175e_201211_164938.consensusreadset.xml" ]
+    revio_meta_xml = [ f"{DATA_DIR}/r84140_20231018_154254/1_C01/metadata/m84140_231018_155043_s3.metadata.xml",
+                       f"{DATA_DIR}/r84140_20231018_154254/1_D01/metadata/m84140_231018_162059_s4.metadata.xml",
+                       f"{DATA_DIR}/r84140_20231030_134730/1_A01/metadata/m84140_231030_135502_s1.metadata.xml" ]
 
-    revio_meta_xml = [ f"{DATA_REVIO}/r84140_20231018_154254/1_C01/metadata/m84140_231018_155043_s3.metadata.xml",
-                       f"{DATA_REVIO}/r84140_20231018_154254/1_D01/metadata/m84140_231018_162059_s4.metadata.xml",
-                       f"{DATA_REVIO}/r84140_20231030_134730/1_A01/metadata/m84140_231030_135502_s1.metadata.xml" ]
+    smrtlink_13_meta = [ f"{DATA_DIR}/r84140_20240116_162812/m84140_240116_163605_s1.metadata.xml",
+                         f"{DATA_DIR}/r84140_20240116_162812/m84140_240116_183509_s2.metadata.xml" ]
 
-    def test_revio_meta(self):
-        """Try reading the new XML format from the Revio
+    smrtlink_13_rs = [ f"{DATA_DIR}/r84140_20240116_162812/m84140_240116_163605_s1.hifi_reads.all.consensusreadset.xml",
+                       f"{DATA_DIR}/r84140_20240116_162812/m84140_240116_183509_s2.hifi_reads.bc1003.consensusreadset.xml",
+                       f"{DATA_DIR}/r84140_20240116_162812/m84140_240116_183509_s2.hifi_reads.bc1008.consensusreadset.xml",
+                       f"{DATA_DIR}/r84140_20240116_162812/m84140_240116_183509_s2.hifi_reads.unassigned.consensusreadset.xml" ]
+
+    def test_wrong_file(self):
+        """All the functions should give a meaningful error if called on the wrong type
+           of file.
         """
-        info = get_metadata_info( self.revio_meta_xml[0] )
+        with self.assertRaisesRegex(RuntimeError, "must be run on a metadata.xml file"):
+            get_metadata_summary(smrtlink_13_rs[0])
 
-        self.assertEqual(info, {
+        with self.assertRaisesRegex(RuntimeError, "must be run on a metadata.xml file"):
+            get_metadata_info(smrtlink_13_rs[0])
+
+        with self.assertRaisesRegex(RuntimeError, "must be run on a readset.xml file"):
+            get_readset_summary(smrtlink_13_meta[0])
+
+    def test_meta_summary(self):
+        """Try reading a cell metadata file from the Revio to get the
+           summary info for the run.
+        """
+        summ = get_metadata_summary( self.revio_meta_xml[0] )
+
+        self.assertEqual(summ, {
                         'cell_id':       "m84140_231018_155043_s3",
                         'cell_uuid':     "b29fa499-96e9-4973-ae0a-085a75a08f9e",
                         'parts':         ["hifi_reads", "fail_reads"],
@@ -39,52 +62,76 @@ class T(unittest.TestCase):
                         'ws_desc':       "",
                         'ws_name':       "28850RL0004L02",
                         'ws_project':    "28850",
-                        'barcodes':      ["bc1002--bc1002"],
+                        'barcodes':      ["bc1002"],
                          })
 
-    def test_subreadset(self):
-        """ Load an XML file from one of our examples.
+    def test_meta_summary_13(self):
+        """Try reading a cell metadata file from the Revio to get the
+           summary info for the run (with SMRTLink 13)
         """
-        info = get_readset_info( self.xmlfiles[0] )
+        summ = get_metadata_summary( self.revio_13_meta[0] )
+
+        self.assertEqual(summ, {
+                        'cell_id':       "m84140_240116_183509_s2",
+                        'cell_uuid':     "fixme",
+                        'parts':         ["hifi_reads", "fail_reads"],
+                        'readset_type':  "Revio (HiFi)",
+                        '_readset_type': "ccsreads",
+                        'run_id':        "r84140_20240116_162812",
+                        'run_slot':      "1_B01",
+                        'ws_name':       "28850RLpool01",
+                        'ws_desc':       "Equal pool of 28850RL0003L01 and 28850RL0006L01",
+                        'ws_project':    "28850",
+                        'barcodes':      ["bc1003", "bc1008"],
+                         })
+
+
+    def test_meta_info(self):
+        """Try reading the cell metadata file to get the cell info
+        """
+        info = get_metadata_info( self.revio_meta_xml[0] )
 
         self.assertEqual(info, {
-                        'cell_id':       'm54041_180613_132945',
-                        'cell_uuid':     'f341ca37-cca4-4fd6-9232-50cef558f75f',
-                        '_parts':        ['subreads', 'scraps'],
-                        'readset_type':  'SubreadSet (CLR)',
-                        '_readset_type': 'subreads',
-                        'run_id':        'r54041_20180613_132039',
-                        'run_slot':      '1_A01',
-                        'ws_desc':       '',
-                        'ws_name':       '10978PJ0005L05_2.5pM',
-                        'ws_project':    '10978',
+                         'ExperimentId': 'x',
+                         'ChipType': 'x',
+                         'InstrumentType', 'x',
+                         'CreatedBy', 'x',
+                         'TimeStampedName', 'x'
                          })
 
-    def test_consensusreadset(self):
-        """ Load an XML file from one of our HiFi examples.
+    def test_meta_info_13(self):
+        """This cell from SMRTLink 13 actually has 2 barcodes
         """
-        info = get_readset_info( self.xmlfiles[1] )
+        info = get_metadata_info( self.smrtlink_13_meta[1] )
 
         self.assertEqual(info, {
-                        'cell_id':       'm64175e_201211_164938',
-                        'cell_uuid':     '37220870-92af-4d9b-9ca8-ce4699e0ffbe',
-                        '_parts':        ['reads'],
-                        'readset_type':  'ConsensusReadSet (HiFi)',
-                        '_readset_type': 'ccsreads',
-                        'run_id':        'r64175e_20201211_163702',
-                        'run_slot':      '1_A01',
-                        'ws_desc':       '',
-                        'ws_name':       '16160CT0001L01',
-                        'ws_project':    '16160',
+                         'ExperimentId': 'x',
+                         'ChipType': 'x',
+                         'InstrumentType', 'x',
+                         'CreatedBy', 'x',
+                         'TimeStampedName', 'x'
                          })
+
+    def test_readset_info_13(self):
+        """This will get the info at the barcode level. We have an unbarcoded example,
+           a barcoded one, and one from the unassigned reads.
+        """
+        info_nobc = get_readset_info( self.smrtlink_13_rs[0] )
+        self.assertEqual(info_nobc, {})
+
+        info_bc = get_readset_info( self.smrtlink_13_rs[2] )
+        self.assertEqual(info_bc, {})
+
+        info_unass = get_readset_info( self.smrtlink_13_rs[3] )
+        self.assertEqual(info_unass, {})
 
     def test_smrtlink_link(self):
         """ I added the ability to generate a link to SMRTLINK
         """
-        self.assertEqual( get_readset_info( self.xmlfiles[0],  smrtlink_base='XXX')['_link'],
-                          'XXX/sl/data-management/dataset-detail/f341ca37-cca4-4fd6-9232-50cef558f75f?type=subreads' )
+        self.assertEqual( get_readset_info( self.smrtlink_13_rs[0],  smrtlink_base='XXX')['_link'],
+                          'XXX/sl/data-management/dataset-detail/f341ca37-cca4-4fd6-9232-50cef558f75f?type=ccsreads' )
 
-        self.assertEqual( get_readset_info( self.xmlfiles[1],  smrtlink_base='XXX')['_link'],
+        self.assertEqual( get_readset_info( self.smrtlink_13_rs[1],  smrtlink_base='XXX')['_link'],
                           'XXX/sl/data-management/dataset-detail/37220870-92af-4d9b-9ca8-ce4699e0ffbe?type=ccsreads' )
 
 if __name__ == '__main__':

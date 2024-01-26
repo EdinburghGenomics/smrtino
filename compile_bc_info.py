@@ -3,7 +3,7 @@ import os, sys
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-from smrtino.ParseXML import get_readset_info, get_runmetadata_info
+from smrtino.ParseXML import get_readset_info, get_metadata_info
 from smrtino import load_yaml, dump_yaml
 
 """ Emits .info.yaml files for SMRT cells by parsing the xml files from
@@ -33,7 +33,10 @@ def gen_info(args):
     info = get_readset_info(xmlfile)
     if args.runxml:
         L.debug(f"Also reading from {args.runxml}")
-        info['_run'] = get_runmetadata_info(args.runxml)
+        cmd = get_metadata_info(args.runxml)
+        info['_run'] = cmd['run']
+
+        info['cell_ws_name'] = cmd['ws_name']
 
     info['_filename'] = os.path.basename(xmlfile)
 
