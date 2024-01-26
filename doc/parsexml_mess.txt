@@ -1,5 +1,13 @@
 Oh dear.
 
+The gist of this is that I never really considered that, with multiplexed cells:
+
+WellSample is the pool (has a name and a description)
+BioSample is the sample (also has a name and a description)
+
+"Library" should be the possibly-munged BioSample name but due to legacy Hesiod
+not handling barcodes I've been using ws_name.
+
 In smrtino/ParseXML.py I have three functions:
 
 *** 1 ***

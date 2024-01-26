@@ -25,22 +25,35 @@ rs_constants = dict( ConsensusReadSet = \
                               shortname = 'subreads',
                               parts = ['subreads', 'scraps'] ) )
 
+def _load_xml(filename):
+    """XML file loader that deals with the SMRTLink 12 bug -
+       the files claim to be utf-16. But they are not. FFS.
+
+       The files saved to the output directory are fixed (and SMRTLink 13 fixes the
+       bug anyway) but I leave this here for backwards compatibility.
+    """
+    with open(filename) as fh:
+        munged_lines = ( re.sub(r"utf-16", r"utf-8", aline) if n == 0
+                         else aline
+                         for n, aline in enumerate(fh) )
+
+        root = ET.fromstringlist(munged_lines)
+
+    return root
+
+def _get_common_stuff(root):
+    """There is a lot of overlap between what make_summary.py wants from the metadata
+       file and compile_bc_info.py wants from the readset file.
+
+       This function captures that.
+    """
+
 def get_metadata_summary(xmlfile, smrtlink_base=None):
     """ Glean info from the metadata.xml file for a whole Revio SMRT cell
 
         This is used to get the info before the pipeline actually runs.
     """
-    # First thing is, in SMRTLink 12 the files claim to be utf-16. But they are not. FFS.
-    # We fix the file as we copy it, but this function needs to be able to run on the
-    # original file. SMRTLink 13 has fixed this.
-    def munge_xmldecl(filename):
-        with open(filename) as fh:
-            for n, aline in enumerate(fh):
-                if n == 0:
-                    aline = re.sub(r"utf-16", r"utf-8", aline)
-                yield(aline)
-
-    root = ET.fromstringlist(munge_xmldecl(xmlfile))
+    root = _load_xml(xmlfile)
 
     try:
         rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')
@@ -94,7 +107,7 @@ def get_metadata_info(xmlfile):
     """
     run_info = dict(ExperimentId = 'unknown')
 
-    root = ET.parse(xmlfile).getroot()
+    root = _load_xml(xmlfile)
 
     # attribute if one was set.
     ec = root.find('pbmodel:ExperimentContainer', _ns)
@@ -125,9 +138,10 @@ def get_metadata_info(xmlfile):
 def get_readset_info(xmlfile, smrtlink_base=None):
     """ Glean info from a readset file for a SMRT cell
     """
-    # FIXME - delete this once get_metadata_info() is working, as it's not needed
-    # for Revio
-    root = ET.parse(xmlfile).getroot()
+    root = _load_xml(xmlfile)
+
+    # FIXME - a lot of this is copy-paste from get_metadata_summary,
+    # so break it out to a single function.
 
     try:
         rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')

@@ -94,9 +94,9 @@ class T(unittest.TestCase):
         self.assertEqual(info, {
                          'ExperimentId': 'x',
                          'ChipType': 'x',
-                         'InstrumentType', 'x',
-                         'CreatedBy', 'x',
-                         'TimeStampedName', 'x'
+                         'InstrumentType': 'x',
+                         'CreatedBy': 'x',
+                         'TimeStampedName': 'x'
                          })
 
     def test_meta_info_13(self):
@@ -107,9 +107,9 @@ class T(unittest.TestCase):
         self.assertEqual(info, {
                          'ExperimentId': 'x',
                          'ChipType': 'x',
-                         'InstrumentType', 'x',
-                         'CreatedBy', 'x',
-                         'TimeStampedName', 'x'
+                         'InstrumentType': 'x',
+                         'CreatedBy': 'x',
+                         'TimeStampedName': 'x'
                          })
 
     def test_readset_info_13(self):
