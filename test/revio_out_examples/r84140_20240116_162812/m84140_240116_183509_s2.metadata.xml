@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PacBioDataModel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Version="4.0.1" xmlns="http://pacificbiosciences.com/PacBioDataModel.xsd">
-  <ExperimentContainer CreatedAt="2024-01-16T15:04:40.247Z" ModifiedAt="0001-01-01T00:00:00">
+  <ExperimentContainer Name="K0000_name" CreatedAt="2024-01-16T15:04:40.247Z" ModifiedAt="0001-01-01T00:00:00" ExperimentId="K0000_id">
     <InvestigatorName>Default</InvestigatorName>
     <CreatedDate>2024-01-16</CreatedDate>
     <Runs>

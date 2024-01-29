@@ -16,7 +16,11 @@ _ns = dict( pbmeta  = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xs
             pbmodel = 'http://pacificbiosciences.com/PacBioDataModel.xsd',
             pbsi    = 'http://pacificbiosciences.com/PacBioSampleInfo.xsd', )
 
-rs_constants = dict( ConsensusReadSet = \
+rs_constants = dict( Revio = \
+                        dict( label = 'Revio (HiFi)',
+                              shortname = 'ccsreads',
+                              parts = ['hifi_reads', 'fail_reads'] ),
+                     ConsensusReadSet = \
                         dict( label = 'ConsensusReadSet (HiFi)',
                               shortname = 'ccsreads',
                               parts = ['reads'] ),
@@ -41,20 +45,22 @@ def _load_xml(filename):
 
     return root
 
+def _bcmunge(bc):
+    """If we see a barcode like "bc1002--bc1002" then just report "bc1002"
+    """
+    bc_split = bc.split("--")
+
+    if len(bc_split) == 2 and bc_split[0] == bc_split[1]:
+        return bc_split[0]
+    else:
+        return bc
+
 def _get_common_stuff(root):
     """There is a lot of overlap between what make_summary.py wants from the metadata
        file and compile_bc_info.py wants from the readset file.
 
        This function captures that.
     """
-
-def get_metadata_summary(xmlfile, smrtlink_base=None):
-    """ Glean info from the metadata.xml file for a whole Revio SMRT cell
-
-        This is used to get the info before the pipeline actually runs.
-    """
-    root = _load_xml(xmlfile)
-
     try:
         rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')
         cmd = root.find('.//pbmeta:CollectionMetadata', _ns).attrib
@@ -62,20 +68,26 @@ def get_metadata_summary(xmlfile, smrtlink_base=None):
         rf = "/unknown/unknown"
         cmd = {'Context': 'unknown'}
 
-    info = { 'run_id': rf.split('/')[-2],
-             'run_slot': rf.split('/')[-1], # Also could get this from TimeStampedName
-             'cell_id': cmd.get('Context'),
+    info = { 'run_id':     rf.split('/')[-2],
+             'run_slot':   rf.split('/')[-1], # Also could get this from TimeStampedName
+             'cell_id':    cmd.get('Context'),
              'cell_uuid' : cmd.get('UniqueId', 'no-uuid') }
 
-    # For Revio we're always a "Revio (HiFi)" readset, until we're not.
-    info['readset_type'] = "Revio (HiFi)"
-    info['_readset_type'] = "ccsreads"
+    # See if this is a ConsensusReadSet (HiFi) or SubreadSet (CLR)
+    #root_tag = re.sub(r'{.*}', '', root.tag)
+    #constants = rs_constants.get(root_tag, {})
+    # Actually I'm just going to hard-code this to the Revio settings. We can revisit if
+    # they ever change.
+    constants = rs_constants['Revio']
 
-    # FIXME - should really get this from sc_data, not hard-coded
-    info['parts'] = ["hifi_reads", "fail_reads"]
+    info['readset_type'] = constants['label']
+    info['_readset_type'] = constants['shortname']
+    info['_parts'] = constants['parts']
 
-    # See what's actually loaded on the cell (this is the same as for Sequel)
-    well_samples = root.findall(".//pbmeta:WellSample", _ns)
+    # All these files should have a single WellSample, until I see otherwise.
+    # For the metadata for a pooled run there may be several biosamples.
+    well_samples = root.findall('.//pbmeta:WellSample', _ns)
+
     # There should be 1!
     L.debug(f"Found {len(well_samples)} WellSample records")
 
@@ -87,15 +99,33 @@ def get_metadata_summary(xmlfile, smrtlink_base=None):
 
         mo = re.search(r'\b(\d{5,})', info['ws_name'])
         if mo:
+            # There is also a bs_project bit it should (!) be the same.
             info['ws_project'] = mo.group(1)
 
-        # And see if we have barcodes
-        dna_barcodes = ws.findall(".//pbsi:DNABarcodes", _ns)
+    # And see if we have barcodes
+    dna_barcodes = ws.findall(".//pbsi:DNABarcodes", _ns)
+    if dna_barcodes:
+        info['barcodes'] = [ _bcmunge(bc.attrib.get('Name', 'unknown'))
+                             for dna in dna_barcodes
+                             for bc in dna ]
 
-        if dna_barcodes:
-            info['barcodes'] = [ bc.attrib.get('Name', 'unknown')
-                                 for dna in dna_barcodes
-                                 for bc in dna ]
+    return info
+
+
+
+def get_metadata_summary(xmlfile, smrtlink_base=None):
+    """ Glean info from the metadata.xml file for a contents of the Revio SMRT cell.
+
+        This is used to get the info before the pipeline actually runs - the report
+        maker gets this same info from the readset.xml file.
+    """
+    root = _load_xml(xmlfile)
+
+    if root.tag != f"{{{_ns['pbmodel']}}}PacBioDataModel":
+        raise RuntimeError("This function must be run on a metadata.xml file."
+                           f" Root tag is: {root.tag}.")
+
+    info = _get_common_stuff(root)
 
     if smrtlink_base:
         info['_link'] = get_smrtlink_link(root, smrtlink_base)
@@ -103,11 +133,16 @@ def get_metadata_summary(xmlfile, smrtlink_base=None):
     return info
 
 def get_metadata_info(xmlfile):
-    """ Read some stuff from the metadata/{cellid}.metadata.xml file
+    """ Read some stuff from the metadata/{cellid}.metadata.xml file that
+        relates to the whole run.
     """
     run_info = dict(ExperimentId = 'unknown')
 
     root = _load_xml(xmlfile)
+
+    if root.tag != f"{{{_ns['pbmodel']}}}PacBioDataModel":
+        raise RuntimeError("This function must be run on a metadata.xml file."
+                           f" Root tag is: {root.tag}.")
 
     # attribute if one was set.
     ec = root.find('pbmodel:ExperimentContainer', _ns)
@@ -122,65 +157,63 @@ def get_metadata_info(xmlfile):
             run_info[i] = run.attrib.get(i, 'unknown')
 
     # And there should be a CollectionMetadata element which gives us the InstrumentId
-    cmd = root.find('.//pbmeta:CollectionMetadata', _ns)
-    if cmd:
+    # Except this is now under "Run", even though the name is under "CollectionMetadata"?
+    rmd = root.find('.//pbmeta:Run', _ns)
+    if rmd:
         for i in ["InstrumentId"]:
-            run_info[i] = cmd.attrib.get(i, 'unknown')
+            run_info[i] = rmd.attrib.get(i, 'unknown')
 
         if "InstrumentType" in run_info:
             run_info["Instrument"] = f"{run_info['InstrumentType']}_{run_info['InstrumentId']}"
 
     # Get the WellSample name which is presumably the pool name
-
-    return dict( run = run_info,
-                 ws_name = ws_name )
+    return run_info
 
 def get_readset_info(xmlfile, smrtlink_base=None):
     """ Glean info from a readset file for a SMRT cell
     """
     root = _load_xml(xmlfile)
 
-    # FIXME - a lot of this is copy-paste from get_metadata_summary,
-    # so break it out to a single function.
+    if root.tag != f"{{{_ns['pb']}}}ConsensusReadSet":
+        raise RuntimeError("This function must be run on a readset.xml file."
+                           f" Root tag is: {root.tag}.")
 
-    try:
-        rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')
-        cmd = root.find('.//pbmeta:CollectionMetadata', _ns).attrib
-    except AttributeError:
-        rf = "/unknown/unknown"
-        cmd = {'Context': 'unknown'}
+    info = _get_common_stuff(root)
 
-    info = { 'run_id': rf.split('/')[-2],
-             'run_slot': rf.split('/')[-1], # Also could get this from TimeStampedName
-             'cell_id': cmd.get('Context'),
-             'cell_uuid' : root.attrib.get('UniqueId', 'no-uuid') }
-
-    # See if this is a ConsensusReadSet (HiFi) or SubreadSet (CLR)
-    root_tag = re.sub(r'{.*}', '', root.tag)
-    constants = rs_constants.get(root_tag, {})
-
-    # FIXME - I should probably fail if the root_tag is unrecongised, rather than emitting
-    # plausible junk.
-    info['readset_type'] = constants.get('label', root_tag)
-    info['_readset_type'] = constants.get('shortname', root_tag.lower())
-    info['_parts'] = constants.get('parts', [])
-
-    well_samples = root.findall('.//pbmeta:WellSample', _ns)
+    # For a readset there should be one biosample. It might or might not be the same
+    # as the wellsample. We could look at children.
+    bio_samples = root.findall('.//pbmeta:WellSample/pbsi:BioSamples/pbsi:BioSample', _ns)
     # There should be 1!
-    L.debug(f"Found {len(well_samples)} WellSample records")
+    L.debug(f"Found {len(bio_samples)} BioSample records")
 
-    if len(well_samples) == 1:
-        ws, = well_samples
+    if len(bio_samples) == 1:
+        bs, = bio_samples
 
-        info['ws_name'] = ws.attrib.get('Name', '')
-        info['ws_desc'] = ws.attrib.get('Description', '')
+        info['bs_name'] = bs.attrib.get('Name', '')
+        info['bs_desc'] = bs.attrib.get('Description', '')
 
-        mo = re.search(r'\b(\d{5,})', info['ws_name'])
+        mo = re.search(r'\b(\d{5,})', info['bs_name'])
         if mo:
-            info['ws_project'] = mo.group(1)
+            info['bs_project'] = mo.group(1)
+
+    # We should have a single project which is both 'bs_project' and 'ws_project',
+    # but if they disagree then believe the sample name over the pool name.
+    if 'bs_project' in info:
+        if info['bs_project'] != info['ws_project']:
+            L.warning("Project name mismatch")
+        # Take the project from the sample in any case
+        info['project'] = info['bs_project']
+    else:
+        # Really?
+        info['project'] = info['ws_project']
 
     if smrtlink_base:
         info['_link'] = get_smrtlink_link(root, smrtlink_base)
+
+    # There should be either one barcode or no barcodes
+    if len(info.get('barcodes', [])) == 1:
+        info['barcode'], = info['barcodes']
+        del info['barcodes']
 
     return info
 

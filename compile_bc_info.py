@@ -33,18 +33,19 @@ def gen_info(args):
     info = get_readset_info(xmlfile)
     if args.runxml:
         L.debug(f"Also reading from {args.runxml}")
-        cmd = get_metadata_info(args.runxml)
-        info['_run'] = cmd['run']
-
-        info['cell_ws_name'] = cmd['ws_name']
+        rmd = get_metadata_info(args.runxml)
+        info['_run'] = rmd
 
     info['_filename'] = os.path.basename(xmlfile)
 
     # Get the barcode from the file name
+    FIXME no get it from the XML and check
     info['barcode'] = info['_filename'].split('.')[-3]
     # But if that just gives us the cell ID then ignore it
     if info['barcode'] == info['cell_id']:
         del info['barcode']
+
+    check that info now has bs_name as well as ws_name
 
     # Add plots if we have them
     for p in args.plots or []:
