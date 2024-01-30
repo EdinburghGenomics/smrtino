@@ -185,10 +185,10 @@ class T(unittest.TestCase):
         """ I added the ability to generate a link to SMRTLINK
         """
         self.assertEqual( get_readset_info( smrtlink_13_rs[0],  smrtlink_base='XXX')['_link'],
-                          'XXX/sl/data-management/dataset-detail/f341ca37-cca4-4fd6-9232-50cef558f75f?type=ccsreads' )
+                          'XXX/sl/data-management/dataset-detail/5903c172-50e7-48b8-a70b-d0e33ff8e3ff?type=ccsreads' )
 
         self.assertEqual( get_readset_info( smrtlink_13_rs[1],  smrtlink_base='XXX')['_link'],
-                          'XXX/sl/data-management/dataset-detail/37220870-92af-4d9b-9ca8-ce4699e0ffbe?type=ccsreads' )
+                          'XXX/sl/data-management/dataset-detail/cd81e8fd-86f7-4b24-9a9e-24b2af3413d1?type=ccsreads' )
 
 if __name__ == '__main__':
     unittest.main()

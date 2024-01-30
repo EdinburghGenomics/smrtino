@@ -102,3 +102,7 @@ And for the last of this, get both the ws_name and the bs_name, and audit all us
 of ws_name to make sure I have this right. Cool.
 
 I've fixed up the tests first.
+
+--
+
+It looks like there is no good way to see if a dataset comes from unassigned reads. How annoying. I'll work something out!

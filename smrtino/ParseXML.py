@@ -11,10 +11,10 @@ import xml.etree.ElementTree as ET
     If you run a function on the wrong type of file you'll get an error.
 """
 
-_ns = dict( pbmeta  = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
-            pb      = 'http://pacificbiosciences.com/PacBioDatasets.xsd',
-            pbmodel = 'http://pacificbiosciences.com/PacBioDataModel.xsd',
-            pbsi    = 'http://pacificbiosciences.com/PacBioSampleInfo.xsd', )
+_ns = dict( pbmeta   = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
+            pb       = 'http://pacificbiosciences.com/PacBioDatasets.xsd',
+            pbmodel  = 'http://pacificbiosciences.com/PacBioDataModel.xsd',
+            pbsample = 'http://pacificbiosciences.com/PacBioSampleInfo.xsd', )
 
 rs_constants = dict( Revio = \
                         dict( label = 'Revio (HiFi)',
@@ -103,7 +103,7 @@ def _get_common_stuff(root):
             info['ws_project'] = mo.group(1)
 
     # And see if we have barcodes
-    dna_barcodes = ws.findall(".//pbsi:DNABarcodes", _ns)
+    dna_barcodes = ws.findall(".//pbsample:DNABarcodes", _ns)
     if dna_barcodes:
         info['barcodes'] = [ _bcmunge(bc.attrib.get('Name', 'unknown'))
                              for dna in dna_barcodes
@@ -180,13 +180,34 @@ def get_readset_info(xmlfile, smrtlink_base=None):
 
     info = _get_common_stuff(root)
 
-    # For a readset there should be one biosample. It might or might not be the same
-    # as the wellsample. We could look at children.
-    bio_samples = root.findall('.//pbmeta:WellSample/pbsi:BioSamples/pbsi:BioSample', _ns)
-    # There should be 1!
-    L.debug(f"Found {len(bio_samples)} BioSample records")
+    # For a readset there should be one biosample with one barcode.
+    # It might or might not have the same name as the wellsample (depending on if the wellsample was a pool).
+    # Unassigned readsets will, confusingly, have one or more BioSamples but the barcodes will be
+    # 'pbmeta:DNABarcode' tags not 'pbsample:DNABarcode' tags.
+    bio_samples = root.findall('.//pbmeta:WellSample/pbsample:BioSamples/pbsample:BioSample', _ns)
+    samp_barcodes = [ mbc for bs in bio_samples
+                      for mbc in bs.findall('pbsample:DNABarcodes/pbsample:DNABarcode', _ns) ]
+    meta_barcodes = [ mbc for bs in bio_samples
+                      for mbc in bs.findall('pbmeta:DNABarcodes/pbmeta:DNABarcode', _ns) ]
 
-    if len(bio_samples) == 1:
+    # There should be, unless this !
+    L.debug(f"Found {len(bio_samples)} BioSample records, {len(samp_barcodes)}+{len(meta_barcodes)} DNABarcodes")
+
+    if meta_barcodes:
+        # This is indicative of an unassigned reads file, as far as I can see.
+        assert 'barcodes' not in info
+        info['bs_name'] = "unassigned"
+        info['bs_desc'] = "Unassigned reads"
+
+    elif len(bio_samples) == 1:
+        # A single sample. We should already have the barcode (or there's no barcode), but check.
+        if len(samp_barcodes) == 0:
+            assert 'barcodes' not in info
+        else:
+            assert info['barcodes'] == [_bcmunge(e.attrib['Name']) for e in samp_barcodes]
+            info['barcode'], = info['barcodes']
+            del info['barcodes']
+
         bs, = bio_samples
 
         info['bs_name'] = bs.attrib.get('Name', '')
@@ -195,6 +216,10 @@ def get_readset_info(xmlfile, smrtlink_base=None):
         mo = re.search(r'\b(\d{5,})', info['bs_name'])
         if mo:
             info['bs_project'] = mo.group(1)
+
+    else:
+        # Maybe should be an actual error?
+        L.warning(f"We should not have {len(bio_samples)} BioSample entries in one readset XML file.")
 
     # We should have a single project which is both 'bs_project' and 'ws_project',
     # but if they disagree then believe the sample name over the pool name.
@@ -209,11 +234,6 @@ def get_readset_info(xmlfile, smrtlink_base=None):
 
     if smrtlink_base:
         info['_link'] = get_smrtlink_link(root, smrtlink_base)
-
-    # There should be either one barcode or no barcodes
-    if len(info.get('barcodes', [])) == 1:
-        info['barcode'], = info['barcodes']
-        del info['barcodes']
 
     return info
 
