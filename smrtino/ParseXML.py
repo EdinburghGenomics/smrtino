@@ -64,14 +64,16 @@ def _get_common_stuff(root):
     try:
         rf = root.find('.//pbmeta:ResultsFolder', _ns).text.rstrip('/')
         cmd = root.find('.//pbmeta:CollectionMetadata', _ns).attrib
+        crs = root.find('.//pbmeta:ConsensusReadSetRef', _ns).attrib
     except AttributeError:
         rf = "/unknown/unknown"
-        cmd = {'Context': 'unknown'}
+        cmd = {}
+        crs = {}
 
     info = { 'run_id':     rf.split('/')[-2],
              'run_slot':   rf.split('/')[-1], # Also could get this from TimeStampedName
-             'cell_id':    cmd.get('Context'),
-             'cell_uuid' : cmd.get('UniqueId', 'no-uuid') }
+             'cell_id':    cmd.get('Context', "unknown"),
+             'cell_uuid' : crs.get('UniqueId', "no-uuid") }
 
     # See if this is a ConsensusReadSet (HiFi) or SubreadSet (CLR)
     #root_tag = re.sub(r'{.*}', '', root.tag)

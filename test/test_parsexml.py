@@ -54,7 +54,7 @@ class T(unittest.TestCase):
 
         self.assertEqual(summ, {
                         'cell_id':       "m84140_231018_155043_s3",
-                        'cell_uuid':     "b29fa499-96e9-4973-ae0a-085a75a08f9e",
+                        'cell_uuid':     "577ccdb1-d463-42b3-bdd9-6fffbf659105",
                         '_parts':        ["hifi_reads", "fail_reads"],
                         'readset_type':  "Revio (HiFi)",
                         '_readset_type': "ccsreads",
@@ -74,7 +74,7 @@ class T(unittest.TestCase):
         summ0 = get_metadata_summary( smrtlink_13_meta[0] )
         self.assertEqual(summ0, {
                         'cell_id':       "m84140_240116_163605_s1",
-                        'cell_uuid':     "311e1318-406c-4abc-ba8b-e20cd6bf9350",
+                        'cell_uuid':     "5903c172-50e7-48b8-a70b-d0e33ff8e3ff",
                         '_parts':        ["hifi_reads", "fail_reads"],
                         'readset_type':  "Revio (HiFi)",
                         '_readset_type': "ccsreads",
@@ -89,7 +89,7 @@ class T(unittest.TestCase):
         summ0 = get_metadata_summary( smrtlink_13_meta[1] )
         self.assertEqual(summ0, {
                         'cell_id':       "m84140_240116_183509_s2",
-                        'cell_uuid':     "abb99299-e9db-4a03-8557-278303370414",
+                        'cell_uuid':     "bee1763c-4332-4a14-91c7-65dbbef2f28c",
                         '_parts':        ["hifi_reads", "fail_reads"],
                         'readset_type':  "Revio (HiFi)",
                         '_readset_type': "ccsreads",
@@ -140,7 +140,7 @@ class T(unittest.TestCase):
                                       'bs_name': '28350AA0001L03',
                                       'bs_project': '28350',
                                       'cell_id': 'm84140_240116_163605_s1',
-                                      'cell_uuid': '311e1318-406c-4abc-ba8b-e20cd6bf9350',
+                                      'cell_uuid': '5903c172-50e7-48b8-a70b-d0e33ff8e3ff',
                                       'project': '28350',
                                       'readset_type': 'Revio (HiFi)',
                                       'run_id': 'r84140_20240116_162812',
@@ -157,7 +157,7 @@ class T(unittest.TestCase):
                                     'bs_name': '28850RL0006L01',
                                     'bs_project': '28850',
                                     'cell_id': 'm84140_240116_183509_s2',
-                                    'cell_uuid': 'abb99299-e9db-4a03-8557-278303370414',
+                                    'cell_uuid': 'bee1763c-4332-4a14-91c7-65dbbef2f28c',
                                     'project': '28850',
                                     'readset_type': 'Revio (HiFi)',
                                     'run_id': 'r84140_20240116_162812',
@@ -172,7 +172,7 @@ class T(unittest.TestCase):
                                        'bs_desc': 'Unassigned reads',
                                        'bs_name': 'unassigned',
                                        'cell_id': 'm84140_240116_183509_s2',
-                                       'cell_uuid': 'abb99299-e9db-4a03-8557-278303370414',
+                                       'cell_uuid': 'bee1763c-4332-4a14-91c7-65dbbef2f28c',
                                        'project': '28850',
                                        'readset_type': 'Revio (HiFi)',
                                        'run_id': 'r84140_20240116_162812',

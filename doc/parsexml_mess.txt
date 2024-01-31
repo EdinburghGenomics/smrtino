@@ -106,3 +106,36 @@ I've fixed up the tests first.
 --
 
 It looks like there is no good way to see if a dataset comes from unassigned reads. How annoying. I'll work something out!
+Yes - weirdly it's if the BioSample barcodes are meta info or sample info? This will surely change in a future release.
+
+--
+
+The 'cell_uuid' came from the ConsensusReadset tag but I changed it to come from the CollectionMetadata tag.
+They are different. Why did I change? And does it matter?
+
+Yes it matters: the cell_uuid is used by link_to_smrtlink.py to make the links to SMRTLink. So I need to check this is
+working and the links are correct. And that the link is correct whether I read the metadata or the readset XML. I should be
+able to check with this:
+
+https://egcloud.bio.ed.ac.uk/smrtino/r84140_20240116_162812/1_B01-m84140_240116_183509_s2.html
+
+But SMRTLink currently has a certificate problem. So I can't see it. Hopefully John can fix this...
+well I think I fixed it so go me :-)
+
+Back with the above link the Run QC UUID is 40d, which works.
+The cell UUID is 3d1, which also works.
+
+For cell #1 the Run UUID is still 40d, and the cell UUID is 3ff, which works.
+
+Looking at the readset.xml:
+
+3ff is the UniqueId of the ConsensusReadset. The CollectionMetadata UniqueId is 9350, which
+links to nothing. So I for reading readset.xml files I deffo need to the root UniqueId
+(or the ConsensusReadSetRef UniqueId).
+
+Looking at the metadata.xml:
+
+The 3ff UniqueId is only under ConsensusReadSetRef. Therefore I should take the cell_uuid from
+this element. Cool.
+
+

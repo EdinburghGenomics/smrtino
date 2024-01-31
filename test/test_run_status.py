@@ -94,21 +94,11 @@ class T(unittest.TestCase):
             rmtree(os.path.join(self.tmp_dir, 'to', self.current_run, dp))
         except NotADirectoryError:
             os.remove(os.path.join(self.tmp_dir, 'to', self.current_run, dp))
+
     # And the tests...
 
-    def test_onecell_run(self):
-        """ A really basic test
-        """
-        run_info = self.use_run('r54041_20180613_132039', copy=True)
-
-        self.assertEqual(run_info.get_cells(), {'1_A01': run_info.CELL_PENDING})
-
-        self.touch('1_A01/foo.transferdone')
-        run_info._clear_cache()
-        self.assertEqual(run_info.get_cells(), {'1_A01': run_info.CELL_READY})
-
-        # Start time should be something (we're not sure what)
-        self.assertEqual(len(run_info.get_start_time()), len('Thu Jan  1 01:00:00 1970'))
+    # test_onecell_run(self) - basic test is replaced by test_revio below
+    # TODO - switch all sequel tests over to Revio examples.
 
     def test_run_new(self):
         """ A totally new run.
@@ -273,10 +263,11 @@ class T(unittest.TestCase):
     def test_reporting(self):
         """Test the -i flag which I seem to have introduced.
         """
-        run_info = self.use_run('r54041_20180613_132039', copy=False)
+        run_info = self.use_run("r84140_20231018_154254", copy=False, src="revio")
         self.md('pbpipeline')
 
-        self.touch("pbpipeline/1_A01.done")
+        self.touch("pbpipeline/1_C01.done")
+        self.touch("pbpipeline/1_D01.done")
         self.touch("pbpipeline/report.started")
         self.assertEqual(run_info.get_status(), 'reporting')
 
