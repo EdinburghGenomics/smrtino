@@ -42,6 +42,8 @@ class T(unittest.TestCase):
                         'ws_project':    '10978',
                          })
 
+    # This fails firstly because the code is hard-coded now to assume Revio syntax and
+    # should probably be removed.
     def test_consensusreadset(self):
         """ Load an XML file from one of our HiFi examples.
         """
