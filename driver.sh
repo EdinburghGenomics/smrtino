@@ -246,7 +246,7 @@ action_cell_ready(){
       # Compile info for all cells, not just the one being precessed.
       scan_cells.py -c $CELLSREADY $CELLSDONE > sc_data.yaml
 
-      always_run=(one_cell_info list_blob_plots)
+      always_run=(one_cell_info one_barcode_info list_blob_plots)
       Snakefile.process_cells -R "${always_run[@]}" \
                               --config cells="$CELLSREADY" blobs="${BLOBS:-1}" cleanup=1 \
                                        ${EXTRA_SNAKE_CONFIG:-} \

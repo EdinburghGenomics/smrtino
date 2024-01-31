@@ -4,7 +4,7 @@
 MAINLOG=/dev/stdout
 
 # Where to find runs to process and where to put results
-FROM_LOCATION=~/test_sequel
+FROM_LOCATION=~/test_revio
 TO_LOCATION=~/test_pacbio_data
 
 # As we never write to the input dir we can test process live data:

@@ -390,8 +390,16 @@ class T(unittest.TestCase):
         for cell in "1_C01".split():
             self.assertFalse(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
 
-        # Report should be made on just the one cell
-        self.assertEqual(self.bm.last_calls["Snakefile.report"],
+        # Snakemake process_cells should have been started on just one cell
+        self.assertEqual(self.bm.last_calls['Snakefile.process_cells'],
+                         [ [ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
+                             "--config", "cells=1_D01",
+                                         "blobs=1",
+                                         "cleanup=1",
+                             "-p" ] ])
+
+        # Report should be made on just the one cell too
+        self.assertEqual(self.bm.last_calls['Snakefile.report'],
                          [ ['-R', 'list_projects', 'make_report',
                             '--config', 'cells=1_D01',
                             '-p', 'report_main'] ])
@@ -455,7 +463,7 @@ class T(unittest.TestCase):
         # Check that upload_reports.sh is not called
         expected_calls = self.bm.empty_calls()
 
-        expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "list_blob_plots",
+        expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                                                        "--config", "cells=1_C01 1_D01",
                                                                    "blobs=1",
                                                                    "cleanup=1",
