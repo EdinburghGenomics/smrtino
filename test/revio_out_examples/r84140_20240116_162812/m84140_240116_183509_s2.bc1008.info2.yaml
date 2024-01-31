@@ -1,0 +1,18 @@
+_filename: m84140_240116_183509_s2.hifi_reads.bc1008.consensusreadset.xml
+_parts:
+- hifi_reads
+- fail_reads
+_readset_type: ccsreads
+barcode: bc1008
+cell_id: m84140_240116_183509_s2
+cell_uuid: bee1763c-4332-4a14-91c7-65dbbef2f28c
+readset_type: Revio (HiFi)
+run_id: r84140_20240116_162812
+run_slot: 1_B01
+bs_desc: ''
+bs_name: 28850RL0006L01
+bs_project: '28850'
+ws_desc: 'Equal pool of 28850RL0003L01 and 28850RL0006L01'
+ws_name: 28850RLpool01
+ws_project: '28850'
+project: '28850'

@@ -109,7 +109,7 @@ class T(unittest.TestCase):
         info = get_metadata_info( revio_meta_xml[0] )
 
         self.assertEqual(info, {
-                         'ExperimentId': 'none set',
+                         'ExperimentId': '',
                          'ChipType': '25mChip',
                          'InstrumentType': 'Revio',
                          'CreatedBy': 'cnewman',

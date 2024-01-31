@@ -207,7 +207,7 @@ rule one_barcode_info:
        # input.xml[0] is the xml for the hifi reads - we don't need to read the XML for
        # the failed reads.
        r"""compile_bc_info.py {input.xml[0]} \
-             --runxml {input.metaxml} \
+             --metaxml {input.metaxml} \
              --stats  {input.cstats} \
              --taxon  {input.taxon} \
              --plots  {input.blobs} \

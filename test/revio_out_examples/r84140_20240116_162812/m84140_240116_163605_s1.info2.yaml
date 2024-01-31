@@ -1,0 +1,23 @@
+_filename: m84140_240116_163605_s1.hifi_reads.all.consensusreadset.xml
+_parts:
+- hifi_reads
+- fail_reads
+_readset_type: ccsreads
+_run:
+  ChipType: '25mChip'
+  CreatedBy: 'rfoster2'
+  ExperimentId: ''
+  InstrumentType: 'Revio'
+  TimeStampedName: 'r84140_20240116_162812'
+cell_id: m84140_240116_163605_s1
+cell_uuid: 5903c172-50e7-48b8-a70b-d0e33ff8e3ff
+readset_type: Revio (HiFi)
+run_id: r84140_20240116_162812
+run_slot: 1_A01
+bs_desc: ''
+bs_name: 28350AA0001L03
+bs_project: '28350'
+ws_desc: ''
+ws_name: 28350AA0001L03
+ws_project: '28350'
+project: '28350'

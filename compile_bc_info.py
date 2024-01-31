@@ -9,8 +9,8 @@ from smrtino import load_yaml, dump_yaml
 """ Emits .info.yaml files for SMRT cells by parsing the xml files from
     SMRT link, among other things. This script, along with make_report.py,
     essentially links Snakefile.process_cells and Snakefile.report by taking
-    the info we get from the former and compiling it under the direction of
-    the latter.
+    the info we get from the former and compiling it into a PanDoc report
+    under the direction of the latter.
 
     This Revio version is to be used per-barcode, and the multiple files
     are later combined to get the full cell info.
@@ -28,24 +28,23 @@ def gen_info(args):
     # Start with the consensusreadset.xml file
     xmlfile, = args.xmlfile
 
-    # Load the file then...
+    # Load the readset.xml file then...
     L.debug(f"Reading from {xmlfile}")
     info = get_readset_info(xmlfile)
-    if args.runxml:
-        L.debug(f"Also reading from {args.runxml}")
-        rmd = get_metadata_info(args.runxml)
+    if args.metaxml:
+        # The cell metadata.xml file has some useful run info
+        L.debug(f"Also reading from {args.metaxml}")
+        rmd = get_metadata_info(args.metaxml)
         info['_run'] = rmd
 
     info['_filename'] = os.path.basename(xmlfile)
 
-    # Get the barcode from the file name
-    FIXME no get it from the XML and check
-    info['barcode'] = info['_filename'].split('.')[-3]
-    # But if that just gives us the cell ID then ignore it
-    if info['barcode'] == info['cell_id']:
-        del info['barcode']
+    # We used to get the barcode from the file name, but now it comes
+    # from get_readset_info()
 
-    check that info now has bs_name as well as ws_name
+    # check that info now has bs_name as well as ws_name (in case I'm reading an
+    # old YAML file)
+    assert ('bs_name' in info) and ('ws_name' in info)
 
     # Add plots if we have them
     for p in args.plots or []:
@@ -61,6 +60,7 @@ def gen_info(args):
         hifi_or_fail = "-"
         barcode = "-"
         if s.endswith(".cstats.yaml"):
+            # Here we do have to get info from the file names
             barcode = s.split('.')[-3]
             hifi_or_fail = s.split('.')[-4].capitalize()
 
@@ -81,8 +81,8 @@ def parse_args(*args):
                                 formatter_class = ArgumentDefaultsHelpFormatter )
     argparser.add_argument("xmlfile", nargs=1,
                             help="Readset XML to be loaded")
-    argparser.add_argument("-r", "--runxml", nargs="?",
-                            help="Optional run.metadata XML to be loaded")
+    argparser.add_argument("-m", "--metaxml", nargs="?",
+                            help="Optional metadata XML to be loaded for run info")
     argparser.add_argument("-p", "--plots", nargs="*",
                             help="Plots generated for this barcode (YAML files)")
     argparser.add_argument("-s", "--stats", nargs="*",

@@ -9,7 +9,7 @@ import yaml
 
 from unittest.mock import Mock
 
-DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/compile_bc_info')
+DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/revio_out_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 from compile_bc_info import gen_info
@@ -36,7 +36,7 @@ class T(unittest.TestCase):
         args = Mock()
 
         args.xmlfile = None
-        args.runxml = None
+        args.metaxml = None
         args.plots = []
         args.stats = []
         args.taxon = []
@@ -44,20 +44,20 @@ class T(unittest.TestCase):
 
         return args
 
-    def test_sequel2(self):
+    def test_revio_nobc(self):
         """Test the equivalent of the command:
 
-           $ compile_bc_info.py m64175e_221028_133532.consensusreadset.xml \
-                                -s m64175e_221028_133532.*reads.foo.cstats.yaml \
-                                -p m64175e_221028_133532.*plots.yaml
+           $ compile_bc_info.py m84140_240116_163605_s1.hifi_reads.all.consensusreadset.xml \
+                                -s m84140_240116_163605_s1.*reads.foo.cstats.yaml \
+                                -p m84140_240116_163605_s1.*plots.yaml
 
-           Expected output is m64175e_221028_133532.info.yaml
+           Expected output is m84140_240116_163605_s1.info.yaml
         """
-        ddir = f"{DATA_DIR}/r64175e_20221028_133532"
-        cellid = "m64175e_221028_133532"
+        ddir = f"{DATA_DIR}/r84140_20240116_162812"
+        cellid = "m84140_240116_163605_s1"
         args = self.get_mock_args()
-        args.xmlfile = [f"{ddir}/{cellid}.consensusreadset.xml"]
-        args.stats.extend([ f"{ddir}/{cellid}.reads.foo.cstats.yaml",
+        args.xmlfile = [f"{ddir}/{cellid}.hifi_reads.all.consensusreadset.xml"]
+        args.stats.extend([ f"{ddir}/{cellid}.fail_reads.foo.cstats.yaml",
                             f"{ddir}/{cellid}.hifi_reads.foo.cstats.yaml" ])
         args.plots.extend([ f"{ddir}/{cellid}.histoplots.yaml",
                             f"{ddir}/{cellid}.blobplots.yaml" ])
@@ -65,26 +65,47 @@ class T(unittest.TestCase):
         with open(f"{ddir}/{cellid}.info.yaml") as fh:
             expected = yaml.safe_load(fh)
 
+        # Run the actual thing.
+
+        # Note that _cstats['Barcode'] picks up the value 'foo' from the cstats.yaml
+        # filenames, even though info['barode'] is not present.
+        info = gen_info(args)
+
+        self.assertEqual(info, expected)
+
+    def test_revio_nobc_with_runxml(self):
+        """Test the equivalent of:
+
+           $ compile_cell_info.py m84140_240116_163605_s1.hifi_reads.all.consensusreadset.xml \
+                                  -r m84140_240116_163605_s1.metadata.xml
+
+           Expected output is m84140_240116_163605_s1.info2.yaml
+        """
+        ddir = f"{DATA_DIR}/r84140_20240116_162812"
+        cellid = "m84140_240116_163605_s1"
+        args = self.get_mock_args()
+        args.xmlfile = [f"{ddir}/{cellid}.hifi_reads.all.consensusreadset.xml"]
+        args.metaxml = f"{ddir}/{cellid}.metadata.xml"
+
+        with open(f"{ddir}/{cellid}.info2.yaml") as fh:
+            expected = yaml.safe_load(fh)
+
         # Run the actual thing
         info = gen_info(args)
 
         self.assertEqual(info, expected)
 
-    def test_sequel2_with_runxml(self):
+    def test_revio_withbc(self):
         """Test the equivalent of:
 
-           $ compile_cell_info.py m64175e_221028_133532.consensusreadset.xml \
-                                  -r m64175e_221028_133532.run.metadata.xml
-
-           Expected output is m64175e_221028_133532.info2.yaml
+           $ compile_cell_info.py m84140_240116_183509_s2.hifi_reads.bc1008.consensusreadset.xml
         """
-        ddir = f"{DATA_DIR}/r64175e_20221028_133532"
-        cellid = "m64175e_221028_133532"
+        ddir = f"{DATA_DIR}/r84140_20240116_162812"
+        cellid = "m84140_240116_183509_s2"
         args = self.get_mock_args()
-        args.xmlfile = [f"{ddir}/{cellid}.consensusreadset.xml"]
-        args.runxml = f"{ddir}/{cellid}.run.metadata.xml"
+        args.xmlfile = [f"{ddir}/{cellid}.hifi_reads.bc1008.consensusreadset.xml"]
 
-        with open(f"{ddir}/{cellid}.info2.yaml") as fh:
+        with open(f"{ddir}/{cellid}.bc1008.info2.yaml") as fh:
             expected = yaml.safe_load(fh)
 
         # Run the actual thing

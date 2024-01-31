@@ -149,7 +149,7 @@ def get_metadata_info(xmlfile):
     # attribute if one was set.
     ec = root.find('pbmodel:ExperimentContainer', _ns)
     if ec:
-        run_info['ExperimentId'] = ec.attrib.get('ExperimentId', 'none set')
+        run_info['ExperimentId'] = ec.attrib.get('ExperimentId', '')
 
     # And there should be a Run element which provides us, eg.
     # ChipType="8mChip" InstrumentType="Sequel2e" CreatedBy="rfoster2"
