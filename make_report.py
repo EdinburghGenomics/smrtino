@@ -225,9 +225,12 @@ def format_cell(cdict, cell_link=None):
             rep(f"<dt>{k}</dt>")
             rep(f"<dd>[{escape_md(v)}]({cell_link})</dd>")
         elif k == 'barcodes':
-            rep(f"<dt>{k}</dt>")
-            bc_str = ', '.join([b.get('barcode', "???") for b in v])
-            rep(f"<dd>{escape_md(bc_str)}</dd>")
+            # There will always be at least one barcode per cell, but it may
+            # not have an actual 'barcode'.
+            bc_str = ', '.join([b['barcode'] for b in v if 'barcode' in b])
+            if bc_str:
+                rep(f"<dt>{k}</dt>")
+                rep(f"<dd>{escape_md(bc_str)}</dd>")
         elif type(v) != str:
             # Leave this for now
             pass
@@ -260,7 +263,12 @@ def format_cell(cdict, cell_link=None):
 
     # Now the per-barcode formatting
     for bc in cdict.get('barcodes', []):
+        if 'barcode' in bc:
+            title = f"QC for barcode {bc['barcode']}"
+        else:
+            title = "QC for all reads"
         format_per_barcode( bc,
+                            title = title,
                             aggr = rep)
 
     if cdict.get('unassigned'):
@@ -271,7 +279,7 @@ def format_cell(cdict, cell_link=None):
 
     return rep
 
-def format_per_barcode(bc, aggr, title=None, md_items=None):
+def format_per_barcode(bc, aggr, title, md_items=None):
     """Add the plots or whatever for a single barcode to the report.
 
        aggr is an active aggregator object.
@@ -281,10 +289,8 @@ def format_per_barcode(bc, aggr, title=None, md_items=None):
         md_items = "readset_type bs_project bs_name bs_desc guessed_taxon".split()
 
     rep = aggr or aggregator()
-    if title is None:
-        title = f"QC for barcode {bc['barcode']}"
 
-    rep("", f"# {title}", "")
+    rep("", f"# {escape_md(title)}", "")
 
     # Info that is barcode-specific
     # TODO - maybe the list of headings should be in the YAML itself?
@@ -299,7 +305,7 @@ def format_per_barcode(bc, aggr, title=None, md_items=None):
     # and placement.
     for plot_section in bc.get('_plots', []):
         for plot_group in plot_section:
-            rep("", f"\n### {plot_group['title']}\n")
+            rep("", f"\n### {escape_md(plot_group['title'])}\n")
 
             # plot_group['files'] will be a list of lists, so plot
             # each list a s a row.
