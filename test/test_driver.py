@@ -264,7 +264,7 @@ class T(unittest.TestCase):
         self.shell("mkdir -p " + self.to_path + "/pbpipeline")
         self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
         self.shell("touch " + self.to_path + "/pbpipeline/1_A01.started")
-        self.shell("touch " + self.to_path + "/pbpipeline/notify_run_complete.done")
+        self.shell("touch " + self.to_path + "/pbpipeline/notify_run_complete.touch")
 
         self.bm_rundriver()
         self.assertInStdout(self.run_name, "PROCESSING")
@@ -275,7 +275,7 @@ class T(unittest.TestCase):
     def test_run_just_finished(self):
         """ Run is already processing, but we do want to notify that
             the run has finished. This is the same as above but without
-            the notify_run_complete.done file.
+            the notify_run_complete.touch file.
         """
         test_data = self.copy_run("r84140_20231030_134730")
 
@@ -295,7 +295,7 @@ class T(unittest.TestCase):
                                                                  ' Final report will follow soon.')]
         self.assertEqual(self.bm.last_calls, expected_calls)
 
-        self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
+        self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.touch"))
 
     def test_run_was_stalled_1(self):
         """ Simulate a stalled run, which needs to be aborted.
@@ -362,7 +362,7 @@ class T(unittest.TestCase):
                                                      self.rt_cmd( 'Finished pipeline',
                                                        '--reply', last_reply_fd )]
         self.assertEqual(self.bm.last_calls, expected_calls)
-        self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.done"))
+        self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.touch"))
 
         # Now it should be in status COMPLETE because run of the cells did work
         # (note this check relies on driver.sh always being run in VERBOSE mode)

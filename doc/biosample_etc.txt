@@ -20,3 +20,7 @@ Anyway, the "23391TA RF" part should probably be saved into the info.yaml and av
 use as the external_id, for when the LIMS completely packs in.
 
 Anyway, I can worry about this later.
+
+See parsexml_mess.txt where I start the realise that what I need is the WellSample Name and BioSample Name
+and the descriptions, and I believe everything else like the ConsensusReadSet.Name above derives
+from this.

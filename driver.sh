@@ -436,7 +436,7 @@ rt_runticket_manager(){
 notify_run_complete(){
     # Tell RT that the run finished. This may happen if the last SMRT cell finishes
     # or if remaining cells are aborted. The notification should only happen once.
-    if ! [ -e "$RUN_OUTPUT"/pbpipeline/notify_run_complete.done ] ; then
+    if ! [ -e "$RUN_OUTPUT/pbpipeline/notify_run_complete.touch" ] ; then
 
         local cc=`wc -w <<<"$CELLS"`
         local ca=`wc -w <<<"$CELLSABORTED"`
@@ -447,7 +447,7 @@ notify_run_complete(){
             comment="All $cc SMRT cells have run on the instrument. Final report will follow soon."
         fi
         if rt_runticket_manager --subject processing --reply "$comment" ; then
-            touch "$RUN_OUTPUT"/pbpipeline/notify_run_complete.done
+            touch "$RUN_OUTPUT/pbpipeline/notify_run_complete.touch"
         fi
     fi
 }

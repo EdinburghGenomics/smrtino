@@ -234,12 +234,13 @@ def format_cell(cdict, cell_link=None):
         elif not(k.startswith('_')):
             rep(f"<dt>{k}</dt>")
             rep(f"<dd>{escape_md(v)}</dd>")
-    # If there is no project, we should make this explicit
-    if not 'ws_project' in cdict:
-        rep("<dt>ws_project</dt>")
-        projects_str = ', '.join(sorted(set([ b['ws_project']
+    # If there is no project, we should check bs_project(s). In principle
+    # there could be more than one.
+    if not 'project' in cdict:
+        rep("<dt>project</dt>")
+        projects_str = ', '.join(sorted(set([ b['bs_project']
                                               for b in cdict.get('barcodes', [])
-                                              if 'ws_project' in b
+                                              if 'bs_project' in b
                                             ])))
         if projects_str:
             rep(f"<dd>{escape_md(projects_str)}</dd>")
@@ -265,15 +266,20 @@ def format_cell(cdict, cell_link=None):
     if cdict.get('unassigned'):
         format_per_barcode( cdict['unassigned'],
                             aggr = rep,
+                            md_items = ["ws_name", "ws_desc", "guessed_taxon"],
                             title = "QC for unassigned reads" )
 
     return rep
 
-def format_per_barcode(bc, aggr, title=None):
+def format_per_barcode(bc, aggr, title=None, md_items=None):
     """Add the plots or whatever for a single barcode to the report.
 
        aggr is an active aggregator object.
     """
+    if md_items is None:
+        # These headings make sense for most things but not unassigned
+        md_items = "readset_type bs_project bs_name bs_desc guessed_taxon".split()
+
     rep = aggr or aggregator()
     if title is None:
         title = f"QC for barcode {bc['barcode']}"
@@ -283,7 +289,7 @@ def format_per_barcode(bc, aggr, title=None):
     # Info that is barcode-specific
     # TODO - maybe the list of headings should be in the YAML itself?
     rep('<dl class="dl-horizontal">')
-    for k in "readset_type ws_project ws_name ws_desc guessed_taxon".split():
+    for k in md_items:
         if k in bc:
             rep(f"<dt>{k}</dt>")
             rep(f"<dd>{escape_md(bc.get(k,''))}</dd>")

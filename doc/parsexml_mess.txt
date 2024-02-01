@@ -155,3 +155,8 @@ and we assume the values will all be the same. I think we need to:
 2) Sanity check that all are the same, rather than just taking the first.
 
 Right. Done. Need to test, though.
+
+Now in the report I am seeing ws_desc, ws_name and ws_project under the SMRT cell info. So adding ws_name
+and ws_desc has made them magically appear. But I had ws_project there already? Why?
+Because I explicitly add it in make_report.py! So I think I want to modify this logic and read bs_project
+cos that is more definitive.
