@@ -77,7 +77,7 @@ class T(unittest.TestCase):
         """
         expected = dd("""\
                          <dl class="dl-horizontal">
-                         <dt>ws_project</dt>
+                         <dt>project</dt>
                          <dd><span style='color: Tomato;'>None</span></dd>
                          </dl>
                       """)
@@ -91,13 +91,13 @@ class T(unittest.TestCase):
         """
         expected = dd("""\
 
-                         # QC for barcode x
+                         # placeholder title \\#
 
                          <dl class="dl-horizontal">
                          </dl>
                       """)
 
-        res = format_per_barcode(dict(barcode="x"), None)
+        res = format_per_barcode(dict(barcode="x"), None, "placeholder title #")
         self.assertEqual("\n".join(res) + "\n", expected)
 
     def test_blockquote(self):
@@ -113,8 +113,11 @@ class T(unittest.TestCase):
         """This is a complex function but we'll at least check that the base case works.
         """
         empty_bc = dict( barcode = "bc1",
-                         ws_name = "test_ws_name" )
+                         ws_name = "test_ws_name",
+                         bs_project = "00000",
+                         bs_name = "test_bs_name" )
         empty_rep  = format_report( dict( cell_id = "test_cell_id",
+                                          project = "11111",
                                           barcodes = [empty_bc] ),
                                     pipedata = dict(),
                                     run_status = dict(),
@@ -140,15 +143,17 @@ class T(unittest.TestCase):
             <dd>bc1</dd>
             <dt>cell_id</dt>
             <dd>test\\_cell\\_id</dd>
-            <dt>ws_project</dt>
-            <dd><span style='color: Tomato;'>None</span></dd>
+            <dt>project</dt>
+            <dd>11111</dd>
             </dl>
 
             # QC for barcode bc1
 
             <dl class="dl-horizontal">
-            <dt>ws_name</dt>
-            <dd>test\_ws\_name</dd>
+            <dt>bs_project</dt>
+            <dd>00000</dd>
+            <dt>bs_name</dt>
+            <dd>test\_bs\_name</dd>
             </dl>
 
             *~~~*
