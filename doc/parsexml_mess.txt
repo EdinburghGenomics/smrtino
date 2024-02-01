@@ -138,4 +138,20 @@ Looking at the metadata.xml:
 The 3ff UniqueId is only under ConsensusReadSetRef. Therefore I should take the cell_uuid from
 this element. Cool.
 
+---
 
+OK, I have a decision to make. I have a ws_name per readset, which may contain the pool name,
+which I care about.
+
+Do I get compile_cell_info.py to add a combined name for the cell, or do I rely on the summarizing
+scripts to make one? compile_cell_info.py currently does not read any of the files if just makes
+a file that links out to them. Actually, no, that's not true...
+
+In pacbio_scripts, get_revio_yml.py reads the outputs from compile_cell_info.py and gets 'cell_id',
+'run_id' and 'run_slot'. These have come from args.bcfiles[0] and this IS read by compile_cell_info.py
+and we assume the values will all be the same. I think we need to:
+
+1) Extract ws_name and ws_desc too
+2) Sanity check that all are the same, rather than just taking the first.
+
+Right. Done. Need to test, though.
