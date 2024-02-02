@@ -231,8 +231,8 @@ def get_readset_info(xmlfile, smrtlink_base=None):
         # Take the project from the sample in any case
         info['project'] = info['bs_project']
     else:
-        # Really?
-        info['project'] = info['ws_project']
+        # Really? Could be a test run and not have a project.
+        info['project'] = info.get('ws_project') or "none"
 
     if smrtlink_base:
         info['_link'] = get_smrtlink_link(root, smrtlink_base)
