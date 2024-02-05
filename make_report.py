@@ -240,7 +240,7 @@ def format_cell(cdict, cell_link=None):
     # If there is no project, we should check bs_project(s). In principle
     # there could be more than one.
     if not 'project' in cdict:
-        rep("<dt>project</dt>")
+        rep("<dt>bs_project</dt>")
         projects_str = ', '.join(sorted(set([ b['bs_project']
                                               for b in cdict.get('barcodes', [])
                                               if 'bs_project' in b
