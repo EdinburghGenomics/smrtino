@@ -271,7 +271,7 @@ action_cell_ready(){
     fi
 
     # And upload the reports. If all cells are done, go directly to action_processed
-    echo "Processing and reporting done for cells $CELLSREADY. Uploading reports."
+    plog "Processing and reporting done for cells $CELLSREADY. Uploading reports."
     if pb_run_status.py -i "$RUN_OUTPUT" | grep -qFx 'PipelineStatus: processed'  ; then
         # In case we didn't already...
         notify_run_complete |& plog
