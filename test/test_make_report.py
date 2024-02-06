@@ -77,7 +77,7 @@ class T(unittest.TestCase):
         """
         expected = dd("""\
                          <dl class="dl-horizontal">
-                         <dt>project</dt>
+                         <dt>bs_project</dt>
                          <dd><span style='color: Tomato;'>None</span></dd>
                          </dl>
                       """)
