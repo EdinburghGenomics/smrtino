@@ -1,0 +1,48 @@
+# Configuration for SMRTino (production mode). This file will be source'd in BASH
+# so you can include arbitrary shell logic.
+
+# These are the locations for GSEG production mode. The sequencer writes
+# to /lustre-gseg/smrtlink/sequel_seqdata
+# Really we should have copies of the data across the two Lustre systems,
+# but we don't have that just now.
+
+# For some annoying reason we still need this?? Works for RT and Clarity just now.
+export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+
+# LOG_DIR will collect daily logs, or you can set MAINLOG directly. For testing,
+# set MAINLOG=/dev/stdout to see progress in the terminal.
+LOG_DIR=~pipeline/smrtino/logs
+FROM_LOCATION=/lustre-gseg/smrtlink/sequel_seqdata
+TO_LOCATION=/lustre-gseg/pacbio/pacbio_data
+
+# This regex setting allows us to see runs in K... subdirectories
+RUN_NAME_REGEX=('r84140_.+_.+' 'K[0-9]+/r84140_.+_.+')
+
+# Runs are declared dead after 72 hours of inactivity (HiFi processing can take >24 hours)
+# Increased to 10 days while we sort out the data transfer issue.
+STALL_TIME=240
+
+# Slurm queue to use. This will be passed to Snakemake, as all cluster jobs are
+# controlled by Snakemake.
+CLUSTER_PARTTION=standard
+BLOBS=1
+
+# Where to SCP the reports and how to make the links. (Neither should end with
+# a slash).
+REPORT_DESTINATION=edgenom1@egcloud.bio.ed.ac.uk:smrtino
+REPORT_LINK=https://egcloud.bio.ed.ac.uk/smrtino
+RSYNC_CMD="rsync --rsync-path=bin/rsync_reports"
+
+# RT systems as defined in ~/.rt_settings. Set RT_SYSTEM=none to disable RT.
+RT_SYSTEM='production-rt'
+
+# For quietly reprocessing some runs, disable RT...
+#RT_SYSTEM=none
+
+# Link to project pages for use in summary e-mails and (at some point) reports.
+# This can either include a {} placeholder or else the project name will just be
+# appended, so you do need to include the slash on the end here.
+PROJECT_PAGE_URL=https://www.wiki.ed.ac.uk/display/GenePool/
+
+# For rsync_backup
+BACKUP_LOCATION=/fluidfs/sequel/lustre_backup/
