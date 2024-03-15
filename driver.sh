@@ -261,12 +261,13 @@ action_cell_ready(){
       Snakefile.report -R "${always_run[@]}" \
                        --config cells="$CELLSREADY" -p report_main |& plog
 
-      # Making projects_ready.txt is outside of the Snakefile now
-      list_projects_ready.py > projects_ready.txt
-
       for cell in $CELLSREADY ; do
           mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
       done
+
+      # Making projects_ready.txt is outside of the Snakefile now, and must
+      # be done after fixing the touch files.
+      list_projects_ready.py > projects_ready.txt
 
     ) |& plog
     if [ $? != 0 ] ; then

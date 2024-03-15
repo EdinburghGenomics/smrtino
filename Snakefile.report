@@ -9,9 +9,8 @@
 #   + More generic rules
 
 # Note this workflow is designed to run locally. All of the heavy lifting should
-# have been done by Snakefile.process_cells. It's vaguely useful to have locking here
-# as we might possibly try to make 2 interim reports at once (in which case, just let
-# one fail).
+# have been done by Snakefile.process_cells. Making two reports on different cells
+# in parallel should be fine.
 
 """true" ### Begin shell script part
 set -u
@@ -51,24 +50,6 @@ def scan_cells(filter_by_config=True):
 
     return [ (v['slot'], k) for k, v in all_info.items() ]
 
-def find_projects_from_yaml(filename):
-    """Get all the projects from all the barcodes.
-    """
-    ydata = load_yaml(filename)
-
-    if 'barcodes' in ydata:
-        # Resolve the @ lines
-        for idx in range(len(ydata['barcodes'])):
-            v = ydata['barcodes'][idx]
-            if type(v) == str and v.startswith("@"):
-                ydata['barcodes'][idx] = load_yaml(v[1:], relative_to=filename)
-
-        # What should I do here if some barcodes have a project and others do not?
-        # I'll make it an error for now.
-        return (bc['ws_project'] for bc in ydata['barcodes'])
-    else:
-        return (ydata['ws_project'],)
-
 # Global wildcard patterns
 wildcard_constraints:
     cellslot   = r"\d_[A-Z]01",
@@ -80,29 +61,7 @@ wildcard_constraints:
 localrules: report_main
 rule report_main:
     input:
-        pan   = lambda wc: expand("all_reports/{c[0]}-{c[1]}.html", c=scan_cells()),
-        plist = "projects_ready.txt",
-
-# A list of projects, like with Illuminatus. Used to quickly scan for runs that have data related to
-# a project. If there is no valid project name we still want a report but it should be clear there is
-# a problem.
-localrules: list_projects
-rule list_projects:
-    output: "projects_ready.txt"
-    input:  lambda wc: expand("{c[1]}.info.yaml", c=scan_cells(False))
-    priority: 100
-    run:
-        # Un-silence sys.stderr in sub-jobs:
-        logger.quiet.discard('all')
-
-        plist = set()
-        for y in input:
-            try:
-                plist.update(find_projects_from_yaml(y))
-            except KeyError:
-                logger.error(f"No ws_project in {y} - indicates no 5-digit project name found in readset XML")
-        with open(output[0], "w") as ofh:
-            print( *sorted(plist), file=ofh, sep='\n' )
+        pan   = lambda wc: expand("all_reports/{c[0]}-{c[1]}.html", c=scan_cells())
 
 # Note this script relies on ~/.smrtlinkrc for connection deets.
 localrules: link_to_smrtlink, smrtlink_pdf_report

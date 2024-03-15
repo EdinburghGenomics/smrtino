@@ -26,6 +26,7 @@ PROGS_TO_MOCK = {
     "Snakefile.report"        : True,
     "rt_runticket_manager.py" : "echo STDERR rt_runticket_manager.py >&2",
     "upload_report.sh"        : "echo STDERR upload_report.sh >&2",
+    "list_projects_ready.py"  : "echo 00000",
 }
 
 class T(unittest.TestCase):
