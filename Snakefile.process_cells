@@ -52,7 +52,7 @@ RUNDIR = config.get('rundir', 'pbpipeline/from')
 # Load the info prepared by scan_cells.py
 if config.get('noyaml'):
     # Allow for cases where we just want to run one rule and don't care about the sc_data
-    SC = dict(cells={})
+    SC = dict(cells={}, unfiltered_cells=[None])
 else:
     SC = load_yaml(config.get("sc_data", "sc_data.yaml"))
 

@@ -298,6 +298,31 @@ class T(T_base):
                           { 'Cells': '1_A01 2_B01 3_C01',
                             'CellsAborted': '2_B01',
                             'CellsDone': '1_A01',
+                            'CellsProcessing' : None,
+                            'CellsReady': '3_C01',
+                            'Instrument': '64175e',
+                            'PipelineStatus': 'cell_ready',
+                            'RunID': 'r64175e_20210528_333333',
+                            'StartTime': 'unknown',
+                          } )
+
+    def test_get_yaml_2(self):
+        """I should make a test case with more cells and fold this into the test
+           above but meh.
+        """
+        run_info = self.use_run('r64175e_20210528_333333', copy=False)
+        self.md('pbpipeline')
+        self.touch('pbpipeline/1_A01.done')
+        self.touch('pbpipeline/2_B01.started')
+
+        res = run_info.get_yaml()
+        res_dict = yaml.safe_load(res)
+
+        self.assertEqual( res_dict,
+                          { 'Cells': '1_A01 2_B01 3_C01',
+                            'CellsAborted': None,
+                            'CellsDone': '1_A01',
+                            'CellsProcessing': '2_B01',
                             'CellsReady': '3_C01',
                             'Instrument': '64175e',
                             'PipelineStatus': 'cell_ready',
