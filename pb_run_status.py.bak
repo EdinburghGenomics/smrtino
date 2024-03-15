@@ -230,14 +230,6 @@ class RunStatus:
         # possible that an interim report fails but then a new cell gets processed and the report
         # is re-triggered and this time it works and the flag can be cleared. Yeah.
 
-        # If any cell is ready we need to get it processed
-        if any( v == self.CELL_READY for v in all_cell_statuses ):
-            # If we're having issues with parallel processing, we could check that nothing
-            # is processing too.
-            #if not any( v == self.CELL_PROCESSING for v in all_cell_statuses ):
-            #   return "cell_ready"
-            return "cell_ready"
-
         # If all are processed we're in state processed, and ready to trigger the final report
         if all_cell_statuses and all( v == self.CELL_PROCESSED for v in all_cell_statuses ):
             return "processed"
@@ -247,30 +239,34 @@ class RunStatus:
         if all_cell_statuses and all( v in [self.CELL_FAILED, self.CELL_PROCESSED] for v in all_cell_statuses ):
             return "failed"
 
-        # If none are processing we're in state 'idle_awaiting_cells'. This also applies if,
+        # If none are processing or ready we're in state 'idle_awaiting_cells'. This also applies if,
         # for some reason, the list of cells is empty.
         # At this point, we should also check if the run might be stalled.
-        if all( v not in [self.CELL_PROCESSING] for v in all_cell_statuses ):
+        if all( v not in [self.CELL_PROCESSING, self.CELL_READY] for v in all_cell_statuses ):
             if self._is_stalled():
                 return "stalled"
             else:
                 return "idle_awaiting_cells"
 
+        # If something is processing...
+        if any( v == self.CELL_PROCESSING for v in all_cell_statuses ):
+
         # If any are pending we're in state 'processing_awaiting_cells'
+        # Also applies to CELL_READY as we don't want to 
         if any( v == self.CELL_PENDING for v in all_cell_statuses ):
             return "processing_awaiting_cells"
 
+        # If any cell is ready we need to get it processed
+        if any( v == self.CELL_READY for v in all_cell_statuses ):
+            return "cell_ready"
+
         # Otherwise we're processing but not expecting any more data
-        # (we may or may not be processing all the remaining cells)
         return "processing"
 
     def get_cells_ready(self):
         """ Get a list of the cells which are ready to be processed, if any.
         """
         return [c for c, v in self.get_cells().items() if v == self.CELL_READY]
-
-    def get_cells_processing(self):
-        return [c for c, v in self.get_cells().items() if v == self.CELL_PROCESSING]
 
     def get_cells_aborted(self):
         """ Get a list of the cells that were aborted, if any.
@@ -320,15 +316,14 @@ class RunStatus:
 
     def get_yaml(self, debug=True):
         try:
-            return '\n'.join([ 'RunID: '           + self.get_run_id(),
-                               'Instrument: '      + self.get_instrument(),
-                               'Cells: '           + ' '.join(sorted(self.get_cells())),
-                               'CellsReady: '      + ' '.join(sorted(self.get_cells_ready())),
-                               'CellsProcessing: ' + ' '.join(sorted(self.get_cells_processing())),
-                               'CellsDone: '       + ' '.join(sorted(self.get_cells_done())),
-                               'CellsAborted: '    + ' '.join(sorted(self.get_cells_aborted())),
-                               'StartTime: '       + self.get_start_time(),
-                               'PipelineStatus: '  + self.get_status() ])
+            return '\n'.join([ 'RunID: '        + self.get_run_id(),
+                               'Instrument: '   + self.get_instrument(),
+                               'Cells: '        + ' '.join(sorted(self.get_cells())),
+                               'CellsReady: '   + ' '.join(sorted(self.get_cells_ready())),
+                               'CellsDone: '    + ' '.join(sorted(self.get_cells_done())),
+                               'CellsAborted: ' + ' '.join(sorted(self.get_cells_aborted())),
+                               'StartTime: '    + self.get_start_time(),
+                               'PipelineStatus: ' + self.get_status() ])
 
         except Exception:
             # if we can't read something just produce a blank reply, unless -d flag
@@ -340,7 +335,6 @@ class RunStatus:
                                'Instrument: unknown',
                                'Cells: ',
                                'CellsReady: ',
-                               'CellsProcessing: ',
                                'CellsDone: ',
                                'CellsAborted: ',
                                'StartTime: unknown',

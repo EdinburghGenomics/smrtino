@@ -1,0 +1,94 @@
+I got a failure to process run r84140_20240313_110906.
+
+It seems Snakemake tripped over its own toes. How did this happen?
+
+Slot A01 has s2
+Slot B01 has s3
+Slot C01 has s4
+
+Looks like it started processing s2, did that, then started processing s3.
+
+sc_data was correctly populated with s3 _and_ s2 at this point:
+driver.sh : scan_cells.py -c $CELLSREADY $CELLSDONE > sc_data.yaml
+
+Then 15 minutes into processing s3 and s2, it suddenly says
+"Preparing to process cell(s) 1_C01" (ie. s4), then populates
+sc_data with s2 and s4, but not s3 Which is clearly wrong.
+
+So we have a couple of issues here:
+
+1) I don't think SMRTino should be kicking off processing in parallel
+2) Even if it was, it has its wires crossed
+
+Actually, I may be wrong here. The original design explicitly says that
+SMRTino can process in parallel. The idea is that the parallel Snakemake
+processes are running on different cells so they are OK. This should
+still be fine(?) even though we are making the reports earlier as now even
+the reports are separate. The exception is the "projects_ready.txt" file.
+
+Maybe I should only make that if there are no other cells running? But
+that's no good since the second Snakemake could finish before the first. Maybe
+I could take it out of the Snakefile, but then the Snakemake locking is one
+big reason for ahving it in there.
+Maybe parallel processing is a whole can of worms. I could just ensure that
+no second process runs. That would be easy enough.
+
+But I think for now I'll just target the clear bug here. Why did the driver
+get in a tiz.  I shall make a test case.
+
+---
+
+OK, this is hurting my head. s3 was left out of sc_data.yaml because it was a
+pending cell. But in any case Snakemake should only be worrying about s4 on
+the final run. So I'm not sure why Snakemake said there was a locking issue?
+
+(yes I am - see below)
+
+But if it had worked, then the report would have run on only s2 and s4 which
+is no good. So we need to either:
+
+1) Add CELLSPENDING to the scan_cells YAML, and work out what collision caused
+   the locking check to fail
+or
+2) Modify pb_run_status so we never trigger two Snakemake processes at once.
+
+2 is probably more sensible. I think we need to do 2.
+
+---
+
+More confusion. In Snakefile.report, sc_data.yaml is read by scan_cells() which
+only looks at the cells in config['cells'].
+But in Snakefile.process_cells, sc_data.yaml is read into SC and never filtered.
+I guess I did this to catch-up processing of missing cells, but it conflicts
+with the logic of what cells are logged into sc_data and the ability to
+run in parallel.
+
+So I guess for the parallel operations I need to:
+
+1) Filter SC['cells'] within Snakefile.process_cells
+2) Build sc_data from all READY and DONE and PROCESSING cells
+
+Well I think I should do this anyway, but maybe the race conditions in the reporting
+are still problematic. I'd need to avoid making a report if any cells were still
+PROCESSING. Actually no, I make a report but I need to be careful about the
+projects_ready being overwritten. So I'll need to review that logic.
+
+Oh so complex. I fixed 1 and 2 above. What about projects_ready.txt? Well, the
+fact that is a single file means that two cells trying to report at the same time
+will lock. But reporting is quick, so maybe we can get away with it?
+
+Well, the list_projects rule always runs, and it looks for all the cells in
+sc_data (unfiltered) and it reads the info.yaml files. But if any of the cells is
+still processing then the input file will be missing and the whole of Snakefile.report
+will fail. Which is not good.
+Likewise if there is another reporting process the locking will apply and the whole
+of the Snakefile.report will fail.
+
+So I think I need to do it in two phases - one for reporting and one for projects
+ready. I maybe should even make a special Snakefile just for projects_ready?
+Or maybe this shouldn't be a Snakefile and I should just call it from the driver?
+Can I be sure that if the .info.yaml is there the data is ready? Yes, we can.
+
+OK, it's decided. Break out the projects_ready logic from the Snakefile and just
+make it a Python script.
+

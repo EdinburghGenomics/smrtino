@@ -56,7 +56,13 @@ if config.get('noyaml'):
 else:
     SC = load_yaml(config.get("sc_data", "sc_data.yaml"))
 
-logger.info(f"SC loaded with cells: {list(SC['cells'])}")
+    SC['unfiltered_cells'] = SC['cells']
+    if 'cells' in config:
+        SC['cells'] =  { k: v for k, v in SC['unfiltered_cells'].items()
+                         if v['slot'] in config['cells'].split() }
+
+logger.info(f"SC loaded with cells: {list(SC['unfiltered_cells'])}")
+logger.info(f"Of these, we process: {list(SC['cells'])}")
 
 def find_source_file(**args):
     """ Shim to get me a source file by looking into SC.

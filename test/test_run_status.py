@@ -16,7 +16,7 @@ VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))
 
-class T(unittest.TestCase):
+class T_base(unittest.TestCase):
 
     #Helper functions:
     def use_run(self, run_id, copy=False, make_run_info=True, src="mock"):
@@ -95,7 +95,8 @@ class T(unittest.TestCase):
         except NotADirectoryError:
             os.remove(os.path.join(self.tmp_dir, 'to', self.current_run, dp))
 
-    # And the tests...
+# And the tests...
+class T(T_base):
 
     # test_onecell_run(self) - basic test is replaced by test_revio below
     # TODO - switch all sequel tests over to Revio examples.
@@ -173,12 +174,17 @@ class T(unittest.TestCase):
         # Start one of them
         self.touch('pbpipeline/1_B01.started')
         self.assertEqual(gs(), 'cell_ready')
+        # Note to doc/bug_20240315.txt - if one cell is running and another
+        # is ready, status could be processing to avoid parallel operation.
+        # In this case there are further cells pending, so "processing_awaiting_cells".
+        #self.assertEqual(gs(), 'processing_awaiting_cells')
 
         # And the other
         self.touch('pbpipeline/2_C01.started')
         self.assertEqual(gs(), 'processing_awaiting_cells')
 
         # Finishing just one should make no difference
+        # (note this will only happen if parallel processing is allowed)
         self.touch('pbpipeline/2_C01.done')
         self.assertEqual(gs(), 'processing_awaiting_cells')
 

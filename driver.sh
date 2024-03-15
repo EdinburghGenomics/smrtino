@@ -234,6 +234,7 @@ action_cell_ready(){
     send_summary_to_rt comment processing "Cell(s) ready to process: $CELLSREADY." |& plog
 
     # If $CELLSREADY + $CELLSDONE + $CELLSABORTED == $CELLS then this will complete the run.
+    # If $CELLSPROCESSING is non-empty, we can't be sure if those will finish first.
 
     BREAK=1
     plog "Preparing to process cell(s) $CELLSREADY into $RUN_OUTPUT"
@@ -243,8 +244,8 @@ action_cell_ready(){
       # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
       cd "$RUN_OUTPUT"
 
-      # Compile info for all cells, not just the one being precessed.
-      scan_cells.py -c $CELLSREADY $CELLSDONE > sc_data.yaml
+      # Compile info for all cells, not just the one being processed.
+      scan_cells.py -c $CELLSREADY $CELLSPROCESSING $CELLSDONE > sc_data.yaml
 
       always_run=(one_cell_info one_barcode_info list_blob_plots)
       Snakefile.process_cells -R "${always_run[@]}" \
@@ -259,6 +260,9 @@ action_cell_ready(){
       always_run=(list_projects make_report)
       Snakefile.report -R "${always_run[@]}" \
                        --config cells="$CELLSREADY" -p report_main |& plog
+
+      # Making projects_ready.txt is outside of the Snakefile now
+      list_projects_ready.py > projects_ready.txt
 
       for cell in $CELLSREADY ; do
           mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
@@ -576,7 +580,8 @@ get_run_status() { # run_dir
   # Capture the various parts into variables (see test/grs.sh in Hesiod)
   local v line
   for v in RUNID/RunID INSTRUMENT/Instrument STATUS/PipelineStatus \
-           CELLS/Cells CELLSREADY/CellsReady CELLSDONE/CellsDone CELLSABORTED/CellsAborted ; do
+           CELLS/Cells CELLSREADY/CellsReady CELLSPROCESSING/CellsProcessing CELLSDONE/CellsDone \
+           CELLSABORTED/CellsAborted ; do
     line="$(awk -v FS=":" -v f="${v#*/}" '$1==f {gsub(/^[^:]*:[[:space:]]*/,"");print}' <<<"$rs")"
     eval "${v%/*}"='"$line"'
   done
