@@ -1,0 +1,12 @@
+In SMRTino v3.2.0, when I run the final report (line 320 of driver.sh) I was running it with
+--config cells="_None". I clearly gave this some thought, but I have no idea why I did it.
+It bypasses all actual report making, and just triggers the list_projects rule.
+
+Why didn't I just run the list_projects rule? Why can't I make the reports, if they happen
+to be missing?
+
+So I've put the code back to what looks more sensible, but surely I had a reson for doing it
+this silly way in the first place? Maybe when it fails I'll remember, and then I'll put the
+explanation here.
+
+For now, I've simplified it. Let's see what breaks.

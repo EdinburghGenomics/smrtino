@@ -257,7 +257,7 @@ action_cell_ready(){
       plog "Processing done. Now for Snakefile.report"
       touch_atomic pbpipeline/report.started
 
-      always_run=(list_projects make_report)
+      always_run=(make_report)
       Snakefile.report -R "${always_run[@]}" \
                        --config cells="$CELLSREADY" -p report_main |& plog
 
@@ -321,8 +321,8 @@ action_processed() {
     set +e ; ( set -e
         cd "$RUN_OUTPUT"
 
-        always_run=(list_projects)
-        Snakefile.report -R "${always_run[@]}" --config cells="_None" -p report_main
+        Snakefile.report -p report_main
+        list_projects_ready.py > projects_ready.txt
     ) |& plog ; [ $? = 0 ] || pipeline_fail Final_report
 
     set +e ; ( set -e

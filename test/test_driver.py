@@ -354,14 +354,14 @@ class T(unittest.TestCase):
         last_reply_fd = self.bm.last_calls['rt_runticket_manager.py'][-1][-1]
 
         expected_calls = self.bm.empty_calls()
-        expected_calls['Snakefile.report'] = [ ['-R', 'list_projects',
-                                                '--config', 'cells=_None', '-p', 'report_main'] ]
+        expected_calls['Snakefile.report'] = [ ['-p', 'report_main'] ]
         expected_calls['upload_report.sh'] = [[self.to_path]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd( 'processing',
                                                        '--reply',
                                                        '1 SMRT cells have run. 1 were aborted. Final report will follow soon.' ),
                                                      self.rt_cmd( 'Finished pipeline',
                                                        '--reply', last_reply_fd )]
+        expected_calls['list_projects_ready.py'] = [[]]
         self.assertEqual(self.bm.last_calls, expected_calls)
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.touch"))
 
@@ -401,7 +401,7 @@ class T(unittest.TestCase):
 
         # Report should be made on just the one cell too
         self.assertEqual(self.bm.last_calls['Snakefile.report'],
-                         [ ['-R', 'list_projects', 'make_report',
+                         [ ['-R', 'make_report',
                             '--config', 'cells=1_D01',
                             '-p', 'report_main'] ])
 
@@ -430,7 +430,7 @@ class T(unittest.TestCase):
 
         # Check the right things were called.
         self.assertEqual(self.bm.last_calls["Snakefile.report"],
-                         [ ['-R', 'list_projects', 'make_report',
+                         [ ['-R', 'make_report',
                             '--config', 'cells=1_C01 1_D01',
                             '-p', 'report_main'] ])
 
