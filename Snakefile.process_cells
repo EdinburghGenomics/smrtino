@@ -223,8 +223,9 @@ rule one_barcode_info:
 # On GSEG this had to be on the login node as the worker nodes can't see FluidFS.
 # Still a useful option to have.
 # TODO - if we can get the inputs on a different FS again then revert to copying
+# on the head node
 if os.environ.get('FILTER_LOCALLY', '1') != '0':
-    localrules: copy_reads
+    localrules: copy_reads, copy_xml
 
 def relativize_xml(xfile):
     """Munge an XML file to reflect new file paths and remove unused references
@@ -235,25 +236,36 @@ def relativize_xml(xfile):
     shell("{TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {xfile}")
     shell("rm -v {xfile}.orig")
 
-# This copies/links the files for a given barcode, then fixes up the XML.
+# These rules copy/link the files for a given barcode, then fixe up the XML.
 # part may be "hifi_reads" (ie. pass) or "fail_reads".
+# Note there is no longer XML for the fail_reads, after SMRTLink 13.1
 rule copy_reads:
     output:
         bam    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam",
         pbi    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam.pbi",
-        xml    = "{cell}/{barcode}/{cell}.{part}.{barcode}.consensusreadset.xml",
     input:
         bam    = find_source_file(fmt="bam"),
         pbi    = find_source_file(fmt="pbi"),
-        xml    = find_source_file(fmt="xml"),
     resources:
         nfscopy=1
     run:
         # Un-silence sys.stderr in sub-jobs:
         logger.quiet.discard('all')
 
-        copy_all_files(input, output, keys="bam pbi".split())
-        copy_all_files(input, output, keys="xml".split())
+        copy_all_files(input, output, keys=["bam", "pbi"])
+
+rule copy_xml:
+    output:
+        xml    = "{cell}/{barcode}/{cell}.{part}.{barcode}.consensusreadset.xml",
+    input:
+        bam    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam",
+        pbi    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam.pbi",
+        xml    = find_source_file(fmt="xml"),
+    run:
+        # Un-silence sys.stderr in sub-jobs:
+        logger.quiet.discard('all')
+
+        copy_all_files(input, output, keys=["xml"])
         relativize_xml(output.xml)
 
 # This file just gets copied. Except that we have to fix the XML declaration.
