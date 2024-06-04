@@ -162,8 +162,8 @@ def i_one_barcode_info(wc):
         res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.{part}.{barcode}.bam.md5")
         res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.cstats.yaml")
 
-        # Also the consensusreadset.xml
-        res['xml'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.consensusreadset.xml")
+    # Also the consensusreadset.xml, but only for hifi_reads
+    res['xml'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{barcode}.consensusreadset.xml")
 
     # Also the metadata.xml file (which is per cell not per barcode)
     res['metaxml'] = f"{cell}.metadata.xml"
