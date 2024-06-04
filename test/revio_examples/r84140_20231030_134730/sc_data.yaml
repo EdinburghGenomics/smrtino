@@ -5,7 +5,6 @@ cells:
         fail_reads:
           bam: 1_A01/fail_reads/m84140_231030_135502_s1.fail_reads.default.bam
           pbi: 1_A01/fail_reads/m84140_231030_135502_s1.fail_reads.default.bam.pbi
-          xml: 1_A01/pb_formats/m84140_231030_135502_s1.fail_reads.default.consensusreadset.xml
         hifi_reads:
           bam: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.default.bam
           pbi: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.default.bam.pbi
@@ -19,7 +18,6 @@ cells:
       fail_reads:
         bam: 1_A01/fail_reads/m84140_231030_135502_s1.fail_reads.unassigned.bam
         pbi: 1_A01/fail_reads/m84140_231030_135502_s1.fail_reads.unassigned.bam.pbi
-        xml: 1_A01/pb_formats/m84140_231030_135502_s1.fail_reads.unassigned.consensusreadset.xml
       hifi_reads:
         bam: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.unassigned.bam
         pbi: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.unassigned.bam.pbi

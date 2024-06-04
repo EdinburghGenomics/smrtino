@@ -140,8 +140,7 @@ def files_per_barcode(rundir, slot, cellid, barcode, check_exist=True):
                  pbi = f"{slot}/hifi_reads/{cellid}.hifi_reads{barcode}.bam.pbi",
                  xml = f"{slot}/pb_formats/{cellid}.hifi_reads{barcode}.consensusreadset.xml" )
     fail = dict( bam = f"{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam",
-                 pbi = f"{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam.pbi",
-                 xml = f"{slot}/pb_formats/{cellid}.fail_reads{barcode}.consensusreadset.xml" )
+                 pbi = f"{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam.pbi" )
 
     if check_exist:
         for f in chain(hifi.values(), fail.values()):
