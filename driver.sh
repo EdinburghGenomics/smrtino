@@ -210,7 +210,8 @@ action_new(){
     # Trigger a summary to be sent to RT as a comment, which should create
     # the new RT ticket.
     # Do this via upload_reports even though there will be 0 reports.
-    upload_reports NEW |& plog && log DONE
+    upload_reports NEW |& plog
+    log DONE
 }
 
 # TODO - it might be that we don't want to run multiple processings in parallel after all
@@ -467,9 +468,6 @@ upload_reports() {
 
     # Caller is responsible for log redirection to plog, but in some cases we want to
     # make a regular log message referencing the plog destination, so this is a bit messy.
-    set +o | grep '+o errexit' && _ereset='set +e' || _ereset='set -e'
-    set +e
-
     local mode="$1"
 
     # Get a handle on logging.
@@ -489,17 +487,18 @@ upload_reports() {
         return 1
     fi
 
+    _fail=0
     if [ "$mode" = NEW ] ; then
-        send_summary_to_rt comment "new" "New run. Waiting for cells."
+        send_summary_to_rt comment "new" "New run. Waiting for cells." || _fail=1
     elif [ "$mode" = FINAL ] ; then
-        send_summary_to_rt reply "Finished pipeline" "All processing complete."
+        send_summary_to_rt reply "Finished pipeline" "All processing complete." || _fail=1
     else
-        send_summary_to_rt reply "awaiting_cells" "Processing completed for cells $CELLSREADY."
+        send_summary_to_rt reply "awaiting_cells" "Processing completed for cells $CELLSREADY." || _fail=1
     fi
 
     # If this fails, the pipeline will continue, since only the final message to RT
     # is seen as critical.
-    if [ $? != 0 ] ; then
+    if [ $_fail != 0 ] ; then
         log "Failed to send summary to RT. See $per_run_log"
         return 1
     fi

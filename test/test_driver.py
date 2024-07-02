@@ -482,6 +482,62 @@ class T(unittest.TestCase):
 
         self.assertEqual(self.bm.last_calls, expected_calls)
 
+    def test_process_run_rsync_fail(self):
+        """ Test error handling when all is well but rsync fails
+        """
+        test_data = self.copy_run("r84140_20231018_154254")
+        self.shell(f"touch {self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone")
+        self.shell(f"touch {self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone")
+
+        self.bm.add_mock("upload_report.sh", fail=True)
+
+        # Run the pipeline once to setup the output directory, then to process the cells
+        self.bm_rundriver()
+        self.bm_rundriver()
+
+        # Check this, just in case
+        self.assertNotInStdout("Exception")
+
+        # Check the touch files all appear
+        if VERBOSE:
+            os.system(f"ls {self.to_path}/pbpipeline")
+
+        for cell in "1_C01 1_D01".split():
+            self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/{cell}.done"))
+
+        self.assertTrue(os.path.exists(f"{self.to_path}/pbpipeline/failed"))
+
+        # Check that upload_reports.sh is called
+        expected_calls = self.bm.empty_calls()
+
+        expected_calls['upload_report.sh'] = [[self.to_path]]
+        expected_calls['list_projects_ready.py'] = [[]]
+
+        expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
+                                                       "--config", "cells=1_C01 1_D01",
+                                                                   "blobs=1",
+                                                                   "cleanup=1",
+                                                       "-p" ]]
+        expected_calls['Snakefile.report'] = [[ "-R", "make_report",
+                                                "--config", "cells=1_C01 1_D01",
+                                                "-p", "report_main"]]
+
+        expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
+                                                     self.rt_cmd("processing", "--reply",
+                                                                  "All 2 SMRT cells have run on the instrument. "
+                                                                  "Final report will follow soon."),
+                                                     self.rt_cmd("failed", "--reply",
+                                                                  "Report_final_upload failed.\n"
+                                                                  f"See log in {self.to_path}/pipeline.log") ]
+
+        # Doctor self.bm.last_calls because we don't know the FD
+        for cl in self.bm.last_calls['rt_runticket_manager.py']:
+            if cl[-1].startswith('@/'):
+                cl.pop()
+                cl.append('@???')
+
+        self.assertEqual(self.bm.last_calls, expected_calls)
+
 
 if __name__ == '__main__':
     unittest.main()
