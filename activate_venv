@@ -63,6 +63,7 @@ else
         # things needed for Blobtools - we are using
         # https://github.com/EdinburghGenomics/blobtools/tree/tims_patches
         pip_install docopt==0.6.2
+        pip_install 'numpy<1.27'
         pip_install matplotlib==3.3.3
         pip_install pysam==0.22.0
         pip_install tqdm==4.66.1
