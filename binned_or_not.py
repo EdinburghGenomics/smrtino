@@ -56,9 +56,9 @@ def check_pg_lines(pg_lines):
         return 'unknown'
 
     if " --binned-qvs=false" in cl:
-        return "binned"
-    else:
         return "unbinned"
+    else:
+        return "binned"
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] == "-":
