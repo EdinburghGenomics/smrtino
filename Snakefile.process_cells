@@ -219,7 +219,7 @@ rule one_barcode_info:
              --metaxml {input.metaxml} \
              --stats  {input.cstats} \
              --taxon {input.taxon} \
-             --binned <( binned_or_not.py <{input.bamhead} ) \
+             --binning <( binned_or_not.py <{input.bamhead} ) \
              --plots  {input.blobs} \
              > {output}
         """
