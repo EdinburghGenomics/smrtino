@@ -8,6 +8,7 @@ import logging
 import yaml
 
 from unittest.mock import Mock
+from io import StringIO
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/revio_out_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
@@ -39,7 +40,8 @@ class T(unittest.TestCase):
         args.metaxml = None
         args.plots = []
         args.stats = []
-        args.taxon = []
+        args.taxon = None
+        args.binning = None
         args.debug = False
 
         return args
@@ -107,6 +109,37 @@ class T(unittest.TestCase):
 
         with open(f"{ddir}/{cellid}.bc1008.info2.yaml") as fh:
             expected = yaml.safe_load(fh)
+
+        # Run the actual thing
+        info = gen_info(args)
+
+        self.assertEqual(info, expected)
+
+    def test_taxon_binning(self):
+        """Test the equivalent of:
+
+           $ compile_cell_info.py -t <(echo 'taxon name') \
+                                  -b <(echo binned) \
+                                  m84140_240116_183509_s2.hifi_reads.bc1008.consensusreadset.xml
+
+           Note this test is a superset of test_revio_withbc() so if both are failing debug
+           that one first.
+        """
+        ddir = f"{DATA_DIR}/r84140_20240116_162812"
+        cellid = "m84140_240116_183509_s2"
+        args = self.get_mock_args()
+        args.xmlfile = [f"{ddir}/{cellid}.hifi_reads.bc1008.consensusreadset.xml"]
+
+        with open(f"{ddir}/{cellid}.bc1008.info3.yaml") as fh:
+            expected = yaml.safe_load(fh)
+
+        # Supply taxon and binning. To save using actual files we can pass file descriptors
+        # that will work with open(). This is a bit shonky and relies on pipe buffers not
+        # locking up but is fine for making a test.
+        args.taxon, tax_out = os.pipe()
+        with open(tax_out, "w") as pfh: print("taxon name", file=pfh)
+        args.binning, binning_out = os.pipe()
+        with open(binning_out, "w") as pfh: print("binned", file=pfh)
 
         # Run the actual thing
         info = gen_info(args)

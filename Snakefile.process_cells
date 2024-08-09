@@ -110,13 +110,14 @@ def link_all_files(i, o, keys=None):
         shell("ln -sn {ifprefix}{infile} {outfile}")
 
 wildcard_constraints:
-    n    = r"\d+",
-    cell = r"m\w+",
-    part = r"hifi_reads|fail_reads",
+    n       = r"\d+",
+    cell    = r"m\w+",
+    barcode = r"[^/]+",
+    part    = r"hifi_reads|fail_reads",
 
 # Main target is one yaml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
-localrules: main, one_cell_info, one_barcode_info, copy_meta
+localrules: main, one_cell_info, one_barcode_info, copy_meta, get_bam_head
 rule main:
     input:
         yaml     = [ f"{c}.info.yaml" for c in SC['cells'] ]
@@ -152,6 +153,7 @@ def i_one_barcode_info(wc):
 
     res = dict( md5 = [],
                 cstats = [],
+                bamhead = [],
                 cou = [],
                 xml = [],
                 blobs = [],
@@ -162,13 +164,14 @@ def i_one_barcode_info(wc):
         res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.{part}.{barcode}.bam.md5")
         res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.cstats.yaml")
 
-    # Also the consensusreadset.xml, but only for hifi_reads
+    # Also the consensusreadset.xml and bam.head, but only for hifi_reads
     res['xml'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{barcode}.consensusreadset.xml")
+    res['bamhead'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{barcode}.bam.head")
 
     # Also the metadata.xml file (which is per cell not per barcode)
     res['metaxml'] = f"{cell}.metadata.xml"
 
-    # For the HIFI reads we want the files in FASTQ format as well as BAM, and we want
+    # For the HiFi reads we want the files in FASTQ format as well as BAM, and we want
     # a .count file and md5sum for that fastq.
     res['cou'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{barcode}.fastq.count")
     res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.hifi_reads.{barcode}.fastq.gz.md5")
@@ -215,7 +218,8 @@ rule one_barcode_info:
        r"""compile_bc_info.py {input.xml[0]} \
              --metaxml {input.metaxml} \
              --stats  {input.cstats} \
-             --taxon  {input.taxon} \
+             --taxon {input.taxon} \
+             --binned <( binned_or_not.py <{input.bamhead} ) \
              --plots  {input.blobs} \
              > {output}
         """
@@ -291,14 +295,19 @@ rule get_cstats_yaml:
     shell:
         "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta -@ {threads} {input}) > {output.yaml}"
 
-# Export the HiFi reads (or any BAM file) as FASTQ. Assumes all FASTQ files are derived from
-# BAM files.
+rule get_bam_head:
+    output: "{bam}.bam.head"
+    input:  "{bam}.bam"
+    shell:
+        "{TOOLBOX} samtools view -H {input} > {output}"
+
+# Export the HiFi reads (could also work with fail reads) as FASTQ.
 # My logic on using $(( {threads} / 2 }} for both compression and decompression is that
 # decompression is faster but the FASTQ (which has no kinetics) is much smaller. But I've
 # not really tested if this is optimal.
 rule bam_to_fastq:
-    output: "{foo}.fastq.gz"
-    input:  "{foo}.bam"
+    output: "{cell}/{barcode}/{foo}.fastq.gz"
+    input:  "{cell}/{barcode}/{foo}.bam"
     threads: 16
     resources:
         mem_mb = 108000,

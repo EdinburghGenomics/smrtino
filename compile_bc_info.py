@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os, sys
 import logging as L
+from pprint import pprint
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino.ParseXML import get_readset_info, get_metadata_info
@@ -51,9 +52,17 @@ def gen_info(args):
         info.setdefault('_plots', []).append(load_yaml(p, dictify_result=True))
 
     # Add taxon if supplied
-    for t in args.taxon or []:
-        with open(t) as tfh:
+    # The reason for passing the file name and not the value is because in Snakemake
+    # it's fiddly to deal with the if/else whether there is a taxon guess or not, but
+    # here it's easy.
+    if args.taxon:
+        with open(args.taxon) as tfh:
             info['guessed_taxon'] = tfh.read().strip()
+
+    # Add binning info too
+    if args.binning:
+        with open(args.binning) as bfh:
+            info['quality_binning'] = bfh.read().strip().capitalize()
 
     # Add stats if we have them
     for s in args.stats or []:
@@ -87,8 +96,10 @@ def parse_args(*args):
                             help="Plots generated for this barcode (YAML files)")
     argparser.add_argument("-s", "--stats", nargs="*",
                             help="Stats generated for this barcode (YAML files)")
-    argparser.add_argument("-t", "--taxon", nargs="*",
+    argparser.add_argument("-t", "--taxon", nargs="?",
                             help="BLAST taxon guess for this barcode (text file)")
+    argparser.add_argument("-b", "--binning", nargs="?",
+                            help="Whether quality scores are binned or unbinned (text file)")
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 

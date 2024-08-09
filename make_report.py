@@ -286,7 +286,7 @@ def format_per_barcode(bc, aggr, title, md_items=None):
     """
     if md_items is None:
         # These headings make sense for most things but not unassigned
-        md_items = "readset_type bs_project bs_name bs_desc guessed_taxon".split()
+        md_items = "readset_type bs_project bs_name bs_desc quality_binning guessed_taxon".split()
 
     rep = aggr or aggregator()
 
