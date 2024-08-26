@@ -1,0 +1,19 @@
+On this run, one of the cells failed to produce a report with this error:
+
+Processing done. Now for Snakefile.report
+/home/edg01/edg01/pipeline/smrtino/current/driver.sh: line 155: pbpipeline/report.started: cannot overwrite existing file
+Attempting to notify error to RT
+
+Looks like a race condition. My first thought is that the pipeline was processing two cells in
+parallel and it tried to create "pbpipeline/report.started" when this was already there.
+Does that look possible?
+
+Yes, very possible. Clearly this does not happen much as report generation is quick, but I do
+need to resolve the bug. How?
+
+1) Lock the reports per cell. That seems fine for Snakefile.report but the rsync upload should
+be guarded. But if I'm doing it that way, why not just use the lock pbpipeline/${cell}.started?
+
+2) Find a way to wait on the lock. Actually this is pretty easy, if I don't mind polling (which
+I don't) so maybe I should just do that. Yeah. But for now I can just re-run the report to get
+the thing sorted.

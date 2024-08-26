@@ -155,6 +155,20 @@ touch_atomic(){
     (set -o noclobber ; >"$1")
 }
 
+touch_or_wait(){
+    # Create a file but if it already exists poll for up to 5 minutes
+    poll_interval=5 # seconds
+    poll_count=60   # 60 loops == 5 minutes
+
+    while [[ $poll_count -gt 0 ]] ; do
+        poll_count=$(( $poll_count - 1 ))
+        (set -o noclobber ; >"$1") || continue
+        return 0
+    done
+    echo "Timeout after 300 seconds." 2>&1
+    return 1
+}
+
 mv_atomic(){
     # Used in place of "mv x.started x.done" and fails if the target exists.
     # Doesn't actually move the file, just makes a new empty file.
@@ -256,12 +270,12 @@ action_cell_ready(){
 
       # Now we can have a report. This bit runs locally.
       plog "Processing done. Now for Snakefile.report"
-      touch_atomic pbpipeline/report.started
 
       always_run=(make_report)
       Snakefile.report -R "${always_run[@]}" \
                        --config cells="$CELLSREADY" -p report_main |& plog
 
+      touch_or_wait pbpipeline/report.started
       for cell in $CELLSREADY ; do
           mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
       done
