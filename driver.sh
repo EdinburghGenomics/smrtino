@@ -58,7 +58,7 @@ RUN_NAME_REGEX="${RUN_NAME_REGEX:-r.*_[0-9]{8\}_.*}"
 
 BIN_LOCATION="${BIN_LOCATION:-$BASH_DIR}"
 PATH="$(readlink -m $BIN_LOCATION):$PATH"
-MAINLOG="${MAINLOG:-${LOG_DIR}/pbpipeline_driver.`date +%Y%m%d`.log}"
+MAINLOG="${MAINLOG:-${LOG_DIR}/smrtino_driver.`date +%Y%m%d`.log}"
 
 # Tools may reliably use this to report the version of SMRTino being run right now.
 # They should look at pbpipeline/start_times to see which versions have touched a given run.
