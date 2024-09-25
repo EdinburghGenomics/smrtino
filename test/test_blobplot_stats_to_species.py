@@ -64,6 +64,13 @@ class T(unittest.TestCase):
         verdict5 = tables_to_verdict(tables1, 10.0, 0.2)
         self.assertEqual(verdict5, ["Mus musculus (27.1%)"])
 
+    def test_no_data(self):
+        """When there are no reads, stats.txt files just say "No data"
+        """
+        tables_empty = self.load_example("empty_stats")
+
+        verdict = tables_to_verdict(tables_empty, 10.0, 20.0)
+        self.assertEqual(verdict, [])
 
 if __name__ == '__main__':
     unittest.main()

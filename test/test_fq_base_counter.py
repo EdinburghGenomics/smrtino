@@ -9,6 +9,7 @@ import logging
 import gzip
 from unittest.mock import Mock, patch
 from io import StringIO
+from textwrap import dedent as dd
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/hifi_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
@@ -58,6 +59,27 @@ class T(unittest.TestCase):
         mock_stdout.seek(0)
         with open(DATA_DIR + '/example_hifi_reads.fastq.count') as fh:
             self.compare_files( fh, mock_stdout )
+
+    def test_empty(self):
+        """Test that reading a zer-line file still produces a reasonable result.
+        """
+        mock_args = Mock( infile = ['empty.fastq.gz'], stdin = True )
+
+        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            with patch('sys.stdin', Mock(buffer=StringIO())) as mock_stdin:
+                fq_base_counter_main(mock_args)
+
+        mock_stdout.seek(0)
+        result = mock_stdout.read()
+
+        self.assertEqual( result,
+                          dd("""\
+                                filename:    empty.fastq.gz
+                                total_reads: 0
+                                read_length: 0
+                                total_bases: 0
+                                non_n_bases: 0
+                             """) )
 
 if __name__ == '__main__':
     unittest.main()

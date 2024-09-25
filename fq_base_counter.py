@@ -48,6 +48,7 @@ def scan_fh(filehandle):
     """
     lens_found = collections.Counter()
     ns_found = 0
+    n = 0
 
     for n, l in enumerate(filehandle):
         if n % 4 == 1:

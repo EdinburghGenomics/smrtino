@@ -59,6 +59,9 @@ def load_stat_file(filename, sortby="cov0_read_map_p"):
 
         for aline in fh:
             aline = aline.strip()
+            if aline == "No data":
+                # Special case
+                return []
             if aline.startswith("# "):
                 headers = aline[2:].split("\t")
                 break

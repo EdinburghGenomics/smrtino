@@ -5,8 +5,12 @@ It bypasses all actual report making, and just triggers the list_projects rule.
 Why didn't I just run the list_projects rule? Why can't I make the reports, if they happen
 to be missing?
 
-So I've put the code back to what looks more sensible, but surely I had a reson for doing it
+So I've put the code back to what looks more sensible, but surely I had a reason for doing it
 this silly way in the first place? Maybe when it fails I'll remember, and then I'll put the
 explanation here.
 
 For now, I've simplified it. Let's see what breaks.
+
+--
+
+Several runs later - Apparently nothing. OK.

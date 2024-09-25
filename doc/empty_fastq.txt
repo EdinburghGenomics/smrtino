@@ -1,0 +1,13 @@
+We had this issue some time ago on Illuminatus, but now we see it for a failed
+run on Revio. What do we do if a barcode produces zero reads?
+
+On Illuminatus, we just don't create the file, but we do show the lines in the
+report because we pick up the samples from the Stats.json.
+
+In SMRTino, we should probably do the same, but for this we need to detect
+empty BAM files while running scan_cells.py, which is not impossible but is
+a bit annoying. Then I'd need to add a bunch of if/else to the Snakefile to
+only produce .fastq.gz and .count files if the BAM is non-empty.
+
+So for now, let's see if I can just make it work with empty .fastq.gz files.
+I should fix the counting script anyway.
