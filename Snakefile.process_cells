@@ -27,6 +27,7 @@ snakerun_drmaa "$0" "$@"
 #!/usr/bin/env snakemake
 from snakemake.io import Wildcards
 from glob import glob
+from pprint import pprint, pformat
 from smrtino import load_yaml, dump_yaml
 
 """ This is a recipe to process raw SMRT cells from the PacBio Revio,
@@ -50,16 +51,17 @@ if ( not os.path.dirname(workflow.snakefile) in os.environ['PATH'].split(':') an
 RUNDIR = config.get('rundir', 'pbpipeline/from')
 
 # Load the info prepared by scan_cells.py
-if config.get('noyaml'):
-    # Allow for cases where we just want to run one rule and don't care about the sc_data
-    SC = dict(cells={}, unfiltered_cells=[None])
-else:
+try:
     SC = load_yaml(config.get("sc_data", "sc_data.yaml"))
 
     SC['unfiltered_cells'] = SC['cells']
     if 'cells' in config:
         SC['cells'] =  { k: v for k, v in SC['unfiltered_cells'].items()
                          if v['slot'] in config['cells'].split() }
+except Exception as e:
+    logger.warning(f"{e} - will continue with empty sc_data")
+    # Allow for cases where we just want to run one rule and don't care about the sc_data
+    SC = dict(cells={}, unfiltered_cells=[None])
 
 logger.info(f"SC loaded with cells: {list(SC['unfiltered_cells'])}")
 logger.info(f"Of these, we process: {list(SC['cells'])}")
@@ -112,7 +114,7 @@ def link_all_files(i, o, keys=None):
 wildcard_constraints:
     n       = r"\d+",
     cell    = r"m\w+",
-    barcode = r"[^/]+",
+    barcode = r"[^/.]+",
     part    = r"hifi_reads|fail_reads",
 
 # Main target is one yaml file (of metadata) per cell. A little bit like statfrombam.yml in the

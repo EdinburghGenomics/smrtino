@@ -5,36 +5,6 @@ amount of ribosomal hits.
 Problem is, this number is only really useful for RNA-Seq, and RNA-Seq is
 Kinnex. So, to be useful we'd have to auto-run skera. Is this even possible?
 
-Well, maybe? Down that rabbit hole we go.
+And now we think about Kinnex. See kinnex.txt
 
-Command line to run skera, according to Sam Holt, is:
-
-$ skera split -j $threads hifi_reads.bam mas8_adapters.fasta segmented.bam
-
-But there are 4 different adapters files (boo):
-
-/lustre-gseg/smrtlink/software/current/bundles/smrtinub/current/private/pacbio/barcodes:
-
-MAS_adapter_indexes/MAS_adapter_indexes.fasta
-MAS-Seq_Adapter_v1/mas16_primers.fasta
-MAS-Seq_Adapter_v2/mas12_primers.fasta
-MAS-Seq_Adapter_v3/mas8_primers.fasta
-
-I think the first is pre-Kinnex and we can ignore it?!
-
-Of the others, all contain the same A to H and Q
-mas12 also has primers I J K L
-mas16 also has primers M N O P
-
-Well, that makes sense. So the question is, if I run skera on a mas8 or mas12 dataset
-with the full mas16 primer set, does it make some reasonable output or does it
-complain that it cannot see the expected 16 reads per CCS. Well, let me see. A suitable
-input file for this is:
-
-84140_20240806_121103/2_C01/pb_formats/m84140_240806_181656_s2.hifi_reads.consensusreadset.xml
-
-Which is a mas8 dataset. CCS BAM file is
-/lustre-gseg/pacbio/pacbio_data/r84140_20240806_121103/m84140_240806_181656_s2/all/m84140_240806_181656_s2.hifi_reads.all.bam
-
-This file has 10 million reads. We'll downsample to 10k. I'll do this under ~/test_skera.
-Done, but I downsampled to 1k instead. Let's add the full adapters file.
+Come back here once that is solved.

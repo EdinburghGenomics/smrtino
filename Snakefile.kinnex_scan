@@ -1,0 +1,126 @@
+#!/bin/bash
+# vim: ft=python
+
+"""true" ### Begin shell script part
+set -u
+
+source "`dirname $0`"/shell_helper_functions.sh
+
+# The TOOLBOX setting gets passed to jobs that run on SLURM. The PATH setting
+# does not, as SLURM resets that env var.
+export TOOLBOX="$(find_toolbox)"
+export PATH="${PATH}:$(dirname "$0")"
+
+snakerun_single "$0" "$@"
+
+"exit""" ### End of shell script part
+#!/usr/bin/env snakemake
+from smrtino import load_yaml, dump_yaml
+
+"""The job of this workflow is to look at a BAM file and decide if if has
+   Kinnex bercodes in these, using a subsample-and-scan heuristic.
+
+   This is designed to be run as part of SMRTino, and so has some awareness
+   of the SMRTino output layout, but you can also run it on a single BAM
+   file if you want to just scan it.
+
+   $ Snakefile.kinnex_scan -j1 -p somebam.kinnex_scan.yaml
+"""
+TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
+
+# Other than that, ensure that scripts in the directory with this Snakefile are
+# in the PATH (we have to do it here as $PATH does not get preserved on cluster jobs).
+if ( not os.path.dirname(workflow.snakefile) in os.environ['PATH'].split(':') and
+     not os.path.dirname(os.path.abspath(workflow.snakefile)) in os.environ['PATH'].split(':') ):
+     os.environ['PATH'] += ':' + os.path.dirname(workflow.snakefile)
+
+# It should not be necessary to give the run dir as pbpipeline/from should point to it...
+RUNDIR = config.get('rundir', 'pbpipeline/from')
+BAM_HEAD = config.get('head', 1000)
+
+# Load the info prepared by scan_cells.py
+try:
+    SC = load_yaml(config.get("sc_data", "sc_data.yaml"))
+
+    SC['unfiltered_cells'] = SC['cells']
+    if 'cells' in config:
+        SC['cells'] =  { k: v for k, v in SC['unfiltered_cells'].items()
+                         if v['slot'] in config['cells'].split() }
+except Exception as e:
+    logger.warning(f"{e} - will continue with empty sc_data")
+    # Allow for cases where we just want to run one rule and don't care about the sc_data
+    SC = dict(cells={}, unfiltered_cells=[None])
+
+def get_primers_mas16():
+    """The primers file for diagnosis is always 'mas16_primers.fasta',
+       which should be in primers/mas16_primers.fasta relative to this
+       Snakefile
+    """
+    prog_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
+    return f"{prog_dir}/primers/mas16_primers.fasta"
+
+def get_input_bam(wildcards=None):
+    """Returns the input BAM file for the bam_head_n rule.
+       If the BAM has a location provided in SC, return that, else
+       return {wildcards.bam}.bam
+    """
+    # Expect, eg. m84140_240919_131445_s1.hifi_reads.bc1001.bam
+    bam_parts = wildcards.bam.split(".")
+    if len(bam_parts) == 3 and bam_parts[0] in SC['cells']:
+        bam_cell, bam_pf, bam_bc = bam_parts
+        bam_file = SC['cells'][bam_cell]['barcodes'][bam_bc][bam_pf]['bam']
+        return os.path.join(RUNDIR, bam_file)
+    # else
+    return f"{wildcards.bam}.bam"
+
+wildcard_constraints:
+    n       = r"\d+",
+
+rule main:
+    input:
+        [ f"{cell}.hifi_reads.{bc}.kinnex_scan.yaml"
+          for cell in SC['cells']
+          for bc in SC['cells'][cell]['barcodes'] ]
+
+rule ligations_to_verdict:
+    output: "{bam}.kinnex_scan.yaml"
+    input:
+        ligs = f"kinnex_scan/{{bam}}.head{BAM_HEAD}.segmented_mas16.ligations.csv",
+        json = f"kinnex_scan/{{bam}}.head{BAM_HEAD}.segmented_mas16.summary.json",
+    params:
+        total = BAM_HEAD
+    shell:
+        # The script will check that the -t parameter matches the "reads" total in
+        # the json, and if it's less will report "file too small".
+        "check_ligations.py -t {params.total} -j {input.json} {input.ligs} > {output}"
+
+# We discard most of the skera outputs. Just keep these two.
+# Note that skera will run on a zero-read BAM file, so no special case
+# is needed here.
+rule skera_mas16:
+    output:
+        ligs = "kinnex_scan/{bam}.segmented_mas16.ligations.csv",
+        json = "kinnex_scan/{bam}.segmented_mas16.summary.json",
+    input:
+        bam = "kinnex_scan/{bam}.bam",
+        primers = get_primers_mas16(),
+    params:
+        bam = "kinnex_scan/{bam}.segmented_mas16.bam"
+    threads: 2
+    shadow: "minimal"
+    shell:
+        "{TOOLBOX} smrt skera split -j {threads} {input.bam} {input.primers} {params.bam}"
+
+rule bam_head_n:
+    output:
+        bam = "kinnex_scan/{bam}.head{n}.bam",
+    input:
+        bam = get_input_bam
+    shadow: "minimal"
+    shell:
+        """( set +o pipefail ;
+             {TOOLBOX} samtools view -H {input.bam} ;
+             {TOOLBOX} samtools view {input.bam} | head -n {wildcards.n}
+           ) | {TOOLBOX} samtools view -o {output.bam}
+        """
+

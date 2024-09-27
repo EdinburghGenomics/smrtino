@@ -1,0 +1,13 @@
+printshellcmds: true
+rerun-incomplete: true
+keep-going: true
+drop-metadata: true
+rerun-triggers: mtime
+resources:
+- nfscopy=1
+cores: 4
+default-resources:
+- tmpdir='/tmp'
+- time_h=24
+- mem_mb=6000
+- n_cpus=1

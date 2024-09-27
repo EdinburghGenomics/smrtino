@@ -1,0 +1,69 @@
+> I wonder if I can screen for rRNA on every run? I already take a subset
+> of reads and BLAST them. So I could also align them vs. SILVA and report the
+> amount of ribosomal hits.
+
+> Problem is, this number is only really useful for RNA-Seq, and RNA-Seq is
+> Kinnex. So, to be useful we'd have to auto-run skera. Is this even possible?
+
+Well, maybe? Down that rabbit hole we go.
+
+Command line to run skera, according to Sam Holt, is:
+
+$ skera split -j $threads hifi_reads.bam mas8_adapters.fasta segmented.bam
+
+But there are 4 different adapters files (boo):
+
+/lustre-gseg/smrtlink/software/current/bundles/smrtinub/current/private/pacbio/barcodes:
+
+MAS_adapter_indexes/MAS_adapter_indexes.fasta
+MAS-Seq_Adapter_v1/mas16_primers.fasta
+MAS-Seq_Adapter_v2/mas12_primers.fasta
+MAS-Seq_Adapter_v3/mas8_primers.fasta
+
+I think the first is pre-Kinnex and we can ignore it?!
+
+Of the others, all contain the same A to H and Q
+mas12 also has primers I J K L
+mas16 also has primers M N O P
+
+Well, that makes sense. So the question is, if I run skera on a mas8 or mas12 dataset
+with the full mas16 primer set, does it make some reasonable output or does it
+complain that it cannot see the expected 16 reads per CCS. Well, let me see. A suitable
+input file for this is:
+
+84140_20240806_121103/2_C01/pb_formats/m84140_240806_181656_s2.hifi_reads.consensusreadset.xml
+
+Which is a mas8 dataset. CCS BAM file is
+/lustre-gseg/pacbio/pacbio_data/r84140_20240806_121103/m84140_240806_181656_s2/all/m84140_240806_181656_s2.hifi_reads.all.bam
+
+This file has 10 million reads. We'll downsample to 10k. I'll do this under ~/test_skera.
+Done, but I downsampled to 1k instead. Let's add the full adapters file.
+
+--
+
+OK, we have gleaned useful info. Using the mas16 barcodes on the mas8 file produces output but not the
+right output. But we do get a mas8_ccs_10k_segmented_mas16.ligations.csv which is very useful. It's
+a matrix. It shows all the adapter-adapter ligations, so although we do not get the right reads we do
+get a comprehensive list of all the adapter combinations. Scanning this file will tell us what sort
+of Kinnex reads we are dealing with. So, here's the PLN:
+
+For each BAM file, extract the first 1k reads.
+If there are <1k reads, "file too small"
+Else, run skera with mas16 mode to get the matrix.
+
+Extract all the ligations where the count is >500.
+If there are none: Not Kinnex. No skera to run.
+Otherwise, the file is mas{n} where n is the number of such ligations.
+Simples!
+(I'll want to test this on a few runs)
+
+So now I can optionally run skera as part of the workflow. I guess I can
+use skera in place of the copy part, so we get the segmented BAM as input
+to the rest of the pipeline.
+
+It's going to be a bit tricky though, as I now have a pre-processing step.
+I think I'd want to implement this as a Snakemake workflow, whether or not
+it actually needs to go over the cluster. Likely not. Well, let us give it
+a go. I only need to worry about "pass bam" files and I don't need to
+worry about unassigned files. I can return the verdicts in one file per
+barcode, to avoid locking issues. I'll put them under kinnex_scan.

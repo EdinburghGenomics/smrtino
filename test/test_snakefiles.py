@@ -26,12 +26,12 @@ class T(unittest.TestCase):
     def setUp(self):
         os.environ['TOOLBOX'] = '/'
 
+    @patch('sys.stderr', new_callable=StringIO)
     @patch('sys.stdout', new_callable=StringIO)
-    def syntax_check(self, sf, mock_stdout):
+    def syntax_check(self, sf, mock_stdout, mock_stderr):
         """ Check that I can load a given workflow OK
         """
-        wf = Workflow(sf, overwrite_config=dict( noyaml  = True,
-                                                 workdir = '.',
+        wf = Workflow(sf, overwrite_config=dict( workdir = '.',
                                                  rundir  = '.',
                                                  ignore_missing = True))
         wf.include(sf)
