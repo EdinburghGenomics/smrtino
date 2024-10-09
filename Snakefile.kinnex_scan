@@ -18,7 +18,7 @@ snakerun_single "$0" "$@"
 from smrtino import load_yaml, dump_yaml
 
 """The job of this workflow is to look at a BAM file and decide if if has
-   Kinnex bercodes in these, using a subsample-and-scan heuristic.
+   Kinnex barcodes in there, using a subsample-and-scan heuristic.
 
    This is designed to be run as part of SMRTino, and so has some awareness
    of the SMRTino output layout, but you can also run it on a single BAM

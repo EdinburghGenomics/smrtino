@@ -1,0 +1,28 @@
+As noted in doc/bug_r84140_20240819_152442.txt, I'm processing cells in parallel,
+and there are race conditions. My assumptions are:
+
+- Snakemake locking will save me from the worst problems
+- Race conditions will only happen very rarely and be obvious
+- Re-running the pipeline is not a big deal
+
+One place that stands out is sc_data.yaml. This is written before the main Snakefile is
+called and there is nothing to stop two instances writing to the same file at the same
+time. The failure should be obvious but it is still annoying.
+
+Gating this is very tricky since we have no good way to see when Snakemake reads the file.
+If Snakemake randomly took 5 minutes to start (not impossible on Lustre) then that's long
+enough for another pipeline run to kick off, detect new cells, and re-make the file.
+
+But having different filenames would work:
+
+sc_data.$$.yaml or sc_data.$(date +%s).yaml
+
+Or: sc_data.$(( $CELLSREADY + $CELLSPROCESSING + $CELLSDONE )).yaml
+
+Then each .info.yaml file would potentially point to a different sc_data.yaml, but this is
+fine. I can use the --sc_data flag of compile_cell_info.py.
+
+list_projects_ready.py and Snakefile.report would need to be modified, but this is a simple change.
+
+I think this is actually much more of a problem now I have the kinnex_scan, which could take minutes
+to run. So I'm going to implement this now, and test it on a test run.

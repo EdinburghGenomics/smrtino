@@ -67,3 +67,9 @@ it actually needs to go over the cluster. Likely not. Well, let us give it
 a go. I only need to worry about "pass bam" files and I don't need to
 worry about unassigned files. I can return the verdicts in one file per
 barcode, to avoid locking issues. I'll put them under kinnex_scan.
+
+--
+
+Done. Prior to starting Snakefile.process_cells we should have a
+{cell}.hifi_reads.{bc}.kinnex_scan.yaml file for every cell/barcode. So when loading
+sc_data.yaml I can add this info to the SC structure.

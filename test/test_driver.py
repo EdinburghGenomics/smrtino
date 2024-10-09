@@ -24,6 +24,7 @@ DRIVER = os.path.abspath(os.path.dirname(__file__) + '/../driver.sh')
 PROGS_TO_MOCK = {
     "Snakefile.process_cells" : True,
     "Snakefile.report"        : True,
+    "Snakefile.kinnex_scan"   : True,
     "rt_runticket_manager.py" : "echo STDERR rt_runticket_manager.py >&2",
     "upload_report.sh"        : "echo STDERR upload_report.sh >&2",
     "list_projects_ready.py"  : "echo 00000",
@@ -464,6 +465,7 @@ class T(unittest.TestCase):
         # Check that upload_reports.sh is not called
         expected_calls = self.bm.empty_calls()
 
+        expected_calls['Snakefile.kinnex_scan'] = [['--config', 'cells=1_C01 1_D01', '-p']]
         expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                                                        "--config", "cells=1_C01 1_D01",
                                                                    "blobs=1",
@@ -521,6 +523,8 @@ class T(unittest.TestCase):
         expected_calls['Snakefile.report'] = [[ "-R", "make_report",
                                                 "--config", "cells=1_C01 1_D01",
                                                 "-p", "report_main"]]
+
+        expected_calls['Snakefile.kinnex_scan'] = [['--config', 'cells=1_C01 1_D01', '-p']]
 
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
                                                      self.rt_cmd("processing", "--reply",
