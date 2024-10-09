@@ -15,16 +15,17 @@ VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 class T(unittest.TestCase):
     """ Load all the snakefiles just to check I haven't let in some silly syntax error.
     """
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        os.environ['TOOLBOX'] = '/'
+
         #Prevent the logger from printing messages - I like my tests to look pretty.
+        for handler in list(logging.root.handlers):
+            logging.root.removeHandler(handler)
+
         if VERBOSE:
             logging.getLogger().setLevel(logging.DEBUG)
         else:
             logging.getLogger().setLevel(logging.CRITICAL)
-
-    def setUp(self):
-        os.environ['TOOLBOX'] = '/'
 
     @patch('sys.stderr', new_callable=StringIO)
     @patch('sys.stdout', new_callable=StringIO)
@@ -46,7 +47,7 @@ class T(unittest.TestCase):
 
 # This bit copied from test_base_mask_extractor in Illuminatus...
 # Now add the tests dynamically
-for sf in "process_cells report".split():
+for sf in "process_cells report kinnex_scan".split():
     snakefile = os.path.join(os.path.dirname(__file__), '..', f"Snakefile.{sf}")
 
     # Note the slightly contorted double-lambda syntax to make the closure.

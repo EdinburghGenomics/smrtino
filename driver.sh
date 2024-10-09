@@ -238,6 +238,11 @@ action_cell_ready(){
         touch_atomic "$RUN_OUTPUT"/pbpipeline/${cell}.started
     done
 
+    # Make an sc_data.yaml file with a timestamped name.
+    # Potential race condition if using a single sc_data.yaml. See doc/sc_data_race.txt
+    SC_DATA_FILE="sc_data.$(date +%s).yaml"
+    touch_atomic "$SC_DATA_FILE"
+
     log "\_CELL_READY $RUNID ($CELLSREADY). Kicking off processing."
     plog_start
 
@@ -260,16 +265,16 @@ action_cell_ready(){
       cd "$RUN_OUTPUT"
 
       # Compile info for all cells, not just the one being processed.
-      # Note - There is a potential race condition on sc_data.yaml. See doc/sc_data_race.txt
-      scan_cells.py -c $CELLSREADY $CELLSPROCESSING $CELLSDONE > sc_data.yaml
+      scan_cells.py -c $CELLSREADY $CELLSPROCESSING $CELLSDONE > "$SC_DATA_FILE"
 
-      Snakefile.kinnex_scan --config cells="$CELLSREADY" \
+      Snakefile.kinnex_scan --config cells="$CELLSREADY" sc_data="$SC_DATA_FILE" \
                                      ${EXTRA_SNAKE_CONFIG:-} \
                             -p |& plog
 
       always_run=(one_cell_info one_barcode_info list_blob_plots)
       Snakefile.process_cells -R "${always_run[@]}" \
-                              --config cells="$CELLSREADY" blobs="${BLOBS:-1}" cleanup=1 \
+                              --config cells="$CELLSREADY" sc_data="$SC_DATA_FILE" \
+                                       blobs="${BLOBS:-1}" cleanup=1 \
                                        ${EXTRA_SNAKE_CONFIG:-} \
                               -p |& plog
 
@@ -278,7 +283,8 @@ action_cell_ready(){
 
       always_run=(make_report)
       Snakefile.report -R "${always_run[@]}" \
-                       --config cells="$CELLSREADY" -p report_main |& plog
+                       --config cells="$CELLSREADY" sc_data="$SC_DATA_FILE" \
+                       -p report_main |& plog
 
       # Snakefile.report jobs can now run in parallel, but the upload still needs to be gated.
       touch_or_wait pbpipeline/report.started

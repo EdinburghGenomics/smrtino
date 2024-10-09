@@ -132,7 +132,7 @@ def i_one_cell_info(wc):
     cell = wc.cell
     cell_barcodes = sorted(SC['cells'][cell]['barcodes'])
 
-    res = dict( sc_data = "sc_data.yaml" )
+    res = dict( sc_data = config.get("sc_data", "sc_data.yaml") )
 
     if 'unassigned' in SC['cells'][cell]:
         res['unass'] = f"{cell}/unassigned/{cell}.info.unassigned.yaml"

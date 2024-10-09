@@ -30,6 +30,18 @@ def find_projects_from_yaml(filename):
     else:
         return (ydata['ws_project'],)
 
+def glob_sc_data():
+    """If there is sc_data.yaml, use that. Else look for sc_data.*.yaml
+    """
+    g = glob("sc_data.yaml")
+    if g:
+        return g
+    g = glob("sc_data.*.yaml")
+    if g:
+        return g
+
+    raise FileNotFoundError("No match for 'sc_data.yaml' or 'sc_data.*.yaml'")
+
 def list_the_projects():
     plist = []
 
@@ -45,14 +57,17 @@ def list_the_projects():
                    re.findall("(?<=/).+(?=\.)", f)
                    if not os.path.exists(f"pbpipeline/{c}.aborted") ]
 
-    # 2) Load up sc_data.yaml
+    # 2) Load up sc_data.yaml. As of SMRTino 3.7 there may be multiple files
+    # I could just glob() the info.yaml files directly but I want assurance that
+    # everything is there as it should be.
     yaml_info_files = set()
-    sc_data = load_yaml("sc_data.yaml")
+    for sc_data_file in glob_sc_data():
+        sc_data = load_yaml(sc_data_file)
 
-    for acell, cdict in sc_data['cells'].items():
-        if cdict['slot'] in cells_done:
-            # It's a candidate
-            yaml_info_files.add(f"{acell}.info.yaml")
+        for acell, cdict in sc_data['cells'].items():
+            if cdict['slot'] in cells_done:
+                # It's a candidate
+                yaml_info_files.add(f"{acell}.info.yaml")
 
     # 3) Get the projects (this used to be in Snakefile.report)
     L.debug(f"Will look into {len(yaml_info_files)} cells")

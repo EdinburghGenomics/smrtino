@@ -42,7 +42,7 @@ def scan_cells(filter_by_config=True):
         If supplied, config['cells'] will be a string like "1_A01 2_B01 3_C01" so
         we need to translate these to cell names.
     """
-    all_info = load_yaml("sc_data.yaml")['cells']
+    all_info = load_yaml(config.get("sc_data", "sc_data.yaml"))['cells']
 
     if filter_by_config and ('cells' in config):
         all_info = { k: v for k, v in all_info.items()

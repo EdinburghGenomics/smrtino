@@ -47,7 +47,7 @@ try:
         SC['cells'] =  { k: v for k, v in SC['unfiltered_cells'].items()
                          if v['slot'] in config['cells'].split() }
 except Exception as e:
-    logger.warning(f"{e} - will continue with empty sc_data")
+    logger.warning(f"{e} - sc_data will be empty")
     # Allow for cases where we just want to run one rule and don't care about the sc_data
     SC = dict(cells={}, unfiltered_cells=[None])
 
