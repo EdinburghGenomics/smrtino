@@ -73,3 +73,8 @@ barcode, to avoid locking issues. I'll put them under kinnex_scan.
 Done. Prior to starting Snakefile.process_cells we should have a
 {cell}.hifi_reads.{bc}.kinnex_scan.yaml file for every cell/barcode. So when loading
 sc_data.yaml I can add this info to the SC structure.
+
+As an unexpected knock-on from that I had to replace sc_data.yaml with a timestamped
+name. But anyway... that's done.
+
+

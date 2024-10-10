@@ -63,6 +63,12 @@ except Exception as e:
     # Allow for cases where we just want to run one rule and don't care about the sc_data
     SC = dict(cells={}, unfiltered_cells=[None])
 
+# Load the .kinnex_scan.yaml files
+for cell in SC['cells']:
+    for bc in SC['cells'][cell]['barcodes']:
+        kinnex_yaml = load_yaml(f"{cell}.hifi_reads.{bc}.kinnex_scan.yaml")
+        SC['cells'][cell].setdefault('kinnex_scan', {})[bc] = kinnex_yaml
+
 logger.info(f"SC loaded with cells: {list(SC['unfiltered_cells'])}")
 logger.info(f"Of these, we process: {list(SC['cells'])}")
 
@@ -90,26 +96,13 @@ def find_source_file(**args):
 
     return _fsf
 
-def copy_all_files(i, o, keys=None):
-    """ For rules that like to copy stuff
-        i and o are dicts of filenames with common keys, which
-        works for rule input/output with matched names
+def get_primers_masN(n):
+    """The primers file might be mas(8|12|16)_primers.fasta
+       which should be in the primers/ subdirectory relative to this
+       Snakefile
     """
-    for (infile, outfile) in ( (i[k], o[k]) for k in (keys or o.keys()) ):
-        shell("cp --no-preserve=all -Lv {infile} {outfile}")
-
-def link_all_files(i, o, keys=None):
-    """ Copying is not necessary if everything is on the same FS, so have a symlink option.
-        (But probably we should have one copy on /lustre-egdp and another on /lustre-gseg.
-        Also, copying sorts out the ownership allowing hard-linking for delivery.)
-
-        i and o are dicts of filenames with common keys, which works for rule
-        input/output with matched names
-    """
-    for (infile, outfile) in ( (i[k], o[k]) for k in (keys or o.keys()) ):
-        # ln -r resolves out the symlink, so this nasty hack instead...
-        ifprefix = "../" * outfile.count("/")
-        shell("ln -sn {ifprefix}{infile} {outfile}")
+    prog_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
+    return f"{prog_dir}/primers/mas{n}_primers.fasta"
 
 wildcard_constraints:
     n       = r"\d+",
@@ -151,7 +144,12 @@ def i_one_barcode_info(wc):
     cell = wc.cell
     barcode = wc.bc
 
-    # parts = SC['cells'][cell]['parts']
+    mas = SC['cells'][cell]['kinnex_scan'][barcode]['mas']
+    if mas:
+        bc_and_mas = f"{barcode}.{mas}"
+    else:
+        bc_and_mas = barcode
+
 
     res = dict( md5 = [],
                 cstats = [],
@@ -163,25 +161,25 @@ def i_one_barcode_info(wc):
 
     # We need md5sums and contig stats for hifi_reads and fail_reads
     for part in "hifi_reads fail_reads".split():
-        res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.{part}.{barcode}.bam.md5")
-        res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{barcode}.cstats.yaml")
+        res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.bam.md5")
+        res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.cstats.yaml")
 
     # Also the consensusreadset.xml and bam.head, but only for hifi_reads
-    res['xml'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{barcode}.consensusreadset.xml")
-    res['bamhead'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{barcode}.bam.head")
+    res['xml'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.consensusreadset.xml")
+    res['bamhead'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.bam.head")
 
     # Also the metadata.xml file (which is per cell not per barcode)
     res['metaxml'] = f"{cell}.metadata.xml"
 
     # For the HiFi reads we want the files in FASTQ format as well as BAM, and we want
     # a .count file and md5sum for that fastq.
-    res['cou'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{barcode}.fastq.count")
-    res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.hifi_reads.{barcode}.fastq.gz.md5")
+    res['cou'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.fastq.count")
+    res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.fastq.gz.md5")
 
     # Blobs or no? Only on the HiFi reads.
     if str(config.get('blobs', '1')) != '0':
-        res['blobs'].append(f"blob/{cell}.hifi_reads.{barcode}.plots.yaml")
-        res['taxon'].append(f"blob/{cell}.hifi_reads.{barcode}.species.txt")
+        res['blobs'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.plots.yaml")
+        res['taxon'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.species.txt")
 
     return res
 
@@ -231,18 +229,9 @@ rule one_barcode_info:
 # TODO - if we can get the inputs on a different FS again then revert to copying
 # on the head node
 if os.environ.get('FILTER_LOCALLY', '1') != '0':
-    localrules: copy_reads, copy_xml
+    localrules: copy_reads, copy_xml, copy_xml_segged
 
-def relativize_xml(xfile):
-    """Munge an XML file to reflect new file paths and remove unused references
-       so that the file can be imported into another SMRTLink.
-    """
-    shell("mv -v {xfile} {xfile}.orig")
-    shell("strip_readset_resources.py {xfile}.orig > {xfile}")
-    shell("{TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {xfile}")
-    shell("rm -v {xfile}.orig")
-
-# These rules copy/link the files for a given barcode, then fixe up the XML.
+# These rules copy/link the files for a given barcode, then fix up the XML.
 # part may be "hifi_reads" (ie. pass) or "fail_reads".
 # Note there is no longer XML for the fail_reads, after SMRTLink 13.1
 rule copy_reads:
@@ -254,11 +243,32 @@ rule copy_reads:
         pbi    = find_source_file(fmt="pbi"),
     resources:
         nfscopy=1
-    run:
-        # Un-silence sys.stderr in sub-jobs:
-        logger.quiet.discard('all')
+    shadow: 'minimal'
+    shell:
+        """cp --no-preserve=all -Lv {input.bam} {outfile.bam}
+           cp --no-preserve=all -Lv {input.pbi} {outfile.pbi}
+        """
 
-        copy_all_files(input, output, keys=["bam", "pbi"])
+# For Kinnex reads we segment rather than copying the original BAM.
+rule segment_reads:
+    output:
+        bam     = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.bam",
+        pbi     = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.bam.pbi",
+        ligs    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.ligations.csv",
+        json    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.summary.json",
+        np      = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.non_passing.bam",
+        nppbi   = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.non_passing.bam.pbi",
+    input:
+        bam     = find_source_file(fmt="bam"),
+        pbi     = find_source_file(fmt="pbi"),
+        primers = lambda wc: get_primers_masN(wc.n),
+    resources:
+        nfscopy=1
+    threads: 12
+    shadow: 'minimal'
+    shell:
+        """{TOOLBOX} smrt skera split -j {threads} {input.bam} {input.primers} {output.bam}
+        """
 
 rule copy_xml:
     output:
@@ -267,12 +277,27 @@ rule copy_xml:
         bam    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam",
         pbi    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam.pbi",
         xml    = find_source_file(fmt="xml"),
-    run:
-        # Un-silence sys.stderr in sub-jobs:
-        logger.quiet.discard('all')
+    shadow: 'minimal'
+    shell:
+        """cp --no-preserve=all -Lv {input.xml} {outfile.xml}.orig
+           strip_readset_resources.py {outfile.xml}.orig > {outfile.xml}
+           {TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {outfile.xml}
+        """
 
-        copy_all_files(input, output, keys=["xml"])
-        relativize_xml(output.xml)
+# FIXME the XML will need some further jigging here
+rule copy_xml_segged:
+    output:
+        xml    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.consensusreadset.xml",
+    input:
+        bam    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.bam",
+        pbi    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam{n}.pbi",
+        xml    = find_source_file(fmt="xml"),
+    shadow: 'minimal'
+    shell:
+        """cp --no-preserve=all -Lv {input.xml} {outfile.xml}.orig
+           strip_readset_resources.py {outfile.xml}.orig > {outfile.xml}
+           {TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {outfile.xml}
+        """
 
 # This file just gets copied. Except that we have to fix the XML declaration.
 rule copy_meta:
