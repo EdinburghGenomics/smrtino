@@ -105,10 +105,12 @@ def get_primers_masN(n):
     return f"{prog_dir}/primers/mas{n}_primers.fasta"
 
 wildcard_constraints:
-    n       = r"\d+",
-    cell    = r"m\w+",
-    barcode = r"[^/.]+",
-    part    = r"hifi_reads|fail_reads",
+    n          = r"\d+",
+    cell       = r"m\w+",
+    barcode    = r"[^/.]+",
+    _mas       = r"\.mas\d{1,2}",
+    bc_and_mas = r"[^/.]+(\.mas\d{1,2})?",
+    part       = r"hifi_reads|fail_reads",
 
 # Main target is one yaml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
@@ -250,6 +252,8 @@ rule copy_reads:
         """
 
 # For Kinnex reads we segment rather than copying the original BAM.
+# If we go back to having the pbpipeline/from data only on the head node
+# then I will probably need to go back to copying the originals too.
 rule segment_reads:
     output:
         bam     = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.bam",
@@ -263,7 +267,8 @@ rule segment_reads:
         pbi     = find_source_file(fmt="pbi"),
         primers = lambda wc: get_primers_masN(wc.n),
     resources:
-        nfscopy=1
+        mem_mb = 72000,
+        n_cpus = 12,
     threads: 12
     shadow: 'minimal'
     shell:
@@ -290,7 +295,7 @@ rule copy_xml_segged:
         xml    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.consensusreadset.xml",
     input:
         bam    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.bam",
-        pbi    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam{n}.pbi",
+        pbi    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.bam.pbi",
         xml    = find_source_file(fmt="xml"),
     shadow: 'minimal'
     shell:

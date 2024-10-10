@@ -26,16 +26,16 @@ BLAST_SCRIPT   = config.get('blast_script', "blast_nt")
 #
 localrules: list_blob_plots, get_blob_species
 rule list_blob_plots:
-    output: "blob/{cell}.{part}.{barcode}.plots.yaml"
+    output: "blob/{cell}.{part}.{bc_and_mas}.plots.yaml"
     input:
-        png = lambda wc: expand( "blob/{cell}.{part}.{barcode}.{taxlevel}.{extn}{thumb}.png",
-                                 cell = [wc.cell],
-                                 part = [wc.part],    # hifi_reads
-                                 barcode = [wc.barcode],
-                                 taxlevel = BLOB_LEVELS,
-                                 extn = "cov0 read_cov.cov0".split(),
-                                 thumb = ['.__thumb', ''] ),
-        subs = "blob/{cell}.{part}.{barcode}+sub" + str(BLOB_SUBSAMPLE) + ".fasta",
+        png = lambda wc: expand( "blob/{cell}.{part}.{bc_and_mas}.{taxlevel}.{extn}{thumb}.png",
+                                 cell       = [wc.cell],
+                                 part       = [wc.part],    # hifi_reads
+                                 bc_and_mas = [wc.bc_and_mas],
+                                 taxlevel   = BLOB_LEVELS,
+                                 extn       = "cov0 read_cov.cov0".split(),
+                                 thumb      = ['.__thumb', ''] ),
+        subs = "blob/{cell}.{part}.{bc_and_mas}+sub" + str(BLOB_SUBSAMPLE) + ".fasta",
     run:
         # Un-silence sys.stderr in sub-jobs:
         logger.quiet.discard('all')
@@ -46,31 +46,31 @@ rule list_blob_plots:
 
         # I need to emit the plots in order in pairs. Unfortunately expand() won't quite
         # cut it here but I can make a nested list comprehension.
-        plot_files = [ expand( "{cell}.{part}.{barcode}.{taxlevel}.{extn}.png",
-                               cell     = [wc.cell],
-                               part     = [wc.part],
-                               barcode  = [wc.barcode],
-                               taxlevel = BLOB_LEVELS,
-                               extn     = [extn] )
+        plot_files = [ expand( "{cell}.{part}.{bc_and_mas}.{taxlevel}.{extn}.png",
+                               cell       = [wc.cell],
+                               part       = [wc.part],
+                               bc_and_mas = [wc.bc_and_mas],
+                               taxlevel   = BLOB_LEVELS,
+                               extn       = [extn] )
                        for extn in "read_cov.cov0 cov0".split() ]
 
-        plots = dict(title = f"Taxonomy for {wc.part} {wc.barcode} ({count_from_fastq} sequences)"
+        plots = dict(title = f"Taxonomy for {wc.part} {wc.bc_and_mas} ({count_from_fastq} sequences)"
                              f" by {', '.join(BLOB_LEVELS)}",
                      files = plot_files )
 
         dump_yaml([plots], filename=str(output))
 
 rule get_blob_species:
-    output: "blob/{cell}.{part}.{barcode}.species.txt"
+    output: "blob/{cell}.{part}.{bc_and_mas}.species.txt"
     input:
-        txt = expand("blob/{{cell}}.{{part}}.{{barcode}}.{bl}.blobplot.stats.txt", bl=BLOB_LEVELS[::-1])
+        txt = expand("blob/{{cell}}.{{part}}.{{bc_and_mas}}.{bl}.blobplot.stats.txt", bl=BLOB_LEVELS[::-1])
     shell:
         "blobplot_stats_to_species.py {input.txt} > {output}"
 
 # Convert to FASTA and subsample and munge the headers
 rule bam_to_subsampled_fasta:
-    output: "blob/{cell}.{part}.{barcode}+sub{n}.fasta"
-    input:  "{cell}/{barcode}/{cell}.{part}.{barcode}.bam"
+    output: "blob/{cell}.{part}.{barcode}{_mas}+sub{n}.fasta"
+    input:  "{cell}/{barcode}/{cell}.{part}.{barcode}{_mas}.bam"
     threads: 8
     resources:
         mem_mb = 44000,
