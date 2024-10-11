@@ -247,8 +247,8 @@ rule copy_reads:
         nfscopy=1
     shadow: 'minimal'
     shell:
-        """cp --no-preserve=all -Lv {input.bam} {outfile.bam}
-           cp --no-preserve=all -Lv {input.pbi} {outfile.pbi}
+        """cp --no-preserve=all -Lv {input.bam} {output.bam}
+           cp --no-preserve=all -Lv {input.pbi} {output.pbi}
         """
 
 # For Kinnex reads we segment rather than copying the original BAM.
@@ -284,9 +284,9 @@ rule copy_xml:
         xml    = find_source_file(fmt="xml"),
     shadow: 'minimal'
     shell:
-        """cp --no-preserve=all -Lv {input.xml} {outfile.xml}.orig
-           strip_readset_resources.py {outfile.xml}.orig > {outfile.xml}
-           {TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {outfile.xml}
+        """cp --no-preserve=all -Lv {input.xml} {output.xml}.orig
+           strip_readset_resources.py {output.xml}.orig > {output.xml}
+           {TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {output.xml}
         """
 
 # FIXME the XML will need some further jigging here
@@ -299,9 +299,11 @@ rule copy_xml_segged:
         xml    = find_source_file(fmt="xml"),
     shadow: 'minimal'
     shell:
-        """cp --no-preserve=all -Lv {input.xml} {outfile.xml}.orig
-           strip_readset_resources.py {outfile.xml}.orig > {outfile.xml}
-           {TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {outfile.xml}
+        """{TOOLBOX} smrt dataset  --skipCounts --log-level INFO \
+             create --type ConsensusReadSet --relative \
+             --metadata {input.xml} \
+             {output.xml} \
+             {input.bam}
         """
 
 # This file just gets copied. Except that we have to fix the XML declaration.

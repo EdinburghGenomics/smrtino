@@ -83,4 +83,15 @@ do some big chenges there. Also, delivery needs to work and I need to see about 
 but Kinnex always has barcodes and segmentation is not use for delivery without the
 additional Lima step. Hmmm.
 
+So questions are:
+
+1) Where do we fit the Lima step and map the samples to the barcodes. Possibly a Ragic
+job? I don't think we can push the skera reads back into SMRTLink as the workflows in
+there want to do everything or nothing.
+
+2) What should the report look like once we have split reads?
+
+3) What about those extra metrics to be added to the report?
+
+See signoff_metrics.txt
 
