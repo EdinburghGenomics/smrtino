@@ -8,10 +8,14 @@ from io import StringIO
 import logging
 from pprint import pprint
 
-from snakemake.workflow import Workflow
+import snakemake
+bad_snakemake_version = snakemake.__version__ >= "8.0.0"
+if not bad_snakemake_version:
+    from snakemake.workflow import Workflow
 
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
+@unittest.skipIf(bad_snakemake_version, reason="Test is for Snakemake 7")
 class T(unittest.TestCase):
     """ Load all the snakefiles just to check I haven't let in some silly syntax error.
     """
