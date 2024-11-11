@@ -89,7 +89,7 @@ def find_source_file(**args):
                 fn = SC['cells'][wc.cell]['barcodes'][wc.barcode][wc.part][wc.fmt]
 
         except AttributeError:
-            # No barcode. Must be the metadata file.
+            # No barcode. Must be the metadata or reports.zip file.
             fn = SC['cells'][wc.cell][wc.fmt]
 
         return f"{RUNDIR}/{fn}"
@@ -114,7 +114,8 @@ wildcard_constraints:
 
 # Main target is one yaml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
-localrules: main, one_cell_info, one_barcode_info, copy_meta, get_bam_head
+localrules: main, one_cell_info, one_barcode_info
+localrules: copy_meta, unzip_json_report, get_bam_head
 rule main:
     input:
         yaml     = [ f"{c}.info.yaml" for c in SC['cells'] ]
@@ -134,6 +135,10 @@ def i_one_cell_info(wc):
 
     res['bc'] = [ f"{cell}/{bc}/{cell}.info.{bc}.yaml"
                   for bc in cell_barcodes ]
+
+    # Various reports to unpack from the .reports.zip file
+    for rep in "raw_data adapter ccs control loading".split():
+        res[f"{rep}_report"] = f"reports_zip/{cell}.{rep}.report.json"
 
     return res
 
@@ -194,19 +199,18 @@ rule one_cell_info:
 
         # The output here is just going to be a YAML file linking to all the other
         # YAML files - there is no point in copying the actual data over.
-        try:
-            input.unass
-            shell("""compile_cell_info.py -x \
-                        --sc_data {input.sc_data} \
-                        --unassigned {input.unass} \
-                        {input.bc} > {output}
-                  """)
-        except AttributeError:
-            # Version with no unassigned
-            shell("""compile_cell_info.py -x \
-                        --sc_data {input.sc_data} \
-                        {input.bc} > {output}
-                  """)
+
+        # Add all the reports, and unassigned if we have it
+        optional_bits = ""
+        for n in input._names:
+            if n.endswith("_report") or n == 'unass':
+                optional_bits += f"--{n} {getattr(input, n)} "
+
+        shell("""compile_cell_info.py -x \
+                    --sc_data {input.sc_data} \
+                    {optional_bits} \
+                    {input.bc} > {output}
+              """)
 
 
 rule one_barcode_info:
@@ -314,6 +318,14 @@ rule copy_meta:
         meta   = find_source_file(fmt="meta")
     shell:
         "sed '1s/utf-16/utf-8/' {input.meta} > {output.meta}"
+
+# This rule unzips the reports one at a time. That's fine, I think. It's quick.
+rule unzip_json_report:
+    output: "reports_zip/{cell}.{rep}.report.json"
+    input:
+        zip = find_source_file(fmt="reports_zip")
+    shell:
+        "unzip -p {input} {wildcards.rep}.report.json > {output}"
 
 # This script produces some headline stats as well as a histogram we could use
 # (but currently we don't)

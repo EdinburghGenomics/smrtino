@@ -78,7 +78,8 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone"):
     res = { cellid: { 'slot': slot,
                       'parts': ['hifi_reads', 'fail_reads'],
                       'barcodes': find_barcodes(rundir, slot, cellid),
-                      'meta': find_meta(rundir, slot, cellid)
+                      'meta': find_meta(rundir, slot, cellid),
+                      'reports_zip': find_reports_zip(rundir, slot, cellid),
                     } for slot, cellid in all_cells.items() }
     # Add unassigned, and unbarcoded ('all'), possibly
     for cellid, v in res.items():
@@ -153,6 +154,15 @@ def find_meta(rundir, slot, cellid):
     """Returns the location of the .metadata.xml, and checks it exists.
     """
     res = f"{slot}/metadata/{cellid}.metadata.xml"
+
+    assert os.path.exists(f"{rundir}/{res}"), f"missing {rundir}/{res}"
+
+    return res
+
+def find_reports_zip(rundir, slot, cellid):
+    """Returns the location of the .metadata.xml, and checks it exists.
+    """
+    res = f"{slot}/statistics/{cellid}.reports.zip"
 
     assert os.path.exists(f"{rundir}/{res}"), f"missing {rundir}/{res}"
 

@@ -85,6 +85,18 @@ def parse_args(*args):
                             help="Location of sc_data.yaml for the cell")
     argparser.add_argument("--unassigned",
                             help="Location of info.yaml for unassigned reads")
+
+    argparser.add_argument("--raw_data_report",
+                            help="Location of raw_data.report.json for this cell")
+    argparser.add_argument("--adapter_report",
+                            help="Location of adapter.report.json for this cell")
+    argparser.add_argument("--ccs_report",
+                            help="Location of ccs.report.json for this cell")
+    argparser.add_argument("--control_report",
+                            help="Location of control.report.json for this cell")
+    argparser.add_argument("--loading_report",
+                            help="Location of loading.report.json for this cell")
+
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
     argparser.add_argument("-c", "--check_yaml", action="store_true",

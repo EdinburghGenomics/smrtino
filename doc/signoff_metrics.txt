@@ -1,0 +1,211 @@
+Here is what SMRTino currently gives us per SMRT cell (or per barcode):
+
+readset_type -- Revio (HiFi)
+bs_project -- 33950
+bs_name -- 33950NSpool01L01
+bs_desc --
+quality_binning -- Unbinned
+guessed_taxon -- uncultured bacterium (31.2%);uncultured Pseudomonas sp. (15.4%)
+
+Max read length
+Reads
+Total bases	N50
+GC %
+Mean length
+
+Here is what they have on the sign-off spreadsheet:
+
+Sign off Date	Friday 11 October 2024
+RUN
+Movie Time (hours)	30
+Library type	WGS
+Adaptive loading	FALSE
+SMRT Cell Lot Number	1000002838
+Well Sample Name	30940GK0002L01
+Well name	A01
+Run started	2024-10-08
+SAMPLE LOADED
+Insert size	18674 bp
+Sample Concentration (ng/ul)	25.6 ng/uL
+Sample Concentration (nM)	2.11 nM
+Sample Volume to Use	14.5 uL
+Concentration after clean-up (ng/ul)	7.32
+% of  recovery (anticipated)	75%
+% of  recovery (real)	99%
+RAW DATA
+Polymerase Read Bases (Gb)	1034
+Polymerase Reads (M)	12
+Polymerase Read N50	179750.00
+Longest Subread N50	20750.00
+Unique Molecular Yield (Gb)	196
+LOADING
+P0 %	52.1%
+P1 %	47.5%
+P2 %	0.4%
+OPLC (pM), On-Plate Loading Conc. 	235 pM
+Real OPLC (pM), after clean-up	309
+HiFi DATA
+HiFi Reads (M)	5.0
+HiFi Yield (Gb)	71.22
+HiFi Read Length (mean, bp)	 14,220
+HiFi Read Length (median, bp)	 12,790
+HiFi Read Quality (median)	Q36
+HiFi Bases Quality ≥Q30 (%)	94.60%
+HiFi Number of Passes (mean)	 11
+HiFi LENGTH %
+ ≥ 5,000 bp	100%
+≥ 10,000 bp	87%
+≥ 15,000 bp	32%
+≥ 20,000 bp	12%
+HiFi QUALITY %
+≥ Q30	75%
+≥ Q40	36%
+BARCODES
+Number of samples	0
+CV	NA
+CONTROL
+Number of Control Reads	3,010
+Control Read Length Mean	61,221
+Control Read Concordance Mean	91%
+Control Read Concordance Mode	91%
+ADAPTER
+Adapter Dimers (0-10bp) %	0.0%
+Short Inserts (11-100bp) %	0.0%
+Local Base Rate	2.61
+INSTRUMENT
+Run ID	r84140_20241008_153609
+Instrument SN	84140
+Instrument Control SW Version	13.1.0.221972
+Instrument Chemistry Bundle Version	13.1.0.217683
+Primary SW Version	13.1.0.221972
+DATASET
+Movie ID	m84140_241008_153920_s4
+Biological Sample Name	30940GK0002L01
+Cell ID	EA133129
+Data created	2024-10-10
+LINKS
+SMRT link report link	https://edgen-smrtlink.epcc.ed.ac.uk:8243/sl/data-management/dataset-detail/aef65a28-e77b-4d73-bedf-6512594eed84?type=ccsreads
+SMRTINO report link	PacBio SMRT cell m84140_241008_153920_s4 (ed.ac.uk)
+
+FILE NAME	2024-10-08_30940GK0002L01_A01_m84140_241008_153920_s4
+
+
+Here are my thoughts on extracting all of this:
+
+Sign off Date - Checker needs to fill this in. Should also have sign-off user.
+
+RUN
+Movie Time (hours) - AutomationParameter Name="MovieLength" in cell.metadata.xml
+Divide by 60 to get hours
+
+Library type - We have WellSample/Application but this just says "other"
+Probably still needs manual input?
+Well, we have "Other WGS" in the Sample Setup.
+
+Adaptive loading -  AutomationParameter Name="DynamicLoadingCognate" in cell.metadata.xml
+SMRT Cell Lot Number - CellPac in cell.metadata.xml
+Well Sample Name - got it
+Well name - got it
+Run started - got it. Convert to date
+
+SAMPLE LOADED
+Insert size - WellSample / InsertSize in cell.metadata.xml
+Sample Concentration (ng/ul) - Get from Sample Setup in SMRTLink
+Sample Concentration (nM) - Get from Sample Setup in SMRTLink
+Sample Volume to Use - Get from Sample Setup in SMRTLink
+Concentration after clean-up (ng/ul) - Get from Sample Setup in SMRTLink
+% of  recovery (anticipated) - Get from Sample Setup in SMRTLink
+% of  recovery (real) - calculated
+
+I'll almost certainly need an API query to get this info, but that
+should be do-able.
+
+RAW DATA
+Polymerase Read Bases (Gb) - in raw_data.report.json within the .reports.zip
+Polymerase Reads (M) - ditto
+Polymerase Read N50 - ditto
+Longest Subread N50 - ditto
+Unique Molecular Yield (Gb) - ditto
+LOADING
+P0 % - in loading.report.json within the .reports.zip
+P1 % - ditto, but note the comment about this being recalculated
+P2 % - ditto
+OPLC (pM), On-Plate Loading Conc. - WellSample / OnPlateLoadingConcentration in cell.metadata.yaml
+Real OPLC (pM), after clean-up - calculated off "% of  recovery" above
+
+HiFi DATA
+HiFi Reads (M) - we break this down by barcode but we want the metrics for the whole cell
+                get from ccs.report.json
+HiFi Yield (Gb) - ditto
+HiFi Read Length (mean, bp) - ditto
+HiFi Read Length (median, bp) - ditto
+HiFi Read Quality (median) - ditto
+HiFi Bases Quality ≥Q30 (%) - ditto
+HiFi Number of Passes (mean) - ditto
+HiFi LENGTH % - ditto, but we need to shred the table a bit more
+ ≥ 5,000 bp
+≥ 10,000 bp
+≥ 15,000 bp
+≥ 20,000 bp
+HiFi QUALITY % - ditto
+≥ Q30
+≥ Q40
+BARCODES
+Number of samples - easy.
+CV - also easy, but I need to check a barcoded run. Do we calculate this or just report it?
+CONTROL
+Number of Control Reads - in control.report.json
+Control Read Length Mean - ditto
+Control Read Concordance Mean - ditto
+Control Read Concordance Mode - ditto
+
+ADAPTER - yep, we have adapter.report.json
+Adapter Dimers (0-10bp) %
+Short Inserts (11-100bp) %
+Local Base Rate
+
+INSTRUMENT - we have this stuff
+Run ID
+Instrument SN
+Instrument Control SW Version
+Instrument Chemistry Bundle Version
+Primary SW Version
+
+DATASET
+Movie ID
+Biological Sample Name
+Cell ID
+Data created
+LINKS
+SMRT link report link
+SMRTINO report link
+
+FILE NAME - generate dbased on date, ws_name, well, cellid. Easy.
+
+---
+
+Raw Data Report. This isn't in the XML. But can I get the info shown at:
+https://edgen-smrtlink.epcc.ed.ac.uk:8243/sl/data-management/dataset-detail/aef65a28-e77b-4d73-bedf-6512594eed84?type=ccsreads&show=summary-0d4286d2-b27d-441d-8843-bb653cebf341
+From the file:
+/mnt/lustre/gseg/smrtlink/sequel_seqdata/r84140_20241008_153609/1_A01/statistics/m84140_241008_153920_s4.zmw_metrics.csv.gz
+
+Well, if I add up all the read lengths I get: 191,926,381,621 which is an order of magnitude lower than the 1.034 TB in the report.
+It's in the region of the "Unique Molecular Yield" but not the same. Hmmm.
+
+Oh, hang on. All the goodies are within m84140_241008_153920_s4.reports.zip. Right, we can unpack these.
+
+So, we can attack this in stages:
+
+1) Add a rule that unpacks the reports from the zip. Maybe into reports_zip to make it obvious.
+
+DONE
+
+2) Add to compile_cell_info.py, which will actually extract the numbers into the YAML, with
+reformatting or recalculation as necessary
+
+3) Then I'll have to surface all this onto the main report, so I'll have to work out how to format
+it all as a datatable. Or Javier wants me to generate the existing spreadsheet but I don't like
+that idea. The master table looks like something that should go onto Ragic. Maybe the pipeline can push
+the record, and then there will just be a signoff button? Hmmm.
+
+This is going to be redundant if they still use the old spreadsheet, but I may as well do it anyway.
