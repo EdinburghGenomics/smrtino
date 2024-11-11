@@ -12,13 +12,13 @@ VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))
 
-from smrtino.ParseXML import get_metadata_summary, get_metadata_info, get_readset_info
+from smrtino.ParseXML import ( get_metadata_summary, get_metadata_info, get_metadata_info2,
+                               get_readset_info, _get_automation_parameters, _get_cellpac, _load_xml )
 
 # The three functions are:
 #  get_metadata_summary() - need to read the unmodified metadata files
 #  get_metadata_info()    - gets the per-cell info for compile_bc_info.py
 #  get_readset_info()     - gets the per-barcode info for compile_bc_info.py
-
 
 revio_meta_xml = [ f"{DATA_DIR}/r84140_20231018_154254/1_C01/metadata/m84140_231018_155043_s3.metadata.xml",
                    f"{DATA_DIR}/r84140_20231018_154254/1_D01/metadata/m84140_231018_162059_s4.metadata.xml",
@@ -65,6 +65,36 @@ class T(unittest.TestCase):
                         'ws_project':    "28850",
                         'barcodes':      ["bc1002"],
                          })
+
+    def test_get_automation_parameters(self):
+        """Test the logic that parses all the AutomationParameter elements
+           in a cell metadata.xml
+           Note that these come from two namespaces, but the names are all unique
+           so we just merge them.
+        """
+        root = _load_xml(revio_meta_xml[0])
+
+        aps = _get_automation_parameters(root)
+
+        self.assertEqual(len(aps), 32)
+
+    def test_get_cellpac(self):
+        """Test we can get the CellPac element attribs
+        """
+        root = _load_xml(revio_meta_xml[0])
+
+        cellpac = _get_cellpac(root)
+
+        self.assertEqual(len(cellpac), 9)
+
+    def test_get_metadata_info2(self):
+        """Test the metadata extractor that gets use the info Javier wants for
+           his spreadsheet
+        """
+        md1 = get_metadata_info2(revio_meta_xml[0])
+        self.assertEqual(md1, {})
+
+        # TODO - add a test for a Kinnex run. Maybe r84140_20241007_154722
 
     def test_meta_summary_13(self):
         """Try reading a cell metadata file from the Revio to get the

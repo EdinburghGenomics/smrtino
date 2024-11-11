@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 _ns = dict( pbmeta   = 'http://pacificbiosciences.com/PacBioCollectionMetadata.xsd',
             pb       = 'http://pacificbiosciences.com/PacBioDatasets.xsd',
             pbmodel  = 'http://pacificbiosciences.com/PacBioDataModel.xsd',
+            pbbase   = 'http://pacificbiosciences.com/PacBioBaseDataModel.xsd',
             pbsample = 'http://pacificbiosciences.com/PacBioSampleInfo.xsd', )
 
 rs_constants = dict( Revio = \
@@ -54,6 +55,35 @@ def _bcmunge(bc):
         return bc_split[0]
     else:
         return bc
+
+def _get_automation_parameters(root):
+    """Return the AutomationParameter list as a regular dict
+
+       We'll squish all the AutomationParameters into one dict, until
+       I see a reason not to.
+    """
+    res = {}
+    ap_list = [ *root.findall('.//pbbase:AutomationParameter', _ns),
+                *root.findall('.//pbmeta:AutomationParameter', _ns) ]
+
+    for ap in ap_list:
+        k = ap.attrib['Name']
+        dtype = ap.attrib['ValueDataType']
+        val = ap.attrib['SimpleValue']
+
+        if k in res:
+            raise KeyError(f"AutomationParameter {k} is repeated in XML.")
+
+        if dtype == "Boolean":
+            res[k] = (val == "True")
+        elif dtype == "String":
+            res[k] = val
+        elif dtype == "Double":
+            res[k] = float(val)
+        elif dtype == "Int32":
+            res[k] = int(val)
+
+    return res
 
 def _get_common_stuff(root):
     """There is a lot of overlap between what make_summary.py wants from the metadata
@@ -114,7 +144,6 @@ def _get_common_stuff(root):
     return info
 
 
-
 def get_metadata_summary(xmlfile, smrtlink_base=None):
     """ Glean info from the metadata.xml file for a contents of the Revio SMRT cell.
 
@@ -170,6 +199,65 @@ def get_metadata_info(xmlfile):
 
     # Get the WellSample name which is presumably the pool name
     return run_info
+
+def get_metadata_info2(xmlfile):
+    """ Read some stuff from the metadata/{cellid}.metadata.xml file that
+        relates to the whole run.
+        Except, different stuff to the function above.
+
+            { cell_id
+              cell_uuid
+              run_id
+              run_slot
+              ws_name
+              ws_desc
+
+              adaptive_loading
+              movie_time
+              smrt_cell_lot_number
+              insert_size
+              on_plate_loading_conc }
+    """
+    run_info = dict()
+
+    root = _load_xml(xmlfile)
+    if root.tag != f"{{{_ns['pbmodel']}}}PacBioDataModel":
+        raise RuntimeError("This function must be run on a metadata.xml file."
+                           f" Root tag is: {root.tag}.")
+
+    # The first of these can be got by _get_common_stuff so use that, but ensure
+    # everything really is listed.
+    common_stuff = _get_common_stuff(root)
+    for k in "cell_id cell_uuid run_id run_slot ws_name ws_desc".split():
+        run_info[k] = common_stuff[k]
+
+    aps = _get_automation_parameters(root)
+    cellpac = _get_cellpac(root)
+
+    # adaptive_loading
+    run_info['adaptive_loading'] = aps.get('DynamicLoadingCognate')
+
+    # movie_time
+    run_info['movie_time'] = round(aps['MovieLength'] / 60)
+
+    # smrt_cell_lot_number
+    run_info['smrt_cell_lot_number'] = cellpac['LotNumber']
+
+    # insert_size - this could be in two places
+    run_info['insert_size'] = int(root.find('.//pbmeta:InsertSize', _ns).text)
+    if ('InsertSize' in aps) and (run_info['insert_size'] != aps['InsertSize']):
+        raise ValueError("Insert size mismatch in XML")
+
+    # on_plate_loading_conc
+    run_info['on_plate_loading_conc'] = int(
+                    root.find('.//pbmeta:OnPlateLoadingConcentration', _ns).text )
+
+    return run_info
+
+def _get_cellpac(root):
+    """Get the CellPac element attribs
+    """
+    return root.find('.//pbmeta:CellPac', _ns).attrib
 
 def get_readset_info(xmlfile, smrtlink_base=None):
     """ Glean info from a readset file for a SMRT cell

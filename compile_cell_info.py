@@ -3,7 +3,11 @@ import os, sys
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
+from zipfile import ZipFile
 from smrtino import load_yaml, dump_yaml
+from smrtino.ParseXML import get_metadata_info2
+import json
+from pprint import pprint
 
 """ The info needed to report on a SMRT cell consists of several YAML files:
         sc_data.yaml about the files in the upstream
@@ -13,17 +17,67 @@ from smrtino import load_yaml, dump_yaml
     This super-simple script just outputs a file linking to these other files.
 """
 
+REPORTS_IN_ZIP = "raw_data adapter ccs control loading".split()
+
 def main(args):
 
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING), stream=sys.stderr)
+
+    # Load the JSON files from reports.zip
+    json_reports = load_reports_zip(vars(args))
+
+    # Info from metadata.xml gets folded into these reports.
+    if args.metaxml:
+        metadata_xml_info = get_metadata_info2(args.metaxml)
+    else:
+        metadata_xml_info = None
 
     # Build the links to the files.
     info = gen_info(args)
 
     if args.extract_ids:
+        if json_reports:
+            exit("FIXME - There's no point in using -x if we are loading metadata.xml directly.")
         info.update(extract_ids_multi(args.bcfiles))
 
+    if json_reports:
+        info.update(compile_json_reports(json_reports, metadata_xml_info))
+
     dump_yaml(info, fh=sys.stdout)
+
+def load_reports_zip(args_dict):
+    """Load the various JSON files directly from reports.zip. If any --foo_report
+       is specified that takes precedence.
+       Pass args as a dict to make testing this function a tad easier.
+    """
+    res = {}
+    if args_dict.get('reports_zip'):
+        with ZipFile(args_dict['reports_zip']) as repzip:
+            for r in REPORTS_IN_ZIP:
+                json_file = f"{r}.report.json"
+                try:
+                    with repzip.open(json_file) as jfh:
+                        res[r] = json.load(jfh)
+                except KeyError:
+                    L.warning(f"{json_file} was not found in {args_dict['reports_zip']}")
+
+    # Now the individual files, if any
+    for r in REPORTS_IN_ZIP:
+        if args_dict.get(f'{r}_report'):
+            with open(args_dict[f'{r}_report']) as jfh:
+                if r in res:
+                    L.warning(f"Overiding {r}.report.json from {args_dict['reports_zip']}"
+                              f" with {args_dict[f'{r}_report']}")
+                res[r] = json.load(jfh)
+
+    pprint(res)
+    return res
+
+def compile_json_reports(reports_dict):
+
+    res = dict(reports = {})
+
+    return res
 
 def extract_ids_multi(yaml_files):
     """Run extract_ids() on each of the YAML files and verify that
@@ -86,16 +140,14 @@ def parse_args(*args):
     argparser.add_argument("--unassigned",
                             help="Location of info.yaml for unassigned reads")
 
-    argparser.add_argument("--raw_data_report",
-                            help="Location of raw_data.report.json for this cell")
-    argparser.add_argument("--adapter_report",
-                            help="Location of adapter.report.json for this cell")
-    argparser.add_argument("--ccs_report",
-                            help="Location of ccs.report.json for this cell")
-    argparser.add_argument("--control_report",
-                            help="Location of control.report.json for this cell")
-    argparser.add_argument("--loading_report",
-                            help="Location of loading.report.json for this cell")
+    argparser.add_argument("--reports_zip",
+                            help="Location of reports.zip for this cell")
+    for r in REPORTS_IN_ZIP:
+        argparser.add_argument(f"--{r}_report",
+                                help=f"Location of {r}.report.json for this cell")
+
+    argparser.add_argument("--metaxml",
+                            help="Location of metadata.xml for this cell")
 
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
