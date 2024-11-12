@@ -22,7 +22,8 @@ from smrtino.ParseXML import ( get_metadata_summary, get_metadata_info, get_meta
 
 revio_meta_xml = [ f"{DATA_DIR}/r84140_20231018_154254/1_C01/metadata/m84140_231018_155043_s3.metadata.xml",
                    f"{DATA_DIR}/r84140_20231018_154254/1_D01/metadata/m84140_231018_162059_s4.metadata.xml",
-                   f"{DATA_DIR}/r84140_20231030_134730/1_A01/metadata/m84140_231030_135502_s1.metadata.xml" ]
+                   f"{DATA_DIR}/r84140_20231030_134730/1_A01/metadata/m84140_231030_135502_s1.metadata.xml",
+                   f"{DATA_DIR}/r84140_20241007_154722/1_D01/metadata/m84140_241007_155450_s3.metadata.xml"]
 
 smrtlink_13_meta = [ f"{DATA_DIR_OUT}/r84140_20240116_162812/m84140_240116_163605_s1.metadata.xml",
                      f"{DATA_DIR_OUT}/r84140_20240116_162812/m84140_240116_183509_s2.metadata.xml" ]
@@ -91,10 +92,32 @@ class T(unittest.TestCase):
         """Test the metadata extractor that gets use the info Javier wants for
            his spreadsheet
         """
-        md1 = get_metadata_info2(revio_meta_xml[0])
-        self.assertEqual(md1, {})
+        md0 = get_metadata_info2(revio_meta_xml[0])
+        self.assertEqual(md0, {'adaptive_loading': 'False',
+                               'cell_id': 'm84140_231018_155043_s3',
+                               'cell_uuid': '577ccdb1-d463-42b3-bdd9-6fffbf659105',
+                               'insert_size': 0,
+                               'movie_time': 24,
+                               'on_plate_loading_conc': 200,
+                               'run_id': 'r84140_20231018_154254',
+                               'run_slot': '1_C01',
+                               'smrt_cell_lot_number': '1000001262',
+                               'ws_desc': '',
+                               'ws_name': '28850RL0004L02'})
 
-        # TODO - add a test for a Kinnex run. Maybe r84140_20241007_154722
+        # Let's add a test for a Kinnex run. Maybe r84140_20241007_154722
+        md3 = get_metadata_info2(revio_meta_xml[3])
+        self.assertEqual(md3, {'adaptive_loading': 'True',
+                               'cell_id': 'm84140_241007_155450_s3',
+                               'cell_uuid': 'ee1c0ae0-c693-44c1-9767-ab5db6906aca',
+                               'insert_size': 18700,
+                               'movie_time': 30,
+                               'on_plate_loading_conc': 190,
+                               'run_id': 'r84140_20241007_154722',
+                               'run_slot': '1_D01',
+                               'smrt_cell_lot_number': '1000002838',
+                               'ws_desc': '',
+                               'ws_name': '33950NSpool01L01'})
 
     def test_meta_summary_13(self):
         """Try reading a cell metadata file from the Revio to get the
