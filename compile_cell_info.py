@@ -23,10 +23,11 @@ def main(args):
 
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING), stream=sys.stderr)
 
-    # Load the JSON files from reports.zip
+    # Load the JSON files from reports.zip. No interpretation.
     json_reports = load_reports_zip(vars(args))
 
-    # Info from metadata.xml gets folded into these reports.
+    # Info from metadata.xml gets folded into these reports. get_metadata_info2()
+    # does some interpretation and returns a single dict.
     if args.metaxml:
         metadata_xml_info = get_metadata_info2(args.metaxml)
     else:
@@ -36,8 +37,8 @@ def main(args):
     info = gen_info(args)
 
     if args.extract_ids:
-        if json_reports:
-            exit("FIXME - There's no point in using -x if we are loading metadata.xml directly.")
+        if metadata_xml_info:
+            exit("There's no point in using -x if we are loading metadata.xml directly.")
         info.update(extract_ids_multi(args.bcfiles))
 
     if json_reports:
@@ -73,16 +74,103 @@ def load_reports_zip(args_dict):
     pprint(res)
     return res
 
-def compile_json_reports(reports_dict):
+def compile_json_reports(reports_dict, metadata_xml):
+    """This attempts to aggregate all the per-cell QC items wanted for the sign-off
+       spreadsheet. The results will be arranged in a dictionary mimicing the current
+       spreadsheet headings.
+    """
+    reports = { 'Run': {},
+                'Sample Loaded': {},
+                'Raw Data': {},
+                'Loading': {},
+                'HiFi Data': {},
+                'HiFi Length %': {},
+                'Hifi Quality %': {},
+                'Barcodes': {},
+                'Control': {},
+                'Adapter': {},
+                'Instrument': {},
+                'Dataset': {} }
 
-    res = dict(reports = {})
+    # Let's load it up. This will be a long function.
+    reports['Run']['Movie Time (hours)'] = metadata_xml['movie_time']
+    reports['Run']['Library type'] = metadata_xml['application'] # Maybe?
+    reports['Run']['Adaptive loading'] = metadata_xml['adaptive_loading']
+    reports['Run']['SMRT Cell Lot Number'] = metadata_xml['smrt_cell_lot_number']
+    reports['Run']['Well Sample Name'] = metadata_xml['ws_name']
+    reports['Run']['Well name'] = metadata_xml['run_slot']
+    reports['Run']['Run started'] = metadata_xml['run_started']
 
-    return res
+    # This stuff is to be found in {cell}.sample-setup.yaml but as this has to
+    # be fetched with an API query we're going to fold it in at the make_report.py
+    # stage. Insert Size does get copied to the metadata.xml file though.
+    reports['Sample Loaded']['Insert size (bp)'] = metadata_xml['insert_size']
+    reports['Sample Loaded']['Sample Concentration (ng/µl)'] = None
+    reports['Sample Loaded']['Sample Concentration (nM)'] = None
+    reports['Sample Loaded']['Sample Volume to Use (µl)'] = None
+    reports['Sample Loaded']['Concentration after clean-up (ng/ul)'] = None
+    reports['Sample Loaded']['% of  recovery (anticipated)'] = None
+    reports['Sample Loaded']['% of  recovery (real)'] = "to be calculated"
+
+    # This is coming from reports_dict['raw_data']
+    rd = { a['id']: a['value'] for a in reports_dict['raw_data']['attributes'] }
+    reports['Raw Data']['Polymerase Read Bases (Gb)'] = "{:.1f}".format(rd['raw_data_report.nbases'] / 1e9)
+    reports['Raw Data']['Polymerase Reads (M)'] = "{:.1f}".format(rd['raw_data_report.nreads'] / 1e6)
+    reports['Raw Data']['Polymerase Read N50'] = "{}".format(rd['raw_data_report.read_n50'])
+    reports['Raw Data']['Longest Subread N50'] = "{}".format(rd['raw_data_report.insert_n50'])
+    reports['Raw Data']['Unique Molecular Yield (Gb)'] = "{:.1f}".format(rd['raw_data_report.unique_molecular_yield'] / 1e9)
+
+    # This one from reports_dict['loading'], aside from OPLC
+    ld = { c['id']: c['values'][0] for c in reports_dict['loading']['tables'][0]['columns'] }
+    reports['Loading']['P0 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_0_pct'])
+    reports['Loading']['P1 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_1_pct'])
+    reports['Loading']['P2 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_2_pct'])
+    reports['Loading']['OPLC (pM), On-Plate Loading Conc.'] = metadata_xml['on_plate_loading_conc']
+    reports['Loading']['Real OPLC (pM), after clean-up'] = "to be calculated"
+
+    # This is under reports_dict['ccs'] and yes these really are HiFi numbers
+    ccsd = { a['id']: a['value'] for a in reports_dict['ccs']['attributes'] }
+    reports['HiFi Data']['HiFi Reads (M)'] = "{:.2f}".format(ccsd['ccs2.number_of_ccs_reads'] / 1e6)
+    reports['HiFi Data']['HiFi Yield (Gb)'] = "{:.2f}".format(ccsd['ccs2.total_number_of_ccs_bases'] / 1e6)
+    reports['HiFi Data']['HiFi Read Length (mean, bp)'] = "{}".format(ccsd['ccs2.mean_ccs_readlength'])
+    reports['HiFi Data']['HiFi Read Length (median, bp)'] = "{}".format(ccsd['ccs2.median_ccs_readlength'])
+    reports['HiFi Data']['HiFi Read Quality (median)'] = ccsd['ccs2.median_accuracy']
+    reports['HiFi Data']['HiFi Bases Quality ≥Q30 (%)'] = "{:.2f}".format(ccsd['ccs2.percent_ccs_bases_q30'] * 100)
+    reports['HiFi Data']['HiFi Number of Passes (mean)'] = "{}".format(ccsd['ccs2.mean_npasses'])
+
+    # Shred two tables from the reports_dict['ccs'] section
+    import pdb ; pdb.set_trace() # Cos the next bit is never going to work.
+    ccst1, = [ t['columns'] for t in reports_dict['ccs']['tables']
+               if t['id'] == 'ccs2.hifi_length_summary' ]
+    ccsd1 = dict(zip(*c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.read_length',
+                     *c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.reads_pct'))
+    reports['HiFi Length %']['≥ 5,000 bp'] = "{:.1f}".format(ccsd1['≥ 5,000'])
+    reports['HiFi Length %']['≥ 10,000 bp'] = "{:.1f}".format(ccsd1['≥ 10,000'])
+    reports['HiFi Length %']['≥ 15,000 bp'] = "{:.1f}".format(ccsd1['≥ 15,000'])
+    reports['HiFi Length %']['≥ 20,000 bp'] = "{:.1f}".format(ccsd1['≥ 20,000'])
+
+    ccst2, = [ t['columns'] for t in reports_dict['ccs']['tables']
+               if t['id'] == 'ccs2.read_quality_summary' ]
+    ccsd2 = dict(zip(*c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.read_qv',
+                     *c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.reads_pct'))
+    reports['Hifi Quality %']['≥ Q30'] = "{:.1f}".format(ccsd2['≥ Q30'])
+    reports['Hifi Quality %']['≥ Q40'] = "{:.1f}".format(ccsd2['≥ Q40'])
+
+    # Barcodes
+    reports['Barcodes']['Number of samples'] =
+    reports['CV'] = 
+
+
+    return dict(reports=reports)
 
 def extract_ids_multi(yaml_files):
     """Run extract_ids() on each of the YAML files and verify that
        the result is the same in all cases, and return the resulting dict.
+
+       If the info is being extracted directly from the metadata.xml file
+       this function is pointless and -x option should not be used.
     """
+    # FIXME - for the reason above this should probably be removed.
     extracted_ids = extract_ids(yaml_files[0])
 
     for yf in yaml_files[1:]:

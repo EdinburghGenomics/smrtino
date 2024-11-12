@@ -75,7 +75,8 @@ def _get_automation_parameters(root):
             raise KeyError(f"AutomationParameter {k} is repeated in XML.")
 
         if dtype == "Boolean":
-            res[k] = (val == "True")
+            # But at least some booleans are tagged as strings
+            res[k] = val == "True"
         elif dtype == "String":
             res[k] = val
         elif dtype == "Double":
@@ -212,6 +213,8 @@ def get_metadata_info2(xmlfile):
               ws_name
               ws_desc
 
+              run_start
+              application
               adaptive_loading
               movie_time
               smrt_cell_lot_number
@@ -233,6 +236,15 @@ def get_metadata_info2(xmlfile):
 
     aps = _get_automation_parameters(root)
     cellpac = _get_cellpac(root)
+    runattribs = _get_runelem(root)
+
+    # I could parse this properly, but instead just take the first chars
+    mo = re.match(r"(\d{4}-\d{2}-\d{2})T", runattribs['WhenStarted'])
+    run_info['run_start'] = mo.group(1)
+    run_info['smrtlink_user'] = runattribs['CreatedBy']
+
+    ws_application = root.find('.//pbmeta:WellSample/pbmeta:Application', _ns)
+    run_info['application'] = ws_application.text
 
     # adaptive_loading
     run_info['adaptive_loading'] = aps.get('DynamicLoadingCognate')
@@ -258,6 +270,11 @@ def _get_cellpac(root):
     """Get the CellPac element attribs
     """
     return root.find('.//pbmeta:CellPac', _ns).attrib
+
+def _get_runelem(root):
+    """Get the Run element
+    """
+    return root.find('.//pbmodel:Runs/pbmodel:Run', _ns).attrib
 
 def get_readset_info(xmlfile, smrtlink_base=None):
     """ Glean info from a readset file for a SMRT cell

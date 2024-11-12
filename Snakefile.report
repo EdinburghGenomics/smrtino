@@ -64,7 +64,7 @@ rule report_main:
         pan   = lambda wc: expand("all_reports/{c[0]}-{c[1]}.html", c=scan_cells())
 
 # Note this script relies on ~/.smrtlinkrc for connection deets.
-localrules: link_to_smrtlink, smrtlink_pdf_report
+localrules: link_to_smrtlink, smrtlink_pdf_report, smrtlink_get_sample
 rule link_to_smrtlink:
     output: "{cell}.link.yaml"
     input:  "{cell}.info.yaml"
@@ -85,6 +85,14 @@ rule smrtlink_pdf_report:
         # Setting SMRTLINKRC_SECTION=none will cause an empty report file to be made
         cell_uuid = load_yaml(str(input))['cell_uuid']
         shell("smrtlink_pdf_report.py -o {output} --empty_on_missing {cell_uuid}")
+
+# This digs the sample setup info out of SMRTLink, where it is buried
+# We may have to add the --use_latest flag but that's a bit dicey.
+rule smrtlink_get_sample:
+    output: "{cell}.sample-setup.yaml"
+    input:  "{cell}.info.yaml"
+    shell:
+        "smrtlink_get_sample.py --errors_to_yaml {input} > {output}"
 
 # Invokes PanDoc with the template stuff
 rule pan_to_html:
@@ -109,6 +117,7 @@ rule make_report:
     input:
         yaml       = "{cell}.info.yaml",
         links      = "{cell}.link.yaml",
+        sample     = "{cell}.sample-setup.yaml",
         pdf        = "all_reports/pdf/{cell}.pdf",
         blob_plots = lambda wc: glob(f"blob/{wc.cell}.*.cov0*.png"),
     params:
@@ -118,5 +127,6 @@ rule make_report:
            ln -vsrnt all_reports/img {input.blob_plots}
            make_report.py -o {output.pan} \
                 -y {input.yaml} -l {input.links} -r {params.pdflink} \
+                -S {input.sample}
                 -s <(pb_run_status.py)
         """
