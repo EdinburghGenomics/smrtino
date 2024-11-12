@@ -289,7 +289,7 @@ class SMRTLinkClient(OAUTHClient):
            'link_host' may be supplied, and if so should be the full host name, ie.
            https://hostname:8243
         """
-        config = configparser.SafeConfigParser()
+        config = configparser.ConfigParser()
         conf_file = config.read(os.environ.get('SMRTLINKRCRC',
                                 [os.path.expanduser('~/.smrtlinkrc'), 'smrtlink.conf']))
 

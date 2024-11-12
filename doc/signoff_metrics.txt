@@ -209,3 +209,17 @@ that idea. The master table looks like something that should go onto Ragic. Mayb
 the record, and then there will just be a signoff button? Hmmm.
 
 This is going to be redundant if they still use the old spreadsheet, but I may as well do it anyway.
+
+--
+
+Hmm. The sample setup info is not available in reports.zip, or elsewhere in the run directory.
+How annoying. Can I fetch it with an API call?
+
+I can't see an identifier for the sample setup but maybe I get it by "Well Sample Name", assuming
+this is unique? Err. So the docs suggest I should be able to get the "collection" and that should
+yield the "sampleSetupId" but this is missing. Perhaps there is no proper link?
+
+Yep, I can only fetch "samples" records by UUID, but they are only referenced by name. What
+a load of crap. Well. No matter.
+
+
