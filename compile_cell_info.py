@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys
+import os, sys, re
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
@@ -73,7 +73,7 @@ def load_reports_zip(args_dict):
                               f" with {args_dict[f'{r}_report']}")
                 res[r] = json.load(jfh)
 
-    pprint(res)
+    #pprint(res)
     return res
 
 def compile_json_reports(reports_dict, metadata_xml):
@@ -101,7 +101,7 @@ def compile_json_reports(reports_dict, metadata_xml):
     reports['Run']['SMRT Cell Lot Number'] = metadata_xml['smrt_cell_lot_number']
     reports['Run']['Well Sample Name'] = metadata_xml['ws_name']
     reports['Run']['Well name'] = metadata_xml['run_slot']
-    reports['Run']['Run started'] = metadata_xml['run_started']
+    reports['Run']['Run started'] = metadata_xml['run_start']
 
     # This stuff is to be found in {cell}.sample-setup.yaml but as this has to
     # be fetched with an API query we're going to fold it in at the make_report.py
@@ -142,7 +142,6 @@ def compile_json_reports(reports_dict, metadata_xml):
     reports['HiFi Data']['HiFi Number of Passes (mean)'] = "{}".format(ccsd['ccs2.mean_npasses'])
 
     # Shred two tables from the reports_dict['ccs'] section
-    import pdb ; pdb.set_trace() # Cos the next bit is never going to work.
     ccst1, = [ t['columns'] for t in reports_dict['ccs']['tables']
                if t['id'] == 'ccs2.hifi_length_summary' ]
     ccsd1 = dict(zip(*[c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.read_length'],
@@ -180,8 +179,8 @@ def compile_json_reports(reports_dict, metadata_xml):
     cond = { a['id']: a['value'] for a in reports_dict['control']['attributes'] }
     reports['Control']['Number of Control Reads'] = "{}".format(cond['control.reads_n'])
     reports['Control']['Control Read Length Mean'] = "{:.0f}".format(cond['control.readlength_mean'])
-    reports['Control']['Control Read Concordance Mean'] = "{:.3f}".cond['control.concordance_mean']
-    reports['Control']['Control Read Concordance Mode'] = "{:.3f}".cond['control.concordance_mode']
+    reports['Control']['Control Read Concordance Mean'] = "{:.3f}".format(cond['control.concordance_mean'])
+    reports['Control']['Control Read Concordance Mode'] = "{:.3f}".format(cond['control.concordance_mode'])
 
     # Adapter
     adad = { a['id']: a['value'] for a in reports_dict['adapter']['attributes'] }
@@ -199,7 +198,7 @@ def compile_json_reports(reports_dict, metadata_xml):
     # Dataset
     reports['Dataset']['Movie ID'] = metadata_xml['cell_id']
     reports['Dataset']['Well Sample Name'] = metadata_xml['ws_name']
-    reports['Dataset']['Cell ID'] = metadata_xml['smrt_cell_barcode']
+    reports['Dataset']['Cell ID'] = metadata_xml['smrt_cell_label_number']
 
     # This is funky, as the metadata.xml is full of dates but the JSON reports only have them
     # in the comments. I don't want to look at the timestamps of the files.
@@ -293,7 +292,7 @@ def parse_args(*args):
                             help="Location of reports.zip for this cell")
     for r in REPORTS_IN_ZIP:
         argparser.add_argument(f"--{r}_report",
-                                help=f"Location of {r}.report.json for this cell")
+                                help=f"Explicitly add/override {r}.report.json for this cell")
 
     argparser.add_argument("--metaxml",
                             help="Location of metadata.xml for this cell")

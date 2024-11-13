@@ -212,7 +212,7 @@ rule one_cell_info:
             if n in ['unass', 'reports_zip', 'metaxml']:
                 optional_bits += f"--{n} {getattr(input, n)} "
 
-        shell("""compile_cell_info.py -x \
+        shell("""compile_cell_info.py \
                     --sc_data {input.sc_data} \
                     {optional_bits} \
                     {input.bc} > {output}

@@ -10,7 +10,7 @@ DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/revio_examples')
 DATA_DIR_OUT = os.path.abspath(os.path.dirname(__file__) + '/revio_out_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
-L.basicConfig(level=(L.DEBUG if VERBOSE else L.WARNING))
+L.basicConfig(level=(L.DEBUG if VERBOSE else L.ERROR))
 
 from smrtino.ParseXML import ( get_metadata_summary, get_metadata_info, get_metadata_info2,
                                get_readset_info, _get_automation_parameters, _get_cellpac, _load_xml )
@@ -34,6 +34,11 @@ smrtlink_13_rs = [ f"{DATA_DIR_OUT}/r84140_20240116_162812/m84140_240116_163605_
                    f"{DATA_DIR_OUT}/r84140_20240116_162812/m84140_240116_183509_s2.hifi_reads.unassigned.consensusreadset.xml" ]
 
 class T(unittest.TestCase):
+
+    def setUp(self):
+        # See the errors in all their glory
+        self.maxDiff = None
+
     def test_wrong_file(self):
         """All the functions should give a meaningful error if called on the wrong type
            of file.
@@ -105,12 +110,12 @@ class T(unittest.TestCase):
                                'run_id': 'r84140_20231018_154254',
                                'run_slot': '1_C01',
                                'run_start': '2023-10-18',
-                               'smrt_cell_barcode': '',
+                               'smrt_cell_label_number': 'EA046426',
                                'smrt_cell_lot_number': '1000001262',
                                'smrtlink_user': 'cnewman',
-                               'version_ics': '13.1.0.221972',
-                               'version_chemistry': '13.1.0.217683',
-                               'version_smrtlink': '13.1.0.221970',
+                               'version_ics': '12.0.4.197734',
+                               'version_chemistry': '12.0.0.172289',
+                               'version_smrtlink': '12.0.0.177059',
                                'ws_desc': '',
                                'ws_name': '28850RL0004L02'})
 
@@ -128,7 +133,7 @@ class T(unittest.TestCase):
                                'run_id': 'r84140_20241007_154722',
                                'run_slot': '1_D01',
                                'run_start': '2024-10-07',
-                               'smrt_cell_barcode': 'EA133137',
+                               'smrt_cell_label_number': 'EA133137',
                                'smrt_cell_lot_number': '1000002838',
                                'smrtlink_user': 'hritch',
                                'version_ics': '13.1.0.221972',

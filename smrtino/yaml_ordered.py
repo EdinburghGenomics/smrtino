@@ -46,7 +46,9 @@ class yaml:
     def safe_dump(cls, *args, **kwargs):
         return real_yaml.dump(*args, Dumper=yamlloader.ordereddict.CSafeDumper, **kwargs)
 
-yamlloader.ordereddict.CSafeDumper.add_representer(defaultdict, real_yaml.dumper.SafeDumper.represent_dict)
+# Make all dicts be ordered on dump!
+for t in dict, defaultdict:
+    yamlloader.ordereddict.CSafeDumper.add_representer(t, yamlloader.ordereddict.CSafeDumper.represent_ordereddict)
 
 def dictify(s):
     """Utility function to change all OrderedDict in a structure

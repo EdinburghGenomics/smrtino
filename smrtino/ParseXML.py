@@ -258,10 +258,10 @@ def get_metadata_info2(xmlfile):
 
     # smrt_cell_lot_number and smrt_cell_barcode
     run_info['smrt_cell_lot_number'] = cellpac['LotNumber']
-    run_info['smrt_cell_barcode'] = cellpac['Barcode']
+    run_info['smrt_cell_label_number'] = cellpac['LabelNumber']
     if cellpac['Barcode'] != cellpac['LabelNumber']:
         L.warning(f"Cell Barcode({cellpac['Barcode']}) and LabelNumber({cellpac['LabelNumber']})"
-                  f" are expected to be the same.")
+                  f" are expected to be the same nowadays.")
 
     # insert_size - this could be in two places
     run_info['insert_size'] = int(root.find('.//pbmeta:InsertSize', _ns).text)
@@ -273,7 +273,7 @@ def get_metadata_info2(xmlfile):
                     root.find('.//pbmeta:OnPlateLoadingConcentration', _ns).text )
 
     # software versions
-    vi = { e['Name']: e['Version'] for e in
+    vi = { e.attrib['Name']: e.attrib['Version'] for e in
            root.findall('.//pbmeta:ComponentVersions/pbmeta:VersionInfo', _ns) }
     run_info['version_ics'] = vi['ics']
     run_info['version_chemistry'] = vi['chemistry']
