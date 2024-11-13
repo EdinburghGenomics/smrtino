@@ -3,6 +3,7 @@ import os, sys
 import logging as L
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
+from statistics import stdev, mean
 from zipfile import ZipFile
 from smrtino import load_yaml, dump_yaml
 from smrtino.ParseXML import get_metadata_info2
@@ -17,7 +18,7 @@ from pprint import pprint
     This super-simple script just outputs a file linking to these other files.
 """
 
-REPORTS_IN_ZIP = "raw_data adapter ccs control loading".split()
+REPORTS_IN_ZIP = "raw_data adapter ccs control loading barcodes".split()
 
 def main(args):
 
@@ -60,6 +61,7 @@ def load_reports_zip(args_dict):
                     with repzip.open(json_file) as jfh:
                         res[r] = json.load(jfh)
                 except KeyError:
+                    # For barcodes.report.json this is expected on unbarcoded runs
                     L.warning(f"{json_file} was not found in {args_dict['reports_zip']}")
 
     # Now the individual files, if any
@@ -121,7 +123,8 @@ def compile_json_reports(reports_dict, metadata_xml):
     reports['Raw Data']['Unique Molecular Yield (Gb)'] = "{:.1f}".format(rd['raw_data_report.unique_molecular_yield'] / 1e9)
 
     # This one from reports_dict['loading'], aside from OPLC
-    ld = { c['id']: c['values'][0] for c in reports_dict['loading']['tables'][0]['columns'] }
+    lt, = [t for t in reports_dict['loading']['tables'] if t['id'] == 'loading_xml_report.loading_xml_table']
+    ld = { c['id']: c['values'][0] for c in lt['columns'] }
     reports['Loading']['P0 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_0_pct'])
     reports['Loading']['P1 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_1_pct'])
     reports['Loading']['P2 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_2_pct'])
@@ -142,8 +145,8 @@ def compile_json_reports(reports_dict, metadata_xml):
     import pdb ; pdb.set_trace() # Cos the next bit is never going to work.
     ccst1, = [ t['columns'] for t in reports_dict['ccs']['tables']
                if t['id'] == 'ccs2.hifi_length_summary' ]
-    ccsd1 = dict(zip(*c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.read_length',
-                     *c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.reads_pct'))
+    ccsd1 = dict(zip(*[c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.read_length'],
+                     *[c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.reads_pct']))
     reports['HiFi Length %']['≥ 5,000 bp'] = "{:.1f}".format(ccsd1['≥ 5,000'])
     reports['HiFi Length %']['≥ 10,000 bp'] = "{:.1f}".format(ccsd1['≥ 10,000'])
     reports['HiFi Length %']['≥ 15,000 bp'] = "{:.1f}".format(ccsd1['≥ 15,000'])
@@ -151,17 +154,75 @@ def compile_json_reports(reports_dict, metadata_xml):
 
     ccst2, = [ t['columns'] for t in reports_dict['ccs']['tables']
                if t['id'] == 'ccs2.read_quality_summary' ]
-    ccsd2 = dict(zip(*c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.read_qv',
-                     *c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.reads_pct'))
+    ccsd2 = dict(zip(*[c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.read_qv'],
+                     *[c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.reads_pct']))
     reports['Hifi Quality %']['≥ Q30'] = "{:.1f}".format(ccsd2['≥ Q30'])
     reports['Hifi Quality %']['≥ Q40'] = "{:.1f}".format(ccsd2['≥ Q40'])
 
     # Barcodes
-    reports['Barcodes']['Number of samples'] =
-    reports['CV'] = 
+    if 'barcodes' in reports_dict:
+        bcd = { a['id']: a['value'] for a in reports_dict['barcodes']['attributes'] }
 
+        # This just for the CV - Surely this is already logged somewhere?
+        bct, = [t for t in reports_dict['barcodes']['tables'] if t['id'] == "barcode.barcode_table"]
+        bcvq, = [c for c in bct['columns'] if c['id'] == "barcode.barcode_table.mean_bcqual"]
+        bcvc, = [c for c in bct['columns'] if c['id'] == "barcode.barcode_table.number_of_reads"]
 
+        reports['Barcodes']['Number of samples'] = bcd['barcode.n_barcodes']
+        reports['Barcodes']['Assigned Reads (%)'] = "{:.2f}".format(bcd['barcode.percent_barcoded_reads'] * 100)
+        reports['Barcodes']['CV'] = "{:.2f}".format(calculate_cv(bcvc, bcvq))
+    else:
+        reports['Barcodes']['Number of samples'] = 0 # As distinct from a single barcoded sample
+        reports['Barcodes']['Assigned Reads (%)'] = 100
+        reports['Barcodes']['CV'] = "N/A"
+
+    # Control
+    cond = { a['id']: a['value'] for a in reports_dict['control']['attributes'] }
+    reports['Control']['Number of Control Reads'] = "{}".format(cond['control.reads_n'])
+    reports['Control']['Control Read Length Mean'] = "{:.0f}".format(cond['control.readlength_mean'])
+    reports['Control']['Control Read Concordance Mean'] = "{:.3f}".cond['control.concordance_mean']
+    reports['Control']['Control Read Concordance Mode'] = "{:.3f}".cond['control.concordance_mode']
+
+    # Adapter
+    adad = { a['id']: a['value'] for a in reports_dict['adapter']['attributes'] }
+    reports['Adapter']['Adapter Dimers (0-10bp) %'] = "{:.2f}".format(adad['adapter_xml_report.adapter_dimers'])
+    reports['Adapter']['Short Inserts (11-100bp) %'] = "{:.2f}".format(adad['adapter_xml_report.short_inserts'])
+    reports['Adapter']['Local Base Rate'] = "{:.2f}".format(adad['adapter_xml_report.local_base_rate_median'])
+
+    # Instrument
+    reports['Instrument']['Run ID'] = metadata_xml['run_id']
+    reports['Instrument']['Instrument SN'] = metadata_xml['instrument_id']
+    reports['Instrument']['Instrument Control SW Version'] = metadata_xml['version_ics']
+    reports['Instrument']['Instrument Chemistry Bundle Version'] = metadata_xml['version_chemistry']
+    reports['Instrument']['Primary SW Version'] = metadata_xml['version_smrtlink']
+
+    # Dataset
+    reports['Dataset']['Movie ID'] = metadata_xml['cell_id']
+    reports['Dataset']['Well Sample Name'] = metadata_xml['ws_name']
+    reports['Dataset']['Cell ID'] = metadata_xml['smrt_cell_barcode']
+
+    # This is funky, as the metadata.xml is full of dates but the JSON reports only have them
+    # in the comments. I don't want to look at the timestamps of the files.
+    mo = re.search(r"at ([-0-9]{10})T[0-9:.]+", reports_dict['ccs']['_comment'])
+    reports['Dataset']['Data created'] = mo.group(1)
+
+    # That's it!
     return dict(reports=reports)
+
+def calculate_cv(counts_list, qual_list):
+    """Calculate the CV of counts_list. If qual_list is provided I'll use it to spot the non-barcoded
+       sample which has qual 0.0. I could just assume it's always the last sample, but I want a sanity
+       check.
+    """
+    if qual_list:
+        if len([q for q in qual_list if q == 0.0]) != 1:
+            raise RuntimeError(f"dodgy qual_list: {qual_list}")
+        counts_list = [ p[0] for p in zip(counts_list, qual_list) if p1 != 0.0 ]
+
+    if mean(counts_list) < 1:
+        return "NaN"
+    else:
+        return stdev(counts_list) / mean(counts_list)
 
 def extract_ids_multi(yaml_files):
     """Run extract_ids() on each of the YAML files and verify that

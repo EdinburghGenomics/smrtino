@@ -238,6 +238,10 @@ def get_metadata_info2(xmlfile):
     cellpac = _get_cellpac(root)
     runattribs = _get_runelem(root)
 
+    cmd = root.find('.//pbmeta:CollectionMetadata', _ns)
+    run_info['instrument_id'] = cmd.attrib['InstrumentId']
+    run_info['instrument_name'] = cmd.attrib['InstrumentName']
+
     # I could parse this properly, but instead just take the first chars
     mo = re.match(r"(\d{4}-\d{2}-\d{2})T", runattribs['WhenStarted'])
     run_info['run_start'] = mo.group(1)
@@ -252,8 +256,12 @@ def get_metadata_info2(xmlfile):
     # movie_time
     run_info['movie_time'] = round(aps['MovieLength'] / 60)
 
-    # smrt_cell_lot_number
+    # smrt_cell_lot_number and smrt_cell_barcode
     run_info['smrt_cell_lot_number'] = cellpac['LotNumber']
+    run_info['smrt_cell_barcode'] = cellpac['Barcode']
+    if cellpac['Barcode'] != cellpac['LabelNumber']:
+        L.warning(f"Cell Barcode({cellpac['Barcode']}) and LabelNumber({cellpac['LabelNumber']})"
+                  f" are expected to be the same.")
 
     # insert_size - this could be in two places
     run_info['insert_size'] = int(root.find('.//pbmeta:InsertSize', _ns).text)
@@ -263,6 +271,13 @@ def get_metadata_info2(xmlfile):
     # on_plate_loading_conc
     run_info['on_plate_loading_conc'] = int(
                     root.find('.//pbmeta:OnPlateLoadingConcentration', _ns).text )
+
+    # software versions
+    vi = { e['Name']: e['Version'] for e in
+           root.findall('.//pbmeta:ComponentVersions/pbmeta:VersionInfo', _ns) }
+    run_info['version_ics'] = vi['ics']
+    run_info['version_chemistry'] = vi['chemistry']
+    run_info['version_smrtlink'] = vi['smrtlink']
 
     return run_info
 
