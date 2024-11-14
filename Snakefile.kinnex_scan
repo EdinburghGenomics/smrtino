@@ -82,11 +82,12 @@ rule main:
           for cell in SC['cells']
           for bc in SC['cells'][cell]['barcodes'] ]
 
+# Snakemake7 had some parsing problems with f-strings below so I used .format() instead.
 rule ligations_to_verdict:
     output: "{bam}.kinnex_scan.yaml"
     input:
-        ligs = f"kinnex_scan/{{bam}}.head{BAM_HEAD}.segmented_mas16.ligations.csv",
-        json = f"kinnex_scan/{{bam}}.head{BAM_HEAD}.segmented_mas16.summary.json",
+        ligs = "kinnex_scan/{{bam}}.head{}.segmented_mas16.ligations.csv".format(BAM_HEAD),
+        json = "kinnex_scan/{{bam}}.head{}.segmented_mas16.summary.json".format(BAM_HEAD),
     params:
         total = BAM_HEAD
     shell:
