@@ -13,6 +13,7 @@ cells:
     parts:
     - hifi_reads
     - fail_reads
+    reports_zip: 1_A01/statistics/m84140_240116_163605_s1.reports.zip
     slot: 1_A01
   m84140_240116_183509_s2:
     barcodes:
@@ -36,6 +37,7 @@ cells:
     parts:
     - hifi_reads
     - fail_reads
+    reports_zip: 1_B01/statistics/m84140_240116_183509_s2.reports.zip
     slot: 1_B01
     unassigned:
       fail_reads:

@@ -13,6 +13,7 @@ cells:
     parts:
     - hifi_reads
     - fail_reads
+    reports_zip: 1_C01/statistics/m84140_231018_155043_s3.reports.zip
     slot: 1_C01
     unassigned:
       fail_reads:
@@ -44,6 +45,7 @@ cells:
     parts:
     - hifi_reads
     - fail_reads
+    reports_zip: 1_D01/statistics/m84140_231018_162059_s4.reports.zip
     slot: 1_D01
     unassigned:
       fail_reads:
