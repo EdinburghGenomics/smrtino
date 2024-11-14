@@ -216,7 +216,7 @@ def calculate_cv(counts_list, qual_list):
     if qual_list:
         if len([q for q in qual_list if q == 0.0]) != 1:
             raise RuntimeError(f"dodgy qual_list: {qual_list}")
-        counts_list = [ p[0] for p in zip(counts_list, qual_list) if p1 != 0.0 ]
+        counts_list = [ p[0] for p in zip(counts_list, qual_list) if p[1] != 0.0 ]
 
     if mean(counts_list) < 1:
         return "NaN"
