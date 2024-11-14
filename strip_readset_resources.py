@@ -54,9 +54,9 @@ def unbarcoded_file_rename(elem):
         unbarcoded_file_rename(child)
 
 def chop_resourceids(elem):
-    """Walk the whole XML tree and if we see a ResourceId attribute that
-       starts with "../\w+_reads/" then chop that off.
-    """
+    r"""Walk the whole XML tree and if we see a ResourceId attribute that
+        starts with "../\w+_reads/" then chop that off.
+     """
     if 'ResourceId' in elem.attrib:
         elem.attrib['ResourceId'] = re.sub( r"^\.\./\w+_reads/",
                                             "",

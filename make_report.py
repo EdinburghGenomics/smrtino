@@ -198,7 +198,7 @@ def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None
     if cell_links.get('smrtlink_cell_link'):
         smrt_links.append(f"[SMRTLink Dataset]({cell_links['smrtlink_cell_link']}) ")
     if smrt_links:
-        rep("", " \| ".join(smrt_links), "")
+        rep("", r" \| ".join(smrt_links), "")
 
     # The rest of the reporting is in another function
     rep(*format_cell(yaml_data, cell_links.get('smrtlink_cell_link')))

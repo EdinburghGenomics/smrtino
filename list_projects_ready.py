@@ -53,8 +53,8 @@ def list_the_projects():
 
     # A cell should not really be both aborted and done, but .aborted takes precedence
     cells_done = [ c for f in
-                   glob("pbpipeline/[0-9]_???.done") for c in
-                   re.findall("(?<=/).+(?=\.)", f)
+                   glob(r"pbpipeline/[0-9]_???.done") for c in
+                   re.findall(r"(?<=/).+(?=\.)", f)
                    if not os.path.exists(f"pbpipeline/{c}.aborted") ]
 
     # 2) Load up sc_data.yaml. As of SMRTino 3.7 there may be multiple files
