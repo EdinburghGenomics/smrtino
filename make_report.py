@@ -269,14 +269,13 @@ def format_cell(cdict, cell_link=None):
         projects_str = "<span style='color: Tomato;'>None</span>"
 
     if 'reports' in cdict:
-        # New version
-        for k, v in cdict['reports'].items():
-            rep("", f"### {escape_md(k)}", "")
-            rep('', *make_one_row_table(v))
+        # New version v2
+        rep("", "## SMRTLink Sample and Reports", "")
+        rep('', *make_reports_table(cdict['reports']))
 
     else:
         # Old version
-        rep("", "### Basics", "")
+        rep("", "## Basics", "")
         rep('<dl class="dl-horizontal">')
         for k, v in sorted(cdict.items()):
             if k == 'cell_uuid' and cell_link:
@@ -340,7 +339,7 @@ def format_per_barcode(bc, aggr, title, md_items=None):
     """
     if md_items is None:
         # These headings make sense for most things but not unassigned
-        md_items = "readset_type bs_project bs_name bs_desc quality_binning guessed_taxon".split()
+        md_items = "readset_type kinnex_type bs_project bs_name bs_desc quality_binning guessed_taxon".split()
 
     rep = aggr or aggregator()
 
@@ -375,7 +374,7 @@ def format_per_barcode(bc, aggr, title, md_items=None):
     return rep
 
 def make_table(rows, headings=None):
-    """ Yet another PanDoc table formatter oh yeah
+    """Yet another PanDoc table formatter oh yeah
     """
     if headings is None:
         # In this case the headings must be embedded in the first row.
@@ -402,6 +401,20 @@ def make_one_row_table(tdict):
     """Make a one-row table from a dict.
     """
     return make_table([tdict], headings=tdict.keys())
+
+def make_reports_table(repdict):
+    """Make a big melted table from the dict of dicts.
+    """
+    headings = ["Section", "Metric", "Value"]
+
+    rows = []
+    for k, v in repdict.items():
+        for k2, v2 in v.items():
+            rows.append( dict( Section = k,
+                               Metric = k2,
+                               Value = v2 ) )
+
+    return make_table(rows, headings=headings)
 
 def parse_args(*args):
     description = """Makes a report (in PanDoc format) for a run, by compiling the info from the

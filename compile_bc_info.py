@@ -64,19 +64,28 @@ def gen_info(args):
         with open(args.binning) as bfh:
             info['quality_binning'] = bfh.read().strip().capitalize()
 
+    # And we want to know if this is Kinnex or not
+    if args.kinnex:
+        info['kinnex_type'] = load_yaml(args.kinnex)['mas']
+
     # Add stats if we have them
     for s in args.stats or []:
-        hifi_or_fail = "-"
-        barcode = "-"
-        if s.endswith(".cstats.yaml"):
+        s_split = os.path.basename(s).split(".")
+        hifi_or_fail = barcode = mas = "-"
+        if s_split[0] == info['cell_id'] and s.endswith(".cstats.yaml"):
+            s_split = s_split[1:-2]
+
             # Here we do have to get info from the file names
-            barcode = s.split('.')[-3]
-            hifi_or_fail = s.split('.')[-4].capitalize()
+            hifi_or_fail = s_split[0].capitalize()
+            barcode = s_split[1]
+            if len(s_split) == 3:
+                mas = s_split[2]
 
         stats = load_yaml(s, dictify_result=True)
         stats['Barcode'] = barcode
         stats['File'] = hifi_or_fail
-        stats['_headings'] = ['Barcode', 'File'] + stats['_headings']
+        stats['Kinnex'] = mas
+        stats['_headings'] = ['Barcode', 'File', 'Kinnex'] + stats['_headings']
         info.setdefault('_cstats', []).append(stats)
 
     # Return the info dictionary
@@ -96,10 +105,12 @@ def parse_args(*args):
                             help="Plots generated for this barcode (YAML files)")
     argparser.add_argument("-s", "--stats", nargs="*",
                             help="Stats generated for this barcode (YAML files)")
-    argparser.add_argument("-t", "--taxon", nargs="?",
+    argparser.add_argument("-t", "--taxon",
                             help="BLAST taxon guess for this barcode (text file)")
-    argparser.add_argument("-b", "--binning", nargs="?",
+    argparser.add_argument("-b", "--binning",
                             help="Whether quality scores are binned or unbinned (text file)")
+    argparser.add_argument("-k", "--kinnex",
+                            help="The kinnex_scan.yaml file for this barcode")
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 

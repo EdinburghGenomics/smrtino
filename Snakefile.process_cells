@@ -192,6 +192,9 @@ def i_one_barcode_info(wc):
         res['blobs'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.plots.yaml")
         res['taxon'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.species.txt")
 
+    # And the actual Kinnex file too
+    res['kinnex'] = f"{cell}.hifi_reads.{barcode}.kinnex_scan.yaml"
+
     return res
 
 rule one_cell_info:
@@ -231,6 +234,7 @@ rule one_barcode_info:
              --metaxml {input.metaxml} \
              --stats  {input.cstats} \
              --taxon {input.taxon} \
+             --kinnex {input.kinnex} \
              --binning <( binned_or_not.py <{input.bamhead} ) \
              --plots  {input.blobs} \
              > {output}
