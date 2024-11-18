@@ -24,7 +24,7 @@ def main(args):
 
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING), stream=sys.stderr)
 
-    # Load the JSON files from reports.zip. No interpretation.
+    # Load the JSON files from reports.zip. No interpretation is made yet.
     json_reports = load_reports_zip(vars(args))
 
     # Info from metadata.xml gets folded into these reports. get_metadata_info2()
@@ -106,7 +106,7 @@ def compile_json_reports(reports_dict, metadata_xml):
     # This stuff is to be found in {cell}.sample-setup.yaml but as this has to
     # be fetched with an API query we're going to fold it in at the make_report.py
     # stage. Insert Size does get copied to the metadata.xml file though.
-    reports['Sample Loaded']['Insert size (bp)'] = metadata_xml['insert_size']
+    reports['Sample Loaded']['Insert size (bp)'] = int(metadata_xml['insert_size'])
     reports['Sample Loaded']['Sample Concentration (ng/µl)'] = None
     reports['Sample Loaded']['Sample Concentration (nM)'] = None
     reports['Sample Loaded']['Sample Volume to Use (µl)'] = None
@@ -205,8 +205,10 @@ def compile_json_reports(reports_dict, metadata_xml):
     mo = re.search(r"at ([-0-9]{10})T[0-9:.]+", reports_dict['ccs']['_comment'])
     reports['Dataset']['Data created'] = mo.group(1)
 
-    # That's it!
-    return dict(reports=reports)
+    # That's it! But I need to add back some info that was previously handled by extract_ids_multi
+    basic_fields = "run_id run_slot cell_id cell_uuid ws_name ws_desc".split()
+    return dict( reports = reports,
+                 **{ k: metadata_xml[k] for k in basic_fields } )
 
 def calculate_cv(counts_list, qual_list):
     """Calculate the CV of counts_list. If qual_list is provided I'll use it to spot the non-barcoded

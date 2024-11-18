@@ -127,6 +127,6 @@ rule make_report:
            ln -vsrnt all_reports/img {input.blob_plots}
            make_report.py -o {output.pan} \
                 -y {input.yaml} -l {input.links} -r {params.pdflink} \
-                -S {input.sample}
+                -S {input.sample} \
                 -s <(pb_run_status.py)
         """

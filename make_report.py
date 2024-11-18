@@ -93,6 +93,12 @@ def main(args):
     # "About the whole run" section.
     run_status = rejig_status_info( status_info, yaml_data )
 
+    # If there is a sample-setup.yaml file, fold in the info from that to yaml_data['reports']
+    if args.sample:
+        if 'reports' not in yaml_data:
+            raise KeyError("Trying to add --sample data to reports, but there is no reports dict")
+        add_sample_to_reports(load_yaml(args.sample), yaml_data['reports'])
+
     rep = format_report( yaml_data,
                          pipedata = pipedata,
                          run_status = run_status,
@@ -104,6 +110,37 @@ def main(args):
         L.info(f"Writing to {args.out}.")
         with open(args.out, "w") as ofh:
             print(*rep, sep="\n", file=ofh)
+
+def add_sample_to_reports(sample_dict, reports_dict):
+    """Adds info from sample_dict into reports_dict['Sample Loaded']
+    """
+    sl = reports_dict.setdefault('Sample Loaded', {})
+    deets_dict = sample_dict['details']
+
+    # FIXME - these checks are redundant as we check it in smrtlink_get_sample.py
+
+    # Check the insert size we got from metadata.xml (in sl) versus the one we
+    # see in sample-setup.yaml (sample_dict)
+    if sl.get('Insert size (bp)'):
+        if sl['Insert size (bp)'] != deets_dict['Insert_Size']:
+            raise RuntimeError("Value mismatch in Insert Size")
+
+    # Also check loading conc while we are at it
+    if 'Loading' in reports_dict:
+        if ( reports_dict['Loading']['OPLC (pM), On-Plate Loading Conc.'] !=
+             deets_dict['On_Plate_Loading_Concentration'] ):
+            raise RuntimeError("Value mismatch in On-Plate Loading Conc")
+
+    # Copy the other stuff
+    sl['Sample Concentration (ng/µl)'] = deets_dict['Starting_Sample_Concentration']
+    sl['Sample Concentration (nM)'] = deets_dict['Sample Concentration (nM)']
+    sl['Sample Volume to Use (µl)'] = deets_dict['Sample Volume to Use']
+    sl['Concentration after clean-up (ng/ul)'] = None # This one is not in SMRTLink
+    sl['% of recovery (anticipated)'] = deets_dict['Cleanup_Anticipated_Yield']
+    sl['% of recovery (real)'] = None
+
+    # Nothing to return - we mutated the input dict
+    return
 
 def escape_md(in_txt, backwhack=re.compile(r'([][\\`*_{}()#+-.!<>])')):
     """ HTML escaping is not the same as markdown escaping
@@ -218,38 +255,54 @@ def format_cell(cdict, cell_link=None):
     """
     rep = aggregator()
 
-    rep('<dl class="dl-horizontal">')
-    for k, v in sorted(cdict.items()):
-        if k == 'cell_uuid' and cell_link:
-            # Add the hyperlink
-            rep(f"<dt>{k}</dt>")
-            rep(f"<dd>[{escape_md(v)}]({cell_link})</dd>")
-        elif k == 'barcodes':
-            # There will always be at least one barcode per cell, but it may
-            # not have an actual 'barcode'.
-            bc_str = ', '.join([b['barcode'] for b in v if 'barcode' in b])
-            if bc_str:
-                rep(f"<dt>{k}</dt>")
-                rep(f"<dd>{escape_md(bc_str)}</dd>")
-        elif type(v) != str:
-            # Leave this for now
-            pass
-        elif not(k.startswith('_')):
-            rep(f"<dt>{k}</dt>")
-            rep(f"<dd>{escape_md(v)}</dd>")
     # If there is no project, we should check bs_project(s). In principle
     # there could be more than one.
-    if not 'project' in cdict:
-        rep("<dt>bs_project</dt>")
+    projects_str = cdict.get('project')
+    if not projects_str:
         projects_str = ', '.join(sorted(set([ b['bs_project']
                                               for b in cdict.get('barcodes', [])
                                               if 'bs_project' in b
                                             ])))
-        if projects_str:
-            rep(f"<dd>{escape_md(projects_str)}</dd>")
-        else:
-            rep("<dd><span style='color: Tomato;'>None</span></dd>")
-    rep("</dl>")
+    if projects_str:
+        projects_str = escape_md(projects_str)
+    else:
+        projects_str = "<span style='color: Tomato;'>None</span>"
+
+    if 'reports' in cdict:
+        # New version
+        for k, v in cdict['reports'].items():
+            rep("", f"### {escape_md(k)}", "")
+            rep('', *make_one_row_table(v))
+
+    else:
+        # Old version
+        rep("", "### Basics", "")
+        rep('<dl class="dl-horizontal">')
+        for k, v in sorted(cdict.items()):
+            if k == 'cell_uuid' and cell_link:
+                # Add the hyperlink
+                rep(f"<dt>{k}</dt>")
+                rep(f"<dd>[{escape_md(v)}]({cell_link})</dd>")
+            elif k == 'barcodes':
+                # There will always be at least one barcode per cell, but it may
+                # not have an actual 'barcode'.
+                bc_str = ', '.join([b['barcode'] for b in v if 'barcode' in b])
+                if bc_str:
+                    rep(f"<dt>{k}</dt>")
+                    rep(f"<dd>{escape_md(bc_str)}</dd>")
+            elif type(v) != str:
+                # Leave this for now
+                pass
+            elif not(k.startswith('_')):
+                rep(f"<dt>{k}</dt>")
+                rep(f"<dd>{escape_md(v)}</dd>")
+        # If there is no project, we should check bs_project(s). In principle
+        # there could be more than one.
+        if not 'project' in cdict:
+            # Then report projects_str which is already escaped
+            rep("<dt>bs_project</dt>")
+            rep(f"<dd>{projects_str}</dd>")
+        rep("</dl>")
 
     # Now add the stats table for stuff produced by fasta_stats.py
     # This needs to be compiled for all barcodes plus unassigned
@@ -259,6 +312,7 @@ def format_cell(cdict, cell_link=None):
     if cdict.get('unassigned'):
         all_cstats.extend(cdict['unassigned'].get('_cstats', []))
     if all_cstats:
+        rep("", "## Read stats summary", "")
         rep('', *make_table(all_cstats))
 
     # Now the per-barcode formatting
@@ -320,10 +374,12 @@ def format_per_barcode(bc, aggr, title, md_items=None):
     # Return val is redundant since the lines will be added to the report.
     return rep
 
-def make_table(rows):
+def make_table(rows, headings=None):
     """ Yet another PanDoc table formatter oh yeah
     """
-    headings = rows[0]['_headings']
+    if headings is None:
+        # In this case the headings must be embedded in the first row.
+        headings = rows[0]['_headings']
 
     def fmt(v):
         if type(v) == float:
@@ -342,6 +398,11 @@ def make_table(rows):
 
     return res
 
+def make_one_row_table(tdict):
+    """Make a one-row table from a dict.
+    """
+    return make_table([tdict], headings=tdict.keys())
+
 def parse_args(*args):
     description = """Makes a report (in PanDoc format) for a run, by compiling the info from the
                      YAML files and also any extra info discovered.
@@ -351,13 +412,15 @@ def parse_args(*args):
     argparser.add_argument("-y", "--yaml", required=True,
                             help="The info.yaml file to use for this report.")
     argparser.add_argument("-l", "--links",
-                            help="Optional links file used to make hyperlinks to SMRTLink.")
+                            help="Optional YAML links file used to make hyperlinks to SMRTLink.")
     argparser.add_argument("-r", "--report",
                             help="Optional report to link. Normally in PDF format.")
     argparser.add_argument("-p", "--pbpipeline", default="pbpipeline",
                             help="Directory to scan for pipeline meta-data.")
     argparser.add_argument("-s", "--status",
                             help="File containing status info (from pb_run_status.py) on this run.")
+    argparser.add_argument("-S", "--sample",
+                           help="Optional YAML sample file containing info from SMRTLink about the sample setup.")
     argparser.add_argument("-o", "--out",
                             help="Where to save the report. Defaults to stdout.")
     argparser.add_argument("-d", "--debug", action="store_true",

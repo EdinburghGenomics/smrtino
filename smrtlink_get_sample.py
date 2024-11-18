@@ -3,9 +3,10 @@
    should be. But we can do it.
 """
 
-import os, sys
+import os, sys, re
 import logging as L
 import json
+import xml.etree.ElementTree as ET
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino.SMRTLink import SMRTLinkClient
@@ -16,7 +17,8 @@ conn = None
 def main(args):
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
 
-    # Load that YAML file
+    # Load that YAML filea
+    info_yaml = None
     if args.ws_name:
         ws_name = args.ws_name
     elif args.info_yaml:
@@ -24,8 +26,9 @@ def main(args):
         ws_name = info_yaml['ws_name']
 
     # Decide how we want to exit
-    exit = sys.exit
-    if args.errors_to_yaml:
+    if not args.errors_to_yaml:
+        exit = sys.exit
+    else:
         def exit(msg):
             """Alternative exit()
             """
@@ -64,14 +67,80 @@ def main(args):
         else:
             L.warning(f"Using the last of {len(matching_samples)} samples with the name {ws_name}.")
 
-    # Finally
-    sample_record = matching_samples[-1]
+    # Now we have to re-fetch to get the finalHtml which holds the "Sample Concentration (nM)"
+    sample_record = conn.get_endpoint(f"/smrt-link/samples/{matching_samples[-1]['uniqueId']}")
 
-    # And in a final piece of silliness, the 'details' is an embedded jSON string
+    # The 'details' is an embedded jSON string. Of course it is.
     sample_record['details'] = json.loads(sample_record['details'])
+
+    # And in a final piece of silliness, extract the "Sample Concentration (nM)" and
+    # "Sample Volume to Use" the finalHtml text.
+    sample_details_table = scrape_sample_details_table(sample_record['finalHtml'])
+    sample_record['details']['Sample Concentration (nM)'] = (
+            scrape_sample_conc_nm(sample_details_table) )
+    sample_record['details']['Sample Volume to Use'] = (
+            scrape_volume_to_use(sample_details_table) )
+
+    # And we can now get rid of sample_record['finalHtml']
+    del sample_record['finalHtml']
+
+    # Make 'Insert_Size' be an int. Ditto 'On_Plate_Loading_Concentration'
+    for k in ['Insert_Size', 'On_Plate_Loading_Concentration']:
+        sample_record['details'][k] = int(sample_record['details'][k])
+
+    if info_yaml is not None and 'reports' in info_yaml:
+        cross_check_info(info_yaml['reports'], sample_record['details'])
 
     # Shall we dump this as YAML or JSON? Other things are YAML, so stick with that.
     dump_yaml(sample_record, fh=sys.stdout)
+
+def cross_check_info(reports_dict, deets_dict):
+    """Sanity check that the info we have already does match the sample.
+    """
+    # Check the insert size we got from metadata.xml (in sl_dict) versus the one we
+    # see in sample-setup.yaml (sample_dict)
+    sl_dict = reports_dict['Sample Loaded']
+    if sl_dict['Insert size (bp)'] != deets_dict['Insert_Size']:
+        raise RuntimeError("Value mismatch in Insert Size")
+
+    # Also check loading conc while we are at it
+    loading_dict = reports_dict['Loading']
+    if ( loading_dict['OPLC (pM), On-Plate Loading Conc.'] !=
+         deets_dict['On_Plate_Loading_Concentration'] ):
+        raise RuntimeError("Value mismatch in On-Plate Loading Conc")
+
+    # And the Application
+    run_dict = reports_dict['Run']
+    if run_dict['Library type'] != deets_dict['Application']:
+        raise RuntimeError("Value mismatch in Application")
+
+def scrape_sample_details_table(html_text):
+
+    # The HTML is actually XHTML so we can do this...
+    root = ET.fromstring(html_text)
+    deets_table = root.find(".//table[@class='SampleDetailsTable SampleDetailsTableHT']")
+    deets_rows = [ r.findall('td') for r in deets_table.findall('tbody/tr') ]
+
+    return deets_rows
+
+def scrape_sample_conc_nm(deets_rows):
+    # This should get a single pair of elements
+    conc_row, = [ r for r in deets_rows if r[0].text.strip() == "Sample Concentration" ]
+
+    # Now yank the second bit of text
+    conc_text = list(conc_row[1].itertext())[1]
+
+    # And split off the nM from the end
+    return re.fullmatch(r'([0-9.]+) nM', conc_text).group(1)
+
+def scrape_volume_to_use(deets_rows):
+
+    vol_row, = [ r for r in deets_rows if r[0].text.strip() == "Sample Volume to Use" ]
+
+    vol_text = vol_row[1].text.strip()
+
+    # And split off the µL from the end
+    return re.fullmatch(r'([0-9.]+) .L', vol_text).group(1)
 
 def parse_args(*args):
     description = """Takes a .info.yaml file (or just a ws_name) and fetches the sample
