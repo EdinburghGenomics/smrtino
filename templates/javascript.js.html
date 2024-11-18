@@ -65,9 +65,13 @@
             });
 
             /* Now add linked filters if this table wants them */
-            if(div_id == 'linkedfilter')
-            {
+            if(div_id == 'linkedfilter'){
                 add_filters(dtable);
+            }
+
+            /* And see if we have a "_groupby" column */
+            if( $(dtable.api().column(0).header()).text() == "_groupby"){
+                add_groupby(dtable, 0);
             }
         });
         /* If there were any linkedfilter tables, select the first item */
@@ -246,5 +250,53 @@
             linkedfilter_dropdowns[0].change();
         }
     }
+
+    function add_groupby(dtable, groupColumn){
+        // Based on https://datatables.net/examples/advanced_init/row_grouping.html
+        console.log("add_groupby()");
+        debugdtable = dtable;
+        debugdtableapi = dtable.api();
+
+        var api = dtable.api();
+
+        // First hide the groupColumn
+        api.column(groupColumn).visible(false);
+
+        // Add a pre-draw callback
+        dtable.on('draw.dt', function (e, settings) {
+            var rows = api.rows({ page: 'current' }).nodes();
+            var columns = api.columns()[0].length;
+            var last = null;
+
+            api.column(groupColumn, { page: 'current' })
+                .data()
+                .each(function (group, i) {
+                    if (last !== group) {
+                        var newtr = $('<tr/>').html(
+                                        $('<td/>').text(group).attr('colspan', columns-1)
+                                    ).attr('class', "groupby");
+                        $(rows)
+                            .eq(i)
+                            .before(newtr);
+                        last = group;
+                    }
+                });
+        }); // end of callback
+
+        // And another callback to reset group ordering.
+        dtable.on('click', 'tr.groupby', function () {
+            console.log("clickety");
+            var currentOrder = api.order()[0];
+            if (currentOrder[0] === groupColumn && currentOrder[1] === 'asc') {
+                api.order([groupColumn, 'desc']).draw();
+            }
+            else {
+                api.order([groupColumn, 'asc']).draw();
+            }
+        });
+
+        // And trigger a re-draw of the table
+        api.draw();
+    };
 
 </script>

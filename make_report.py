@@ -405,12 +405,12 @@ def make_one_row_table(tdict):
 def make_reports_table(repdict):
     """Make a big melted table from the dict of dicts.
     """
-    headings = ["Section", "Metric", "Value"]
+    headings = ["_groupby", "Metric", "Value"]
 
     rows = []
     for k, v in repdict.items():
         for k2, v2 in v.items():
-            rows.append( dict( Section = k,
+            rows.append( dict( _groupby = k,
                                Metric = k2,
                                Value = v2 ) )
 
