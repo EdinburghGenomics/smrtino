@@ -35,7 +35,7 @@ rule list_blob_plots:
                                  taxlevel   = BLOB_LEVELS,
                                  extn       = "cov0 read_cov.cov0".split(),
                                  thumb      = ['.__thumb', ''] ),
-        subs = "blob/{cell}.{part}.{bc_and_mas}+sub" + str(BLOB_SUBSAMPLE) + ".fasta",
+        subs = "subsampled_fasta/{cell}.{part}.{bc_and_mas}+sub" + str(BLOB_SUBSAMPLE) + ".fasta",
     run:
         # Un-silence sys.stderr in sub-jobs:
         logger.quiet.discard('all')
@@ -66,17 +66,6 @@ rule get_blob_species:
         txt = expand("blob/{{cell}}.{{part}}.{{bc_and_mas}}.{bl}.blobplot.stats.txt", bl=BLOB_LEVELS[::-1])
     shell:
         "blobplot_stats_to_species.py {input.txt} > {output}"
-
-# Convert to FASTA and subsample and munge the headers
-rule bam_to_subsampled_fasta:
-    output: "blob/{cell}.{part}.{barcode}{_mas}+sub{n}.fasta"
-    input:  "{cell}/{barcode}/{cell}.{part}.{barcode}{_mas}.bam"
-    threads: 8
-    resources:
-        mem_mb = 44000,
-        n_cpus = 8,
-    shell:
-        "{TOOLBOX} samtools fasta -@ {threads} {input} | {TOOLBOX} seqtk sample - {wildcards.n} | sed 's,/,_,g' > {output}"
 
 
 # Makes a .complexity file for our FASTA file
@@ -137,7 +126,7 @@ checkpoint split_fasta_in_chunks:
     output:
         list = "blob/{foo}.fasta_parts_list",
         parts = temp(directory("blob/{foo}.fasta_parts")),
-    input: "blob/{foo}.fasta"
+    input: "subsampled_fasta/{foo}.fasta"
     params:
         chunksize = BLOB_SUBSAMPLE // BLOB_CHUNKS
     shell:

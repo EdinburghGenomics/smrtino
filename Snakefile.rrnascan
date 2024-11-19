@@ -1,0 +1,56 @@
+## rRNA detection with SILVA rules ##
+# vim: ft=python
+
+from smrtino import load_yaml, dump_yaml
+
+# Default is that there will be 10000 sequences subsampled.
+# Best to keep this the same as blob_subsample so that the subsampling
+# only needs to happen once.
+# To override the things below set EXTRA_SNAKE_CONFIG
+#  eg. EXTRA_SNAKE_CONFIG="blob_subsample=1234"
+
+RRNA_SUBSAMPLE = int(config.get('rrna_subsample', config.get('blob_subsample', 10000)))
+
+# Compile the info from the flagstst summary into a YAML format suitable to be
+# added into the reports.
+rule count_alignments:
+    output: "rRNA_scan/{cell}.{part}.{bc_and_mas}.results.yaml"
+    input:  "rRNA_scan/{cell}.{part}.{bc_and_mas}.silva_aligned.bam.stat"
+    run:
+        # Un-silence sys.stderr in sub-jobs:
+        logger.quiet.discard('all')
+
+        # Parse the stat file. We only care about these lines:
+        # 10000 + 0 primary
+        # 9856 + 0 primary mapped (98.56% : N/A) # or...
+        # 0 + 0 primary mapped (N/A : N/A)       # if there are 0 reads total
+        total_reads = 0
+        mapped_txt = "0.00%"
+        mapped_perc = 0.0
+        with open(str(input)) as fh:
+            for aline in fh:
+                aline = aline.strip()
+                mo = re.fullmatch(r"(\d+) \+ 0 primary", aline)
+                if mo:
+                    total_reads = mo.group(1)
+                mo = re.fullmatch(r"\d+ \+ 0 primary mapped \((N/A|([0-9.]+)%) : N/A\)", aline)
+                if mo:
+                    mapped_txt = mo.group(1)
+                    if mo.group(2):
+                        mapped_perc = float(mo.group(2))
+
+        res = dict(title = f"Percentage of rRNA found in subsample ({total_reads} sequences)",
+                   label = mapped_txt,
+                   fraction = [mapped_perc, 100])
+
+        dump_yaml([res], filename=str(output))
+
+# Align the reads to SILVA and then get the samtools flagstat summary.
+rule align_to_silva:
+    output: "rRNA_scan/{cell}.{part}.{bc_and_mas}.silva_aligned.bam.stat"
+    input:  "subsampled_fasta/{cell}.{part}.{bc_and_mas}+sub" + str(RRNA_SUBSAMPLE) + ".fasta"
+    shell:
+       r"""{TOOLBOX} SNAKEJOB_THREADS={threads} align_to_silva.sh {input} | \
+            samtools flagstat - > {output}
+        """
+

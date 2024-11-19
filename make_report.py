@@ -361,14 +361,23 @@ def format_per_barcode(bc, aggr, title, md_items=None):
             rep("", f"\n### {escape_md(plot_group['title'])}\n")
 
             # plot_group['files'] will be a list of lists, so plot
-            # each list a s a row.
-            for plot_row in plot_group['files']:
+            # each list as a row.
+            for plot_row in plot_group.get('files',[]):
                 rep("<div class='flex'>")
                 rep(" ".join(
                         f"[plot](img/{p}){{.thumbnail}}"
                         for p in plot_row
                     ))
                 rep("</div>")
+
+            # if there is a label and fraction we do some funky plotting
+            if 'fraction' in plot_group:
+                rep(("<div style='"
+                     " background: linear-gradient(to right, salmon 0%,salmon {}%,#00000000 {}%,#00000000 100%);"
+                     " width: 60%; height: 20pt; font-weight: bold; border-style: solid;"
+                     " border-style: solid; border-width: 2px; border-color: bluegray"
+                     ">{l}</div>").format(
+                        f=plot_group['fraction'], l=escape_md(plot_group.get('label','')) ) )
 
     # Return val is redundant since the lines will be added to the report.
     return rep

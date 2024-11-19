@@ -168,6 +168,7 @@ def i_one_barcode_info(wc):
                 cou = [],
                 xml = [],
                 blobs = [],
+                rrna = [],
                 taxon = [] )
 
     # We need md5sums and contig stats for hifi_reads and fail_reads
@@ -191,6 +192,9 @@ def i_one_barcode_info(wc):
     if str(config.get('blobs', '1')) != '0':
         res['blobs'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.plots.yaml")
         res['taxon'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.species.txt")
+
+    # Likewise for the rRNA scan
+    res['rrna'].append(f"rRNA_scan/{cell}.hifi_reads.{bc_and_mas}.results.yaml")
 
     # And the actual Kinnex file too
     res['kinnex'] = f"{cell}.hifi_reads.{barcode}.kinnex_scan.yaml"
@@ -236,7 +240,7 @@ rule one_barcode_info:
              --taxon {input.taxon} \
              --kinnex {input.kinnex} \
              --binning <( binned_or_not.py <{input.bamhead} ) \
-             --plots  {input.blobs} \
+             --plots {input.rrna} {input.blobs} \
              > {output}
         """
 
@@ -374,6 +378,17 @@ rule bam_to_fastq:
            {TOOLBOX} samtools fastq -@ $sam_threads {input} | pigz -c -n -p $pigz_threads > {output}
         """
 
+# Convert to FASTA and subsample and munge the headers
+rule bam_to_subsampled_fasta:
+    output: "subsampled_fasta/{cell}.{part}.{barcode}{_mas}+sub{n}.fasta"
+    input:  "{cell}/{barcode}/{cell}.{part}.{barcode}{_mas}.bam"
+    threads: 4
+    resources:
+        mem_mb = 22000,
+        n_cpus = 4,
+    shell:
+        "{TOOLBOX} samtools fasta -@ {threads} {input} | {TOOLBOX} seqtk sample - {wildcards.n} | sed 's,/,_,g' > {output}"
+
 # Make a .count file for the FASTQ file
 rule count_fastq:
     output: "{foo}.fastq.count"
@@ -386,5 +401,6 @@ rule md5sum_file:
     input: "{foo}"
     shell: '( cd "$(dirname {input:q})" && md5sum -- "$(basename {input:q})" ) > {output:q}'
 
-## BLOB plotter rules ##
+## BLOB plotter and rRNA scanner rules ##
 include: "Snakefile.blob"
+include: "Snakefile.rrnascan"

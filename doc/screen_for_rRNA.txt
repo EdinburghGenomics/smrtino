@@ -8,3 +8,5 @@ Kinnex. So, to be useful we'd have to auto-run skera. Is this even possible?
 And now we think about Kinnex. See kinnex.txt
 
 Come back here once that is solved.
+
+It is. And we have an rRNA scan. See Snakefile.rrnascan.

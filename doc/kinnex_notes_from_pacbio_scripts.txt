@@ -1,0 +1,135 @@
+This is going to be a big old topic.
+
+With Kinnex reads, we currently have this:
+
+1) HiFi generation on Revio
+2) Possible primary demultiplexing on Revio or SMRTLink
+3) Desegmentation in SMRTLink
+4) Secondary demultiplexing on SMRTLink
+
+The good news is that in each case, SMRTLink knows the name of the samples,
+so it should just be a matter of scanning for the SMRTLink outputs as well
+as just the files transferred from the instrument. Most of the code should
+continue to work, as the XML files describing the files are very similar.
+
+As a start, I've made a small modification so that get_revio_data.py takes the
+data_dir setting from the pbcell.yml file. This means we can auto-link data
+from whichever location.
+
+That's the easy bit, now we have some considerations:
+
+1) How do we determine what is the correct thing to deliver? My best answer is
+we look for runs as now, but then for each run we look for relevant analyses
+in SMRTLink. The latest valid analysis is what we deliver.
+
+We could go to SMRTLink directly, of course.
+
+2) The get_revio_yml.py script relies on SMRTino having interpreted the XML, but
+we're not running SMRTino on the SMRTLink stuff so we'll have to parse the XML directly.
+Of course, I can re-use the SMRTino code but then I end up with two copies, one
+which is applied by SMRTino and one which is used for grabbing processed results
+from SMRTLink.
+
+I'm sure I can make this neater. I think right now there is still untidiness with
+ws_name_to_lib in get_revio_yml.py trying to work out the library name from the info
+gleaned from SMRTino. It's not really clear how much of the job each part is meant to
+do. Currently SMRTino resolves the project but this script resolves the library which
+is clearly whacky.
+
+Hmmm.
+
+3) Heleen pointed out the Kinnex reads probably always want to be delivered in fastq.gz
+format not BAM. Is this right? If so, confusingly SMRTLink leaves the unassigned in BAM
+format so do we deliver this or not deliver it or convert it to FASTQ?
+
+Well, the first BAM file contains all the desgmented reads, and then it is this desegmented
+BAM that is run through Lima. The same Lima that is used for non-Kinnex CCS reads. Which
+is why the results go into cromwell-executions/pb_demux_ccs right. I may need to differentiate
+between Kinnex demultiplexing and non-Kinnex demultiplexing. I assume there will be no Kinnex
+desegmenting without subsequent Lima demultiplexing?
+
+Hmmm again.
+
+The project of interest is 32620_Clark_Emily. Heleen found the outputs from SMRTLink under
+/mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001454/outputs/fastx_files
+
+The file that tells me what barcode matches what sample is:
+/mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001454/outputs/m84140_240806_121846_s3.hifi_reads.consensusreadset.xml
+Note that this uses "biosample", not "wellsample", which makes sense.
+
+---
+
+How am I currently getting the name of the sample?
+
+SMRTino has compile_bc_info.py which reads the XML. This gets 'bs_name' and 'ws_name', and copies
+them to the YAML. It has a special case for the unassigned reads, but it does not try and determine
+which is the EdGe sample name (in the case of unbarcoded samples it could be bs_name or ws_name).
+It does however look to extract the project number (in smrtino.ParseXML.get_readset_info).
+
+We also have make_summary.py which calls smrtino.ParseXML.get_metadata_summary and this only gets
+'ws_name' because at this point we're not worrying about 'bs_name'. At this point we set 'ws_project'
+based on 'ws_name' which is fine but later we'll get 'bs_project' (per sample) and decide which is
+the true project number and put it into 'project' in the YAML.
+
+So the logic in SMRTino gets me a definitive project number, which is used to work out which files
+belong to which project. But it does not yield a definitive sample name and it's up to get_revio_yml.py
+(in scan_for_smrt_cells()) to work this out. But here it uses bs_name and ws_name which are directly
+copied from the XML so that's OK.
+
+So, it's complex but actually not as messy as I feared. I'll not plan to re-write this. I should
+be able to add a scan_for_desegmentation() function to get_revio_yml.py which finds the info, reads the
+XML directly, and writes pbcell files which are compatible with what I already have. But they will be
+FASTQ only. I think we need:
+
+readset_type: Revio (Kinnex)
+parts: [segmented_reads]
+
+Now we don't get the total bases, guessed taxon, and other _cstats, and counting these is expensive.
+So what to do? I think we keep the barcode info in the pbcell file as it is, and keep adding
+this to the summary tables. If we need more summary info then we'll need a proper Kinnex QC and this
+will have to be a pipeline which will take time to run.
+
+But if I keep these barcodes then I'll need to mark them to be skipped by get_revio_data.py, so let's
+add 'skip_data: True' to each existing barcode. This will do for now.
+
+So the next question is, given a cell_id, how do I locate any desgmentation post-processing in
+SMRTLink. Do I have to call the API or is there a way I can easily probe the file system? Well
+the files will be under /mnt/lustre/gseg/smrtlink/data/cromwell-executions/pb_demux_ccs/ and
+we can save time by only looking at directories newer than the cell. Then we can see the cell
+right in the filename. Yeah OK this is easy. We should search back from the newest directory so
+if the demultiplexing is repeated we'll pick up the latest. Cool.
+
+Let's write.
+
+---
+
+So on 14th Aug we had further discussion, and agreed that yes there are two rounds of barcoding
+with Kinnex and so these should be reflected in the filenames, so for regular PacBio we have:
+
+m84140_240719_161514_s4.hifi_reads.all.bam
+
+But for Kinnex we should have:
+
+m84140_240719_161514_s4.hifi_reads.all.segmented.bc101.bam
+
+And it's quite possible that both the barcodes will be "all" or that both will be actual barcodes.
+But we'll keep the file names in this format.
+
+Also Heleen did more digging and discovered that we DO already get BAM files for the desegmented
+and demultiplexed reads if we look properly. Also not all Kinnex reads are demultiplexed so it's no
+good scanning just for "pb_demux_ccs" jobs. I also need to look for "pb_segment_reads" jobs, but
+this is trickier since I can't just scan for the file name. Also as an aside I tried exporting the
+reads as FASTQ within SMRTLink and it fails grrr:
+
+https://edgen-smrtlink.epcc.ed.ac.uk:8243/sl/analysis/results/1465?show=status
+
+So I think maybe I'll focus on the "pb_demux_ccs" part for now and come back to the
+segmented-but-not-barcoded later. That part is harder to automate but easier to do manually.
+
+Frances has put a demo delivery for this at:
+
+/lustre-gseg/transfer/example_kinnex_deliveries/multiplexed_samples/ which is based upon
+32620_Clark_Emily so we should use that for testing. We should also try:
+
+m84140_240802_160841_s2 has 18 biosamples plus controls, project 32790SR
+m84140_240802_140933_s1 has 34 biosamples plus controls, project 31760NS
