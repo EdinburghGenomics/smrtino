@@ -78,15 +78,20 @@
     table.display { font-family: monospace; }
     table.display thead th { padding: 0px 16px; }
 
-    tr.groupby,
-    tr.groupby:hover {
+    table.groupbytable td:first-child,
+    table.groupbytable th:first-child{
+        width: 30% !important;
+    }
+
+    table.groupbytable tr.groupby,
+    table.groupbytable tr.groupby:hover {
         background-color: rgba(250, 190, 234, 0.9) !important;
         font-weight: bold;
         letter-spacing: 2px;
     }
 
-    :root.dark tr.groupby,
-    :root.dark tr.groupby:hover {
+    :root.dark table.groupbytable tr.groupby,
+    :root.dark table.groupbytable tr.groupby:hover {
         background-color: rgba(0, 0, 0, 0.75) !important;
     }
 
