@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Null shim to not actually BLAST anything. Useful for testing the pipeline
+# without the BLAST jobs while still keeping the BLOB plots.
+touchit=''
+
+for p in "$@" ; do
+    if [ "$touchit" = 1 ] ; then
+        touch "$p"
+        break
+    elif [ "$p" = -out ] ; then
+        touchit=1
+    fi
+done

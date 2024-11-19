@@ -372,12 +372,14 @@ def format_per_barcode(bc, aggr, title, md_items=None):
 
             # if there is a label and fraction we do some funky plotting
             if 'fraction' in plot_group:
-                rep(("<div style='"
-                     " background: linear-gradient(to right, salmon 0%,salmon {}%,#00000000 {}%,#00000000 100%);"
-                     " width: 60%; height: 20pt; font-weight: bold; border-style: solid;"
-                     " border-style: solid; border-width: 2px; border-color: bluegray"
-                     ">{l}</div>").format(
-                        f=plot_group['fraction'], l=escape_md(plot_group.get('label','')) ) )
+                if plot_group['fraction'][1]:
+                    fraction = (plot_group['fraction'][0] * 100) / plot_group['fraction'][1]
+                label = escape_md(plot_group.get('label', ''))
+                rep( ("<div style='"
+                      " background: linear-gradient(to right,{c} 0%,{c} {f}%,#00000000 {f}%,#00000000 100%);"
+                      " padding: 4px; width: 60%; height: 22pt; font-weight: bold;"
+                      " border-style: solid; border-width: 1px; border-color: #99A3A3"
+                      "'>{l}</div>").format(f=fraction, l=label, c="#9E7BFF") )
 
     # Return val is redundant since the lines will be added to the report.
     return rep
