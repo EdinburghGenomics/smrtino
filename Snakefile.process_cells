@@ -384,8 +384,8 @@ rule bam_to_subsampled_fasta:
     input:  "{cell}/{barcode}/{cell}.{part}.{barcode}{_mas}.bam"
     threads: 4
     resources:
-        mem_mb = 22000,
-        n_cpus = 4,
+        mem_mb = 44000,
+        n_cpus = 8,
     shell:
         "{TOOLBOX} samtools fasta -@ {threads} {input} | {TOOLBOX} seqtk sample - {wildcards.n} | sed 's,/,_,g' > {output}"
 
