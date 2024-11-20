@@ -1,17 +1,21 @@
 _cstats:
 - Barcode: foo
   File: Fail_reads
+  Kinnex: '-'
   _dummy: 'FailCStats'
   _headings:
   - Barcode
   - File
+  - Kinnex
   - Dummy
 - Barcode: foo
   File: Hifi_reads
+  Kinnex: '-'
   _dummy: 'HifiCStats'
   _headings:
   - Barcode
   - File
+  - Kinnex
   - Dummy
 _filename: m84140_240116_163605_s1.hifi_reads.all.consensusreadset.xml
 _parts:

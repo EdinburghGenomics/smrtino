@@ -7,13 +7,21 @@ import unittest
 import logging
 import yaml
 
-from unittest.mock import Mock
+from unittest.mock import NonCallableMock
 from io import StringIO
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/revio_out_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 from compile_bc_info import gen_info
+
+class NoneMock(NonCallableMock):
+    """A Mock where fetching undefined attributes returns None,
+       rather then a new Mock object. Useful for mocking command
+       line args.
+    """
+    def _get_child_mock(self, **kw):
+        return None
 
 class T(unittest.TestCase):
 
@@ -34,15 +42,13 @@ class T(unittest.TestCase):
 
     ### THE TESTS ###
     def get_mock_args(self):
-        args = Mock()
+        args = NoneMock()
 
-        args.xmlfile = None
-        args.metaxml = None
         args.plots = []
         args.stats = []
-        args.taxon = None
-        args.binning = None
         args.debug = False
+
+        # For all other attributes, NoneMock returns None
 
         return args
 

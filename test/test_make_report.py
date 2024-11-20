@@ -76,6 +76,8 @@ class T(unittest.TestCase):
            Again, test with minimal input for now.
         """
         expected = dd("""\
+                         ## Basics
+
                          <dl class="dl-horizontal">
                          <dt>bs_project</dt>
                          <dd><span style='color: Tomato;'>None</span></dd>
@@ -137,6 +139,8 @@ class T(unittest.TestCase):
             </dl>
 
             # SMRT cell info
+
+            ## Basics
 
             <dl class="dl-horizontal">
             <dt>barcodes</dt>

@@ -8,7 +8,6 @@ from zipfile import ZipFile
 from smrtino import load_yaml, dump_yaml
 from smrtino.ParseXML import get_metadata_info2
 import json
-from pprint import pprint
 
 """ The info needed to report on a SMRT cell consists of several YAML files:
         sc_data.yaml about the files in the upstream
@@ -73,7 +72,6 @@ def load_reports_zip(args_dict):
                               f" with {args_dict[f'{r}_report']}")
                 res[r] = json.load(jfh)
 
-    #pprint(res)
     return res
 
 def compile_json_reports(reports_dict, metadata_xml):

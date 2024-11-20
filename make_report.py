@@ -270,12 +270,16 @@ def format_cell(cdict, cell_link=None):
 
     if 'reports' in cdict:
         # New version v2
-        rep("", "## SMRTLink Sample and Reports", "")
+        rep('<dl class="dl-horizontal">')
+        rep("<dt>Project</dt>", f"<dl>{projects_str}</dl>")
+        rep('</dl>', '')
+
+        rep("## SMRTLink Sample and Reports", "")
         rep('', *make_reports_table(cdict['reports']))
 
     else:
         # Old version
-        rep("", "## Basics", "")
+        rep("## Basics", "")
         rep('<dl class="dl-horizontal">')
         for k, v in sorted(cdict.items()):
             if k == 'cell_uuid' and cell_link:
