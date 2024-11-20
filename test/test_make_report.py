@@ -76,6 +76,7 @@ class T(unittest.TestCase):
            Again, test with minimal input for now.
         """
         expected = dd("""\
+
                          ## Basics
 
                          <dl class="dl-horizontal">
@@ -139,6 +140,7 @@ class T(unittest.TestCase):
             </dl>
 
             # SMRT cell info
+
 
             ## Basics
 

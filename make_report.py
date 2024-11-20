@@ -268,44 +268,47 @@ def format_cell(cdict, cell_link=None):
     else:
         projects_str = "<span style='color: Tomato;'>None</span>"
 
+    hidelist = set()
+    if 'reports' in cdict:
+        # There's need to show these twice
+        hidelist.update(['cell_id', 'run_id', 'run_slot'])
+
+    # Old version, but we still want to show some of this.
+    rep("", "## Basics", "")
+    rep('<dl class="dl-horizontal">')
+    for k, v in sorted(cdict.items()):
+        if k in hidelist:
+            continue
+
+        if k == 'cell_uuid' and cell_link:
+            # Add the hyperlink
+            rep(f"<dt>{k}</dt>")
+            rep(f"<dd>[{escape_md(v)}]({cell_link})</dd>")
+        elif k == 'barcodes':
+            # There will always be at least one barcode per cell, but it may
+            # not have an actual 'barcode'.
+            bc_str = ', '.join([b['barcode'] for b in v if 'barcode' in b])
+            if bc_str:
+                rep(f"<dt>{k}</dt>")
+                rep(f"<dd>{escape_md(bc_str)}</dd>")
+        elif type(v) != str:
+            # Leave this for now
+            pass
+        elif not(k.startswith('_')):
+            rep(f"<dt>{k}</dt>")
+            rep(f"<dd>{escape_md(v)}</dd>")
+    # If there is no project, we should check bs_project(s). In principle
+    # there could be more than one.
+    if not 'project' in cdict:
+        # Then report projects_str which is already escaped
+        rep("<dt>bs_project</dt>")
+        rep(f"<dd>{projects_str}</dd>")
+    rep('</dl>')
+
     if 'reports' in cdict:
         # New version v2
-        rep('<dl class="dl-horizontal">')
-        rep("<dt>Project</dt>", f"<dl>{projects_str}</dl>")
-        rep('</dl>', '')
-
-        rep("## SMRTLink Sample and Reports", "")
+        rep("", "## SMRTLink Sample and Reports", "")
         rep('', *make_reports_table(cdict['reports']))
-
-    else:
-        # Old version
-        rep("## Basics", "")
-        rep('<dl class="dl-horizontal">')
-        for k, v in sorted(cdict.items()):
-            if k == 'cell_uuid' and cell_link:
-                # Add the hyperlink
-                rep(f"<dt>{k}</dt>")
-                rep(f"<dd>[{escape_md(v)}]({cell_link})</dd>")
-            elif k == 'barcodes':
-                # There will always be at least one barcode per cell, but it may
-                # not have an actual 'barcode'.
-                bc_str = ', '.join([b['barcode'] for b in v if 'barcode' in b])
-                if bc_str:
-                    rep(f"<dt>{k}</dt>")
-                    rep(f"<dd>{escape_md(bc_str)}</dd>")
-            elif type(v) != str:
-                # Leave this for now
-                pass
-            elif not(k.startswith('_')):
-                rep(f"<dt>{k}</dt>")
-                rep(f"<dd>{escape_md(v)}</dd>")
-        # If there is no project, we should check bs_project(s). In principle
-        # there could be more than one.
-        if not 'project' in cdict:
-            # Then report projects_str which is already escaped
-            rep("<dt>bs_project</dt>")
-            rep(f"<dd>{projects_str}</dd>")
-        rep("</dl>")
 
     # Now add the stats table for stuff produced by fasta_stats.py
     # This needs to be compiled for all barcodes plus unassigned

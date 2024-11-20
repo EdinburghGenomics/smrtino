@@ -89,9 +89,24 @@ So questions are:
 job? I don't think we can push the skera reads back into SMRTLink as the workflows in
 there want to do everything or nothing.
 
+Technically we could suck the list of sample/barcode mappings out of the SMRTLink job and
+use them to run Lima, but that involves re-doing the segmentation in SMRTLink and then running
+Lima and then the pipeline would have to re-trigger and run Lima again. No, no, no.
+
 2) What should the report look like once we have split reads?
 
 3) What about those extra metrics to be added to the report?
 
 See signoff_metrics.txt
 
+--
+
+On 20th Nov, I'm ready to try my new pipeline.
+
+1) Test on at least two runs locally. Or three, even:
+
+    r84140_20240116_162812  r84140_20240919_130407  r84140_20241007_154722
+    ? r84140_20231030_134730
+
+2) Test delivery of a non-kinnex run (which one?)
+3) Now deploy the code and run it on a bunch of recent runs, particularly the Kinnex ones.
