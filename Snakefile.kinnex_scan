@@ -78,9 +78,21 @@ wildcard_constraints:
 
 rule main:
     input:
-        [ f"{cell}.hifi_reads.{bc}.kinnex_scan.yaml"
-          for cell in SC['cells']
-          for bc in SC['cells'][cell]['barcodes'] ]
+        bc = [ f"{cell}.hifi_reads.{bc}.kinnex_scan.yaml"
+               for cell in SC['cells']
+               for bc in SC['cells'][cell]['barcodes'] ],
+        unass = [ f"{cell}.hifi_reads.{bc}.kinnex_scan.yaml"
+                  for bc in ['unassigned']
+                  if SC['cells'][cell].get(bc) ],
+
+# If we want to avoid scanning the unassigned reads we can enable a decoy rule like so:
+ruleorder: unassigned_verdict > ligations_to_verdict
+rule unassigned_verdict:
+    output: "{bam}.unassigned.kinnex_scan.yaml"
+    run:
+        dump_yaml( dict(mas = None,
+                        reason = "skipping kinnex scan on unassigned reads"),
+                   file = str(output) )
 
 # Snakemake7 had some parsing problems with f-strings below so I used .format() instead.
 rule ligations_to_verdict:

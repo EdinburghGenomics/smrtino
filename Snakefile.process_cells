@@ -108,7 +108,7 @@ wildcard_constraints:
     n          = r"\d+",
     cell       = r"m\w+",
     barcode    = r"[^/.]+",
-    _mas       = r"\.mas\d{1,2}",
+    _mas       = r"(\.mas\d{1,2})?",
     bc_and_mas = r"[^/.]+(\.mas\d{1,2})?",
     part       = r"hifi_reads|fail_reads",
 
@@ -137,7 +137,8 @@ def i_one_cell_info(wc):
                   for bc in cell_barcodes ]
 
     # Various reports to unpack from the .reports.zip file, but we can do that
-    # within make_report.py
+    # within make_report.py, so just copy the file.
+    # Note that there was no reports.zip prior to SMRTLink 13
     # raw_data adapter ccs control loading
     res["reports_zip"] = f"{cell}.reports.zip"
 
@@ -155,12 +156,13 @@ def i_one_barcode_info(wc):
     cell = wc.cell
     barcode = wc.bc
 
-    mas = SC['cells'][cell]['kinnex_scan'][barcode]['mas']
-    if mas:
-        bc_and_mas = f"{barcode}.{mas}"
+    # barcode could be "unassigned"
+    kinnex_scan = SC['cells'][cell]['kinnex_scan'][barcode]
+
+    if kinnex_scan['mas']:
+        bc_and_mas = f"{barcode}.{kinnex_scan['mas']}"
     else:
         bc_and_mas = barcode
-
 
     res = dict( md5 = [],
                 cstats = [],
@@ -387,7 +389,10 @@ rule bam_to_subsampled_fasta:
         mem_mb = 44000,
         n_cpus = 8,
     shell:
-        "{TOOLBOX} samtools fasta -@ {threads} {input} | {TOOLBOX} seqtk sample - {wildcards.n} | sed 's,/,_,g' > {output}"
+       r"""{TOOLBOX} samtools fasta -@ {threads} {input} | \
+             {TOOLBOX} seqtk sample - {wildcards.n} | \
+             sed 's,/,_,g' > {output}
+        """
 
 # Make a .count file for the FASTQ file
 rule count_fastq:

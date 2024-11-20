@@ -108,5 +108,9 @@ On 20th Nov, I'm ready to try my new pipeline.
     r84140_20240116_162812  r84140_20240919_130407  r84140_20241007_154722
     ? r84140_20231030_134730
 
-2) Test delivery of a non-kinnex run (which one?)
+Foound some bugs. But why did I put the kinnex_scan.yaml files in the top level?
+I can't remember. I'm going to move them into kinnex_scan. Until I remember why that
+doesn't work, and then I'll move them back.
+
+2) Test delivery of a non-kinnex run still works (which one?)
 3) Now deploy the code and run it on a bunch of recent runs, particularly the Kinnex ones.

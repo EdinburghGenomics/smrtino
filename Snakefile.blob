@@ -35,7 +35,7 @@ rule list_blob_plots:
                                  taxlevel   = BLOB_LEVELS,
                                  extn       = "cov0 read_cov.cov0".split(),
                                  thumb      = ['.__thumb', ''] ),
-        subs = "subsampled_fasta/{cell}.{part}.{bc_and_mas}+sub" + str(BLOB_SUBSAMPLE) + ".fasta",
+        subs = "subsampled_fasta/{{cell}}.{{part}}.{{bc_and_mas}}+sub{}.fasta".format(BLOB_SUBSAMPLE),
     run:
         # Un-silence sys.stderr in sub-jobs:
         logger.quiet.discard('all')
@@ -71,12 +71,14 @@ rule get_blob_species:
 # Makes a .complexity file for our FASTA file
 # {foo} is blob/{cell}.subreads or blob/{cell}.scraps
 rule fasta_to_complexity:
-    output: "{foo}.complexity"
-    input: "{foo}.fasta"
+    output: "blob/{foo}.complexity"
+    input:  "subsampled_fasta/{foo}.fasta"
     params:
         level = 10
     shell:
-        "{TOOLBOX} dustmasker -level {params.level} -in {input} -outfmt fasta 2>/dev/null | count_dust.py > {output}"
+       r"""{TOOLBOX} dustmasker -level {params.level} -in {input} -outfmt fasta 2>/dev/null | \
+           count_dust.py > {output}
+        """
 
 # Combine all the 100 (or however many) blast reports into one
 # I'm filtering out repeated rows to reduce the size of the BLOB DB - there can
@@ -148,8 +150,8 @@ rule blob_db:
     output:
         json = "blob/{foo}.blobDB.json",
     input:
+        reads_sample  = "subsampled_fasta/{{foo}}+sub{}.fasta".format(BLOB_SUBSAMPLE),
         blast_results = "blob/{{foo}}+sub{}.blast".format(BLOB_SUBSAMPLE),
-        reads_sample  = "blob/{{foo}}+sub{}.fasta".format(BLOB_SUBSAMPLE),
         cov           = "blob/{{foo}}+sub{}.complexity".format(BLOB_SUBSAMPLE)
     shadow: 'shallow'
     resources:
