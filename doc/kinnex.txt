@@ -105,10 +105,12 @@ On 20th Nov, I'm ready to try my new pipeline.
 
 1) Test on at least two runs locally. Or three, even:
 
-    r84140_20240116_162812  r84140_20240919_130407  r84140_20241007_154722
-    ? r84140_20231030_134730
+    r84140_20240116_162812 - stripped
+    r84140_20240919_130407 - ok
+    r84140_20241007_154722 - ok
+    r84140_20231030_134730 - too old, no reports.zip
 
-Foound some bugs. But why did I put the kinnex_scan.yaml files in the top level?
+Found some bugs. But why did I put the kinnex_scan.yaml files in the top level?
 I can't remember. I'm going to move them into kinnex_scan. Until I remember why that
 doesn't work, and then I'll move them back.
 

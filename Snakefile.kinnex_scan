@@ -74,29 +74,31 @@ def get_input_bam(wildcards=None):
     return f"{wildcards.bam}.bam"
 
 wildcard_constraints:
-    n       = r"\d+",
+    n            = r"\d+",
+    _kinnex_scan = r"(kinnex_scan/)?",
 
 rule main:
     input:
-        bc = [ f"{cell}.hifi_reads.{bc}.kinnex_scan.yaml"
+        bc = [ f"kinnex_scan/{cell}.hifi_reads.{bc}.kinnex_scan.yaml"
                for cell in SC['cells']
                for bc in SC['cells'][cell]['barcodes'] ],
-        unass = [ f"{cell}.hifi_reads.{bc}.kinnex_scan.yaml"
+        unass = [ f"kinnex_scan/{cell}.hifi_reads.{bc}.kinnex_scan.yaml"
+                  for cell in SC['cells']
                   for bc in ['unassigned']
                   if SC['cells'][cell].get(bc) ],
 
 # If we want to avoid scanning the unassigned reads we can enable a decoy rule like so:
 ruleorder: unassigned_verdict > ligations_to_verdict
 rule unassigned_verdict:
-    output: "{bam}.unassigned.kinnex_scan.yaml"
+    output: "{_kinnex_scan}{bam}.unassigned.kinnex_scan.yaml"
     run:
         dump_yaml( dict(mas = None,
                         reason = "skipping kinnex scan on unassigned reads"),
-                   file = str(output) )
+                   filename = str(output) )
 
 # Snakemake7 had some parsing problems with f-strings below so I used .format() instead.
 rule ligations_to_verdict:
-    output: "{bam}.kinnex_scan.yaml"
+    output: "{_kinnex_scan}{bam}.kinnex_scan.yaml"
     input:
         ligs = "kinnex_scan/{{bam}}.head{}.segmented_mas16.ligations.csv".format(BAM_HEAD),
         json = "kinnex_scan/{{bam}}.head{}.segmented_mas16.summary.json".format(BAM_HEAD),

@@ -63,11 +63,14 @@ except Exception as e:
     # Allow for cases where we just want to run one rule and don't care about the sc_data
     SC = dict(cells={}, unfiltered_cells=[None])
 
-# Load the .kinnex_scan.yaml files
-for cell in SC['cells']:
-    for bc in SC['cells'][cell]['barcodes']:
-        kinnex_yaml = load_yaml(f"{cell}.hifi_reads.{bc}.kinnex_scan.yaml")
-        SC['cells'][cell].setdefault('kinnex_scan', {})[bc] = kinnex_yaml
+# Load the .kinnex_scan.yaml files and merge into SC['cells']
+for cell, cellinfo in SC['cells'].items():
+    cellinfo['bc_and_unass'] = list(cellinfo['barcodes'])
+    if cellinfo.get('unassigned'):
+        cellinfo['bc_and_unass'].append('unassigned')
+    for bc in cellinfo['bc_and_unass']:
+        kinnex_yaml = load_yaml(f"kinnex_scan/{cell}.hifi_reads.{bc}.kinnex_scan.yaml")
+        cellinfo.setdefault('kinnex_scan', {})[bc] = kinnex_yaml
 
 logger.info(f"SC loaded with cells: {list(SC['unfiltered_cells'])}")
 logger.info(f"Of these, we process: {list(SC['cells'])}")
@@ -199,7 +202,7 @@ def i_one_barcode_info(wc):
     res['rrna'].append(f"rRNA_scan/{cell}.hifi_reads.{bc_and_mas}.results.yaml")
 
     # And the actual Kinnex file too
-    res['kinnex'] = f"{cell}.hifi_reads.{barcode}.kinnex_scan.yaml"
+    res['kinnex'] = f"kinnex_scan/{cell}.hifi_reads.{barcode}.kinnex_scan.yaml"
 
     return res
 

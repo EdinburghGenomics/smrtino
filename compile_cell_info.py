@@ -38,6 +38,9 @@ def main(args):
 
     if args.extract_ids:
         if metadata_xml_info:
+            # FIXME - actually there may be, because if we are re-running on the results
+            # of manual de-multiplexing in SMRTLink then potentially the ws_name and ws_desc
+            # could change? But how much do we care?
             exit("There's no point in using -x if we are loading metadata.xml directly.")
         info.update(extract_ids_multi(args.bcfiles))
 
@@ -167,7 +170,7 @@ def compile_json_reports(reports_dict, metadata_xml):
 
         reports['Barcodes']['Number of samples'] = bcd['barcode.n_barcodes']
         reports['Barcodes']['Assigned Reads (%)'] = "{:.2f}".format(bcd['barcode.percent_barcoded_reads'] * 100)
-        reports['Barcodes']['CV'] = "{:.2f}".format(calculate_cv(bcvc, bcvq))
+        reports['Barcodes']['CV'] = "{:.2f}".format(calculate_cv(bcvc['values'], bcvq['values']))
     else:
         reports['Barcodes']['Number of samples'] = 0 # As distinct from a single barcoded sample
         reports['Barcodes']['Assigned Reads (%)'] = 100

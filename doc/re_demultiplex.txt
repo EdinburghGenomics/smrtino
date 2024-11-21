@@ -1,0 +1,114 @@
+On run r84140_20241115_154613 the barcode mapping was incorrectly entered,
+so Helen had to undo the demultiplexing and re-do it in SMRTLink.
+
+https://edgen-smrtlink.epcc.ed.ac.uk:8243/sl/analysis/results/1593
+
+/mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593
+
+This is going to be a pain to deliver. If we were to automate it I could:
+
+1) Modify pacbio_utils to scan and link and deliver files from the SMRTLink job
+
+This is not unreasonable. I already did some work on this with regard to Kinnex.
+But then the problems are:
+
+ - Scanning for the files just on the project number is a PITA, so I'd probably
+   need to add some extra flags and options which is always meh.
+ - Generating count files and mdsums and FASTQ files is not automatic
+ - Interacts badly with my Kinnex logic plans
+
+2) Modify SMRTino to do the demultiplexing and enable re-demultiplex in SMRTino
+
+Could work, if the Ragic "LIMS" was working well. The lab would have to set up all
+the Revio runs with no (or dummy?!) barcodes, so it would be a process change, but
+it could work. Plenty of work to do and test (and a pain to test because we can't
+change the process until the pipeline works, but until the process is changed we
+won't have proper test data!).
+
+3) Allow SMRTino to run off the back of a re-demultiplex in SMRTLink.
+
+This is a bit clunky but it should be OK to implement. Mostly a matter of copying
+(or hard-linking, or symlinking) files and a bit of tweaking. I'd need to pick
+up the metadata from the original run and the BAM files from the re-run, but yeah
+we should be able to do this.
+
+My feeling is this is the best way. Have a look at r84140_20241115_154613
+and see what I'd need to do.
+
+- I can re-purpose my SMRTLink job scanning code from pacbio_scripts.
+
+- Where is the barcode/sample info coming from and how do I ensure I get
+  the new sample info with all the run info?
+- How do I enable to pipeline to pick up the new pseudo-run without clobbering
+  the old one? (probably put it in a subdir of $SEQUEL_SEQDATA).
+- How will the data deleter cope with this? (probably OK??)
+
+--
+
+In this case, it would have been easier to just re-jig the barcode mapping in
+SMRTino. In fact, maybe I can just do this? Will it work? No - because the BAM files
+have the actual sample encoded into them, not just the barcode.
+
+So, let's try manually back-converting the job output to a SMRTino input:
+
+$ mkdir -p ~/test_revio/redemux/r84140_20241115_154613/1_A01
+
+In the new SMRTino, I read barcodes.report.json from the reports.zip in order to get
+the number of samples, assigned reads, and CV.
+The number of assigned reads is 3243689. I can get the same totals from .lima_counts.txt
+
+In SMRTLink we get this same file and it's called:
+
+/mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/m84140_241115_155346_s3.hifi_reads.lima.counts
+
+So I'd need to re-jig my code to read this file instead. Sure. let's add it in:
+
+$ mkdir statistics
+$ ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/m84140_241115_155346_s3.hifi_reads.lima.counts statistics/m84140_241115_155346_s3.hifi_reads.lima_counts.txt
+
+Other than that we can use reports.zip
+
+$ ln -snf /lustre-gseg/smrtlink/sequel_seqdata/r84140_20241115_154613/1_A01/statistics/m84140_241115_155346_s3.reports.zip statistics/m84140_241115_155346_s3.reports.zip
+
+Now for the actual data. The new files have the doubled-up barcode names but I think we can keep them.
+But they need to be in the right locations.
+
+$ mkdir hifi_reads fail_reads
+$ ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/*/m84140_241115_155346_s3.hifi_reads.*.bam hifi_reads/
+$ ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/*/m84140_241115_155346_s3.hifi_reads.*.bam fail_reads/
+$ ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/*/m84140_241115_155346_s3.hifi_reads.*.bam.pbi hifi_reads/
+$ ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/*/m84140_241115_155346_s3.hifi_reads.*.bam.pbi fail_reads/
+
+And the same for the .consensusreadset.xml files which also have the doubled-up barcode names.
+
+$ mkdir pb_formats
+$ ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/*/m84140_241115_155346_s3.hifi_reads.*.consensusreadset.xml pb_formats/
+
+Now the unassigned reads are strangely called "unbarcoded" so I have to re-name those...
+
+$ ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/m84140_241115_155346_s3.hifi_reads.unbarcoded.consensusreadset.xml pb_formats/m84140_241115_155346_s3.hifi_reads.unassigned.consensusreadset.xml
+$  ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/m84140_241115_155346_s3.hifi_reads.unbarcoded.bam hifi_reads/m84140_241115_155346_s3.hifi_reads.unassigned.bam
+$  ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/m84140_241115_155346_s3.hifi_reads.unbarcoded.bam.pbi hifi_reads/m84140_241115_155346_s3.hifi_reads.unassigned.bam.pbi
+$  ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/m84140_241115_155346_s3.fail_reads.unbarcoded.bam.pbi fail_reads/m84140_241115_155346_s3.fail_reads.unassigned.bam.pbi
+$  ln -snf /mnt/lustre/gseg/smrtlink/software/userdata/jobs_root/0000/0000001/0000001593/outputs/demultiplexing_files/m84140_241115_155346_s3.fail_reads.unbarcoded.bam fail_reads/m84140_241115_155346_s3.fail_reads.unassigned.bam
+
+And that should just leave the "metadata" directory.
+
+$ mkdir metadata
+$ echo 'Re-demultiplex from SMRTLink' > metadata/m84140_241115_155346_s3.transferdone
+
+And this may be a problem, because I think I rely on metadata.xml to get the barcodes, and these are now
+wrong. Actually, no, I'm reading the cell XML and it's all good!
+
+If this works, I think I know how to proceed...
+
+1) Re-jig the report maker code so it uses the lima_counts.txt not the barcodes.report.json
+2) Allow that if pbpipeline/re-demultiplex exists then scan_cells.py will look in there for
+the files mentioned above and thus I will be able to run the pipeline directly off the
+SMRTLink output just by making a symlink.
+3) Maybe this works for the existing runs where Skera+Lima was run in SMRTLink
+and I can abandon my efforts to make pacbio_scripts deliver directly from SMRTLink? It
+does solve the issue of where I make the md5sums and the counts!
+
+So, yes, I think I can have a crack at that. Good thing is, it only involves changes to
+scan_cells.py so is very self-contained.
