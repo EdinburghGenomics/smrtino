@@ -92,7 +92,7 @@ def find_source_file(**args):
                 fn = SC['cells'][wc.cell]['barcodes'][wc.barcode][wc.part][wc.fmt]
 
         except AttributeError:
-            # No barcode. Must be the metadata or reports.zip file.
+            # No barcode. Must be the metadata or reports.zip or lima_counts.txt file.
             fn = SC['cells'][wc.cell][wc.fmt]
 
         return f"{RUNDIR}/{fn}"
@@ -118,7 +118,7 @@ wildcard_constraints:
 # Main target is one yaml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
 localrules: main, one_cell_info, one_barcode_info
-localrules: copy_meta, get_bam_head, copy_reports_zip
+localrules: copy_meta, get_bam_head, copy_reports_zip, copy_lima_counts
 rule main:
     input:
         yaml     = [ f"{c}.info.yaml" for c in SC['cells'] ]
@@ -147,6 +147,10 @@ def i_one_cell_info(wc):
 
     # Also the metadata.xml file (which is also included in one_barcode_info)
     res['metaxml'] = f"{cell}.metadata.xml"
+
+    # Lima counts is optional
+    if SC['cells'][cell].get('lima_counts'):
+        res['lima_counts'] = f"{cell}.hifi_reads.lima_counts.txt"
 
     return res
 
@@ -221,7 +225,7 @@ rule one_cell_info:
         # Add all the reports, and unassigned if we have it
         optional_bits = ""
         for n in input._names:
-            if n in ['unass', 'reports_zip', 'metaxml']:
+            if n in ['unass', 'reports_zip', 'lima_counts', 'metaxml']:
                 optional_bits += f"--{n} {getattr(input, n)} "
 
         shell("""compile_cell_info.py \
@@ -345,6 +349,15 @@ rule copy_reports_zip:
         zip = find_source_file(fmt="reports_zip")
     shell:
         "cp --no-preserve=all -Lv {input.zip} {output}"
+
+# This rule copies the lima.counts file. For cells with no barcodes this
+# should not even be triggered.
+rule copy_lima_counts:
+    output: "{cell}.hifi_reads.lima_counts.txt"
+    input:
+        counts = find_source_file(fmt="lima_counts")
+    shell:
+        "cp --no-preserve=all -Lv {input.counts} {output}"
 
 # This script produces some headline stats as well as a histogram we could use
 # (but currently we don't)

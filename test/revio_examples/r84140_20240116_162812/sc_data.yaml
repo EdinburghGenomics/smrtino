@@ -9,6 +9,7 @@ cells:
           bam: 1_A01/hifi_reads/m84140_240116_163605_s1.hifi_reads.bam
           pbi: 1_A01/hifi_reads/m84140_240116_163605_s1.hifi_reads.bam.pbi
           xml: 1_A01/pb_formats/m84140_240116_163605_s1.hifi_reads.consensusreadset.xml
+    lima_counts: null
     meta: 1_A01/metadata/m84140_240116_163605_s1.metadata.xml
     parts:
     - hifi_reads
@@ -33,6 +34,7 @@ cells:
           bam: 1_B01/hifi_reads/m84140_240116_183509_s2.hifi_reads.bc1008.bam
           pbi: 1_B01/hifi_reads/m84140_240116_183509_s2.hifi_reads.bc1008.bam.pbi
           xml: 1_B01/pb_formats/m84140_240116_183509_s2.hifi_reads.bc1008.consensusreadset.xml
+    lima_counts: 1_B01/statistics/m84140_240116_183509_s2.hifi_reads.lima_counts.txt
     meta: 1_B01/metadata/m84140_240116_183509_s2.metadata.xml
     parts:
     - hifi_reads

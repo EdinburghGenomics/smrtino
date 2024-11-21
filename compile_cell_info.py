@@ -17,7 +17,7 @@ import json
     This super-simple script just outputs a file linking to these other files.
 """
 
-REPORTS_IN_ZIP = "raw_data adapter ccs control loading barcodes".split()
+REPORTS_IN_ZIP = "raw_data adapter ccs control loading".split()
 
 def main(args):
 
@@ -33,6 +33,12 @@ def main(args):
     else:
         metadata_xml_info = None
 
+    # Due to the possibility of re-demultiplexing, we want to get the barcode metrics
+    # form this report file.
+    lima_counts = None
+    if args.lima_counts:
+        lima_counts = load_lima_counts(args.lima_counts)
+
     # Build the links to the files.
     info = gen_info(args)
 
@@ -45,7 +51,7 @@ def main(args):
         info.update(extract_ids_multi(args.bcfiles))
 
     if json_reports:
-        info.update(compile_json_reports(json_reports, metadata_xml_info))
+        info.update(compile_json_reports(json_reports, metadata_xml_info, lima_counts))
 
     dump_yaml(info, fh=sys.stdout)
 
@@ -64,6 +70,7 @@ def load_reports_zip(args_dict):
                         res[r] = json.load(jfh)
                 except KeyError:
                     # For barcodes.report.json this is expected on unbarcoded runs
+                    # but we don't look for that one any more.
                     L.warning(f"{json_file} was not found in {args_dict['reports_zip']}")
 
     # Now the individual files, if any
@@ -77,7 +84,7 @@ def load_reports_zip(args_dict):
 
     return res
 
-def compile_json_reports(reports_dict, metadata_xml):
+def compile_json_reports(reports_dict, metadata_xml, lima_counts=None):
     """This attempts to aggregate all the per-cell QC items wanted for the sign-off
        spreadsheet. The results will be arranged in a dictionary mimicing the current
        spreadsheet headings.
@@ -160,7 +167,10 @@ def compile_json_reports(reports_dict, metadata_xml):
     reports['Hifi Quality %']['≥ Q40'] = "{:.1f}".format(ccsd2['≥ Q40'])
 
     # Barcodes
-    if 'barcodes' in reports_dict:
+    if lima_counts:
+        reports['Barcodes'].update(summarize_lima_counts(lima_counts))
+    elif 'barcodes' in reports_dict:
+        # This is problematic because we don't get a fresh report if the run is re-demultiplexed
         bcd = { a['id']: a['value'] for a in reports_dict['barcodes']['attributes'] }
 
         # This just for the CV - Surely this is already logged somewhere?
@@ -210,6 +220,42 @@ def compile_json_reports(reports_dict, metadata_xml):
     basic_fields = "run_id run_slot cell_id cell_uuid ws_name ws_desc".split()
     return dict( reports = reports,
                  **{ k: metadata_xml[k] for k in basic_fields } )
+
+def load_lima_counts(filename):
+    """Load a lima_counts.txt file and return a dict of {barcode: n}
+       Unassigned reads will have the barcode of 'unassigned'
+    """
+    res = dict()
+
+    with open(filename) as fh:
+        # Standard TSV loading
+        try:
+            headers = next(fh).rstrip("\n").split("\t")
+        except StopIteration:
+            # File was completely empty. This is ok.
+            pass
+
+        for aline in fh:
+            line_as_dict = dict(zip(headers, aline.rstrip("\n").split("\t")))
+
+            if line_as_dict['IdxCombinedNamed'] == "Not Barcoded":
+                bc_name = "unassigned"
+            else:
+                bc_name = f"{line_as_dict['IdxCombinedNamed']}--{line_as_dict['IdxCombinedNamed']}"
+
+            res[bc_name] = int(line_as_dict['Counts'])
+
+    return res
+
+def summarize_lima_counts(lima_counts):
+    """Summarize the lima_counts, assuming this was actually a barcoded run.
+    """
+    unassigned = lima_counts['unassigned']
+    assigned = [v for k, v in lima_counts.items() if k != 'unassigned']
+
+    return { 'Number of samples': len(assigned),
+             'Assigned Reads (%)': "{:.2f}".format(sum(assigned) * 100 / (sum(assigned) + unassigned)),
+             'CV': "{:.2f}".format(stdev(assigned) / mean(assigned)) }
 
 def calculate_cv(counts_list, qual_list):
     """Calculate the CV of counts_list. If qual_list is provided I'll use it to spot the non-barcoded
@@ -299,6 +345,8 @@ def parse_args(*args):
 
     argparser.add_argument("--metaxml",
                             help="Location of metadata.xml for this cell")
+    argparser.add_argument("--lima_counts",
+                            help="Location of lima_counts.txt for this cell")
 
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")

@@ -80,6 +80,7 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone"):
                       'barcodes': find_barcodes(rundir, slot, cellid),
                       'meta': find_meta(rundir, slot, cellid),
                       'reports_zip': find_reports_zip(rundir, slot, cellid),
+                      'lima_counts': find_lima_counts(rundir, slot, cellid),
                     } for slot, cellid in all_cells.items() }
     # Add unassigned, and unbarcoded ('all'), possibly
     for cellid, v in res.items():
@@ -89,6 +90,14 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone"):
             del v['barcodes']['unassigned']
 
         v['barcodes'].update(find_unbarcoded(rundir, v['slot'], cellid))
+
+    # Sanity check on lima_counts
+    for cellid, v in res.items():
+        if v.get('lima_counts') and not v.get('unassigned'):
+            L.warning("We have lima_counts but no unassigned")
+        if v.get('unassigned') and not v.get('lima_counts'):
+            # This is worse
+            raise RuntimeError("We have unassigned but no lima_counts")
 
     return res
 
@@ -165,6 +174,17 @@ def find_reports_zip(rundir, slot, cellid):
     res = f"{slot}/statistics/{cellid}.reports.zip"
 
     assert os.path.exists(f"{rundir}/{res}"), f"missing {rundir}/{res}"
+
+    return res
+
+def find_lima_counts(rundir, slot, cellid):
+    """Returns the location of the lima_counts.txt file found under
+       statistics. If there is no such file, returns None.
+    """
+    res = f"{slot}/statistics/{cellid}.hifi_reads.lima_counts.txt"
+
+    if not os.path.exists(f"{rundir}/{res}"):
+        return None
 
     return res
 
