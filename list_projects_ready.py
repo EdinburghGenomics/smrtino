@@ -62,7 +62,11 @@ def list_the_projects():
     # everything is there as it should be.
     yaml_info_files = set()
     for sc_data_file in glob_sc_data():
+        L.debug(f"Reading from {sc_data_file}")
         sc_data = load_yaml(sc_data_file)
+        if (not sc_data) or ('cells' not in sc_data):
+            L.warning(f"No 'cells' key in {sc_data_file}")
+            continue
 
         for acell, cdict in sc_data['cells'].items():
             if cdict['slot'] in cells_done:

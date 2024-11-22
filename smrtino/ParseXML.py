@@ -315,8 +315,8 @@ def get_readset_info(xmlfile, smrtlink_base=None):
     # There should be, unless this !
     L.debug(f"Found {len(bio_samples)} BioSample records, {len(samp_barcodes)}+{len(meta_barcodes)} DNABarcodes")
 
+    # The presence of meta_barcodes is indicative of an unassigned reads file, as far as I can see.
     if meta_barcodes:
-        # This is indicative of an unassigned reads file, as far as I can see.
         assert 'barcodes' not in info
         info['bs_name'] = "unassigned"
         info['bs_desc'] = "Unassigned reads"

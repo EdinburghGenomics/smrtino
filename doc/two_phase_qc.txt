@@ -1,0 +1,32 @@
+Currently, SMRTino does all the data copying, md5summing and QC reporting at once.
+Only once the final report is ready does it add the project to projects_ready.txt
+
+Two problems with this:
+
+1) If one cell finishes, and the project is written to projects_ready.txt, then
+the partial files on a second cell could be picked up for delivery. I think I
+have a guard against this, but if I have a guard anyway then it doesn't hurt
+to write out the projects_ready.txt earlier.
+
+TODO - check the guard.
+
+2) More importantly, we can't deliver a run until all the QC finishes. This has become
+a problem recently. So I think we need to do what Illuminatus does and have a two
+phase processing.
+
+Phase 1 copies the files and does the md5sums then writes projects_ready.txt
+
+We don't need to have an interim report like Illuminatus, I don't think.
+
+But I would need to make the delivery scripts happy in the face of missing _cstats.
+
+How do I do this? Essentially, info.yaml is going to have to be re-generated with
+extra data on the second round. So I think the implementation is:
+
+1) Add a config parameter to bypass all the parts that require subsampling, and the contig_stats
+
+2) Run Snakefile twice, once with it on and once with it off
+
+3) Use -R flags to ensure the stale bits get re-run
+
+OK, will do.

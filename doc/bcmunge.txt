@@ -1,0 +1,30 @@
+The _bcmunge function in smrtino/ParseXML.py collapses barcodes like "bc2004--bc2004" into
+"bc2004". The idea was that the XML files have this doubled up naming but the actual filenames
+have the single naming.
+
+But it seems we can't rely on that. The filenames are the filenames. If we run Lima in SMRTLink
+we get the doubled-up names.
+
+So I need to re-think. Probably I need two barcodes - the barcode in the filename which will
+be got from the filename and never munged, and the barcode for display which will be got
+from the XML and subject to munge.
+
+At the moment, the "Read stats summary" has the un-munged barcode names so that's all arse about.
+Meh.
+
+So, I can fix this on test_pacbio_data/r84140_20241115_154613
+
+I need to:
+
+1) Have both the versions in bc.info.yaml
+2) Ensure that get_revio_data works (so 'barcode' should come from the from the filename and
+'barcode_squashed' should be the result of _bcmunge)
+3) Have get_revio_data link to the squashed name, and have the delivery scripts deliver with
+the squashed name.
+4) Have _cstats use the squashed name so it appears on the reports correctly
+
+OK, let's do this. Then the updated scan_cells.py which looks for redemultiplexes. Then the
+ability to deliver cells while the QC is still running. And finally the (new) idea to reduce the
+number of BLAST jobs dynamically if there are more than 4 samples.
+
+OK, so let us go.
