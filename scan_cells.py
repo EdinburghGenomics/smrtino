@@ -43,6 +43,7 @@ def scan_main(args):
     res = dict( run = parsed_run_name,
                 cells = {} )
 
+    # How to decide if the cell is ready?
     # We can't scan for metadata as there are multiple of those files
     extn_to_scan = ".sts.xml" if args.xmltrigger else ".transferdone"
 
@@ -50,22 +51,28 @@ def scan_main(args):
     if parsed_run_name['platform'].startswith("Sequel"):
         sc = scan_cells_sequel(args.rundir, args.cells, extn_to_scan)
     else:
-        sc = scan_cells_revio(args.rundir, args.cells, extn_to_scan)
+        sc = scan_cells_revio(args.rundir, args.cells, extn_to_scan, args.redemux)
 
     res['cells'].update(sc)
 
     return res
 
 
-def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone"):
+def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone", redemux=None):
     """ Here's what we want to find, per cell.
         .transferdone - is under metadata
-        {cell}.reads.bam - under hifi_reads. I guess the fail reads are the <Q20 reads
-                           Do we still have the option to include kinetics??
-                           Well apparently they are included already (says Heleen)
-        {cell}.reads.bam.pbi - yep we get PBI files
+        {cell}.reads.bam - under hifi_reads and fail_reads
+        {cell}.reads.bam.pbi - ditto
         {cell}.consensusreadset.xml - under pb_formats
-        .{cell}.run.metadata.xml - Seems to be gone? Or is it m84140_230823_180019_s1.metadata.xml?
+        {cell}.metadata.xml - under metadata
+        {cell}.reports.zip - ditto
+        {cell}.lima_counts.txt - ditto, but optional
+
+        If redemux_dir is set and exists this overrides:
+            {cell}.reads.bam[.pbi]
+            {cell}.consensusreadset.xml
+            {cell}.lima_counts.txt (if it exists, and note the rename)
+
     """
     # Get a dict of slot: cell for all cells
     all_cells = { b.split('/')[-3]: b.split('/')[-1][:-len(extn_to_scan)]
@@ -74,14 +81,25 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone"):
     if cell_list:
         all_cells = { k:all_cells[k] for k in cell_list }
 
-    # Now we can make a result, keyed off cell ID (not slot)
-    res = { cellid: { 'slot': slot,
-                      'parts': ['hifi_reads', 'fail_reads'],
-                      'barcodes': find_barcodes(rundir, slot, cellid),
-                      'meta': find_meta(rundir, slot, cellid),
-                      'reports_zip': find_reports_zip(rundir, slot, cellid),
-                      'lima_counts': find_lima_counts(rundir, slot, cellid),
-                    } for slot, cellid in all_cells.items() }
+    # Now we can make a result, keyed off cell ID (not the slot)
+    res = dict()
+    for slot, cellid in all_cells.items():
+        redemux_dir = redemux.format(slot=slot, cell=cellid, cellid=cellid)
+        if os.path.isdir(redemux_dir):
+            res['cellid'] = { 'slot': slot,
+                              'parts': ['hifi_reads', 'fail_reads'],
+                              'barcodes': find_barcodes_redemux(redemux_dir, cellid),
+                              'meta': find_meta(rundir, slot, cellid),
+                              'reports_zip': find_reports_zip(rundir, slot, cellid),
+                              'lima_counts': find_lima_counts_redemux(redemux_dir, cellid) }
+        else:
+            res['cellid'] = { 'slot': slot,
+                              'parts': ['hifi_reads', 'fail_reads'],
+                              'barcodes': find_barcodes(rundir, slot, cellid),
+                              'meta': find_meta(rundir, slot, cellid),
+                              'reports_zip': find_reports_zip(rundir, slot, cellid),
+                              'lima_counts': find_lima_counts(rundir, slot, cellid) }
+
     # Add unassigned, and unbarcoded ('all'), possibly
     for cellid, v in res.items():
         if 'unassigned' in v['barcodes']:
@@ -259,6 +277,10 @@ def parse_args(*args):
 
     parser.add_argument("rundir", default='./pbpipeline/from', nargs='?',
                         help="Directory to scan for cells and their data files")
+
+    parser.add_argument("--redemux", default='./pbpipeline/re-demultiplex-{cell}',
+                        help="Directory to scan for SMRTLink re-demultiplex of the run, which should be the"
+                             " jobs_root/xxxx/outputs/demultiplexing_files directory in SMRTLink.")
 
     parser.add_argument("-c", "--cells", nargs='+',
                         help = "Cells to look at. If not specified, all will be scanned."

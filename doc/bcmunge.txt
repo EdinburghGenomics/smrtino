@@ -27,4 +27,5 @@ OK, let's do this. Then the updated scan_cells.py which looks for redemultiplexe
 ability to deliver cells while the QC is still running. And finally the (new) idea to reduce the
 number of BLAST jobs dynamically if there are more than 4 samples.
 
-OK, so let us go.
+OK, so let us go. On 22/11/24 I've done most 1, 2 and 4. I'm going to do the redemultiplexes
+first so I can test end-to-end.
