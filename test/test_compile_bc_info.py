@@ -121,6 +121,25 @@ class T(unittest.TestCase):
 
         self.assertEqual(info, expected)
 
+    def test_revio_redemux(self):
+        """Look at a consensusreadset.xml that came from re-running the redemultiplexing
+           in SMRTLink.
+
+           Note that the sample file was run through strip_readset_resources.py
+        """
+        ddir = f"{DATA_DIR}/r84140_20241115_154613"
+        cellid = "m84140_241115_155346_s3"
+        args = self.get_mock_args()
+        args.xmlfile = [f"{ddir}/{cellid}.hifi_reads.bc2020--bc2020.consensusreadset.xml"]
+
+        with open(f"{ddir}/{cellid}.hifi_reads.bc2020--bc2020.info.yaml") as fh:
+            expected = yaml.safe_load(fh)
+
+        # Run the actual thing
+        info = gen_info(args)
+
+        self.assertEqual(info, expected)
+
     def test_taxon_binning(self):
         """Test the equivalent of:
 

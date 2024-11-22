@@ -58,6 +58,17 @@ def _determine_version():
 
     return vers
 
+def squash_barcode(bc):
+    """If we see a barcode like "bc1002--bc1002" then just report "bc1002"
+    """
+    bc_split = bc.split("--")
+
+    if len(bc_split) == 2 and bc_split[0] == bc_split[1]:
+        return bc_split[0]
+    else:
+        # Just leave it
+        return bc
+
 def parse_run_name(name):
     """Parse a run name like r64175e_20230811_115046/ and see what it tells us.
        You can also parse a cell name if you like.

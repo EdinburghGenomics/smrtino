@@ -3,6 +3,8 @@ import re
 import logging as L
 import xml.etree.ElementTree as ET
 
+from . import squash_barcode
+
 """ For each cell we have a metadata.xml file which has info on the whole cell
     (and the run).
     For each barcode we have a readset.xml file which has info on the sample,
@@ -45,16 +47,6 @@ def _load_xml(filename):
         root = ET.fromstringlist(munged_lines)
 
     return root
-
-def _bcmunge(bc):
-    """If we see a barcode like "bc1002--bc1002" then just report "bc1002"
-    """
-    bc_split = bc.split("--")
-
-    if len(bc_split) == 2 and bc_split[0] == bc_split[1]:
-        return bc_split[0]
-    else:
-        return bc
 
 def _get_automation_parameters(root):
     """Return the AutomationParameter list as a regular dict
@@ -138,7 +130,7 @@ def _get_common_stuff(root):
     # And see if we have barcodes
     dna_barcodes = ws.findall(".//pbsample:DNABarcodes", _ns)
     if dna_barcodes:
-        info['barcodes'] = [ _bcmunge(bc.attrib.get('Name', 'unknown'))
+        info['barcodes'] = [ squash_barcode(bc.attrib.get('Name', 'unknown'))
                              for dna in dna_barcodes
                              for bc in dna ]
 
@@ -312,10 +304,14 @@ def get_readset_info(xmlfile, smrtlink_base=None):
     meta_barcodes = [ mbc for bs in bio_samples
                       for mbc in bs.findall('pbmeta:DNABarcodes/pbmeta:DNABarcode', _ns) ]
 
+    # Get the barcode according to the filename
+    mo = re.search(r"_reads\.(\S+)\.(consensus)?readset.xml$", xmlfile)
+    barcode_from_filename = mo.group(1) if mo else "unknown"
+
     # There should be, unless this !
     L.debug(f"Found {len(bio_samples)} BioSample records, {len(samp_barcodes)}+{len(meta_barcodes)} DNABarcodes")
 
-    # The presence of meta_barcodes is indicative of an unassigned reads file, as far as I can see.
+    # The presence of meta_barcodes is indicative of an unassigned reads file.
     if meta_barcodes:
         assert 'barcodes' not in info
         info['bs_name'] = "unassigned"
@@ -324,10 +320,21 @@ def get_readset_info(xmlfile, smrtlink_base=None):
     elif len(bio_samples) == 1:
         # A single sample. We should already have the barcode (or there's no barcode), but check.
         if len(samp_barcodes) == 0:
+            # Not a barcoded run
             assert 'barcodes' not in info
         else:
-            assert info['barcodes'] == [_bcmunge(e.attrib['Name']) for e in samp_barcodes]
-            info['barcode'], = info['barcodes']
+            # This assertion is an internal consistency check and should pass regardless
+            # of the data content.
+            assert info['barcodes'] == [squash_barcode(e.attrib['Name']) for e in samp_barcodes]
+            # Verify that info['barcode'] really is the same as barcode_from_filename but this
+            # could be squashed or unsquashed.
+            barcode_from_xml, = info['barcodes']
+            if squash_barcode(barcode_from_filename) != barcode_from_xml:
+                raise RuntimeError(f"Barcode {barcode_from_xml!r} in file does not match"
+                                   f" {barcode_from_filename!r} in the file name.")
+
+            info['barcode'] = barcode_from_filename
+            info['barcode_squashed'] = squash_barcode(info['barcode'])
             del info['barcodes']
 
         bs, = bio_samples

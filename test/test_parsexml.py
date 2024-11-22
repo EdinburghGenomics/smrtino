@@ -229,6 +229,7 @@ class T(unittest.TestCase):
         self.assertEqual(info_bc, { '_parts': ['hifi_reads', 'fail_reads'],
                                     '_readset_type': 'ccsreads',
                                     'barcode': 'bc1008',
+                                    'barcode_squashed': 'bc1008',
                                     'bs_desc': '',
                                     'bs_name': '28850RL0006L01',
                                     'bs_project': '28850',

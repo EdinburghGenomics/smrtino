@@ -5,7 +5,7 @@ from pprint import pprint
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino.ParseXML import get_readset_info, get_metadata_info
-from smrtino import load_yaml, dump_yaml
+from smrtino import load_yaml, dump_yaml, squash_barcode
 
 """ Emits .info.yaml files for SMRT cells by parsing the xml files from
     SMRT link, among other things. This script, along with make_report.py,
@@ -82,7 +82,7 @@ def gen_info(args):
                 mas = s_split[2]
 
         stats = load_yaml(s, dictify_result=True)
-        stats['Barcode'] = barcode
+        stats['Barcode'] = squash_barcode(barcode)
         stats['File'] = hifi_or_fail
         stats['Kinnex'] = mas
         stats['_headings'] = ['Barcode', 'File', 'Kinnex'] + stats['_headings']

@@ -1,0 +1,19 @@
+_filename: m84140_241115_155346_s3.hifi_reads.bc2020--bc2020.consensusreadset.xml
+_parts:
+- hifi_reads
+- fail_reads
+_readset_type: ccsreads
+barcode: bc2020--bc2020
+barcode_squashed: bc2020
+bs_desc: ''
+bs_name: 33893SN0020L01
+bs_project: '33893'
+cell_id: m84140_241115_155346_s3
+cell_uuid: 64bb6115-a54b-4754-899e-1135d1f75191
+project: '33893'
+readset_type: Revio (HiFi)
+run_id: r84140_20241115_154613
+run_slot: 1_A01
+ws_desc: 'First run - 63 microbes multiplexed '
+ws_name: 33893SNpool01
+ws_project: '33893'

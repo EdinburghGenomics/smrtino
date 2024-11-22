@@ -4,6 +4,7 @@ _parts:
 - fail_reads
 _readset_type: ccsreads
 barcode: bc1008
+barcode_squashed: bc1008
 cell_id: m84140_240116_183509_s2
 cell_uuid: bee1763c-4332-4a14-91c7-65dbbef2f28c
 readset_type: Revio (HiFi)
