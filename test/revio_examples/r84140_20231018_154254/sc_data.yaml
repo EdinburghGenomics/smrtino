@@ -22,6 +22,7 @@ cells:
     parts:
     - hifi_reads
     - fail_reads
+    re-demultiplex: false
     reports_zip: 1_D01/statistics/m84140_231018_162059_s4.reports.zip
     slot: 1_D01
     unassigned:

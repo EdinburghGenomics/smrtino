@@ -35,7 +35,6 @@ if ( not os.path.dirname(workflow.snakefile) in os.environ['PATH'].split(':') an
      os.environ['PATH'] += ':' + os.path.dirname(workflow.snakefile)
 
 # It should not be necessary to give the run dir as pbpipeline/from should point to it...
-RUNDIR = config.get('rundir', 'pbpipeline/from')
 BAM_HEAD = config.get('head', 1000)
 
 # Load the info prepared by scan_cells.py
@@ -69,7 +68,7 @@ def get_input_bam(wildcards=None):
     if len(bam_parts) == 3 and bam_parts[0] in SC['cells']:
         bam_cell, bam_pf, bam_bc = bam_parts
         bam_file = SC['cells'][bam_cell]['barcodes'][bam_bc][bam_pf]['bam']
-        return os.path.join(RUNDIR, bam_file)
+        return bam_file
     # else
     return f"{wildcards.bam}.bam"
 

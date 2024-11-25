@@ -34,6 +34,21 @@ def main(args):
 
     print( dump_yaml(res), end='' )
 
+def my_normpath(p):
+    """Call os.path.normpath but add a '/' to the name and
+       convert '.' or './' to ''
+    """
+    if not p:
+        # p can be None or ''
+        return p
+
+    p = os.path.normpath(p)
+
+    if p == '.':
+        return ''
+
+    return p + '/'
+
 def scan_main(args):
     """Get scanning
     """
@@ -49,9 +64,14 @@ def scan_main(args):
 
     assert parsed_run_name['run_or_cell'] == 'run'
     if parsed_run_name['platform'].startswith("Sequel"):
-        sc = scan_cells_sequel(args.rundir, args.cells, extn_to_scan)
+        sc = scan_cells_sequel( my_normpath(args.rundir),
+                                args.cells,
+                                extn_to_scan )
     else:
-        sc = scan_cells_revio(args.rundir, args.cells, extn_to_scan, args.redemux)
+        sc = scan_cells_revio( my_normpath(args.rundir),
+                               args.cells,
+                               extn_to_scan,
+                               args.redemux and my_normpath(args.redemux) )
 
     res['cells'].update(sc)
 
@@ -76,31 +96,35 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone", redemux=No
     """
     # Get a dict of slot: cell for all cells
     all_cells = { b.split('/')[-3]: b.split('/')[-1][:-len(extn_to_scan)]
-                  for b in glob(f"{rundir}/*/metadata/*{extn_to_scan}") }
+                  for b in glob(f"{rundir}*/metadata/*{extn_to_scan}") }
 
     if cell_list:
         all_cells = { k:all_cells[k] for k in cell_list }
 
     # Now we can make a result, keyed off cell ID (not the slot)
     res = dict()
-    use_re_demux = dict()
     for slot, cellid in all_cells.items():
-        redemux_dir = redemux.format(slot=slot, cell=cellid, cellid=cellid)
-        use_re_demux[cellid] = os.path.isdir(redemux_dir)
-        if use_re_demux[cellid]:
-            res[cellid] = { 'slot': slot,
-                            'parts': ['hifi_reads', 'fail_reads'],
-                            'barcodes': find_barcodes_redemux(redemux_dir, cellid),
-                            'meta': find_meta(rundir, slot, cellid),
-                            'reports_zip': find_reports_zip(rundir, slot, cellid),
-                            'lima_counts': find_lima_counts_redemux(redemux_dir, cellid) }
+        res[cellid] = { 'slot': slot,
+                        'parts': ['hifi_reads', 'fail_reads'] }
+        if redemux is None:
+            redemux_dir = None
+            res[cellid]['re-demultiplex'] = False
         else:
-            res[cellid] = { 'slot': slot,
-                            'parts': ['hifi_reads', 'fail_reads'],
-                            'barcodes': find_barcodes(rundir, slot, cellid),
-                            'meta': find_meta(rundir, slot, cellid),
-                            'reports_zip': find_reports_zip(rundir, slot, cellid),
-                            'lima_counts': find_lima_counts(rundir, slot, cellid) }
+            redemux_dir = redemux.format(slot=slot, cell=cellid, cellid=cellid)
+            # This is needed as os.path.isdir('') always returns False
+            res[cellid]['re-demultiplex'] = os.path.isdir(redemux_dir or '.')
+        if res[cellid]['re-demultiplex']:
+            res[cellid].update({
+                    'barcodes': find_barcodes_redemux(redemux_dir, cellid),
+                    'meta': find_meta(rundir, slot, cellid),
+                    'reports_zip': find_reports_zip(rundir, slot, cellid),
+                    'lima_counts': find_lima_counts_redemux(redemux_dir, cellid) })
+        else:
+            res[cellid].update({
+                    'barcodes': find_barcodes(rundir, slot, cellid),
+                    'meta': find_meta(rundir, slot, cellid),
+                    'reports_zip': find_reports_zip(rundir, slot, cellid),
+                    'lima_counts': find_lima_counts(rundir, slot, cellid) })
 
     # Add unassigned, and unbarcoded ('all'), possibly
     for cellid, v in res.items():
@@ -109,7 +133,7 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone", redemux=No
             v['unassigned'] = v['barcodes']['unassigned']
             del v['barcodes']['unassigned']
 
-        if not use_re_demux[cellid]:
+        if not res[cellid]['re-demultiplex']:
             v['barcodes'].update(find_unbarcoded(rundir, v['slot'], cellid))
 
     # Sanity check on lima_counts
@@ -131,7 +155,7 @@ def find_barcodes_redemux(redemux_dir, cellid, check_exist=True):
     """
     # At this point I'm not checking that the directory name matches the file name,
     # but files_per_barcode_redemux() will spot any anomalies.
-    xmlfiles = glob(f"{redemux_dir}/*/{cellid}.hifi_reads.*.consensusreadset.xml")
+    xmlfiles = glob(f"{redemux_dir}*/{cellid}.hifi_reads.*.consensusreadset.xml")
     barcodes = [ os.path.basename(f)[len(f"{cellid}.hifi_reads."):-len(".consensusreadset.xml")]
                  for f in xmlfiles ]
 
@@ -159,7 +183,7 @@ def find_barcodes(rundir, slot, cellid, check_exist=True):
     # instead. Probably makes no difference.
     # eg: 1_C01/pb_formats/m84140_231018_155043_s3.hifi_reads.bc1002.consensusreadset.xml
 
-    xmlfiles = glob(f"{rundir}/{slot}/pb_formats/{cellid}.hifi_reads.*.consensusreadset.xml")
+    xmlfiles = glob(f"{rundir}{slot}/pb_formats/{cellid}.hifi_reads.*.consensusreadset.xml")
     barcodes = [ os.path.basename(f)[len(f"{cellid}.hifi_reads."):-len(".consensusreadset.xml")]
                  for f in xmlfiles ]
 
@@ -179,7 +203,7 @@ def find_unbarcoded(rundir, slot, cellid, check_exist=True):
     # We have to look for the BAM file directly because even barcoded runs have a
     # combined hifi_reads.consensusreadset.xml file.
 
-    hifipath = f"{rundir}/{slot}/hifi_reads"
+    hifipath = f"{rundir}{slot}/hifi_reads"
     bamfiles = glob(f"{hifipath}/{cellid}.hifi_reads.bam")
 
     res = {}
@@ -194,16 +218,16 @@ def unassigned_for_redemux(redemux_dir, cellid, check_exist=True):
        TODO - maybe I could also look for 'unassigned'. But I really don't expect to
        find those.
     """
-    hifi = dict( bam = f"{cellid}.hifi_reads.unbarcoded.bam",
-                 pbi = f"{cellid}.hifi_reads.unbarcoded.bam.pbi",
-                 xml = f"{cellid}.hifi_reads.unbarcoded.consensusreadset.xml" )
-    fail = dict( bam = f"{cellid}.fail_reads.unbarcoded.bam",
-                 pbi = f"{cellid}.fail_reads.unbarcoded.bam.pbi" )
+    hifi = dict( bam = f"{redemux_dir}{cellid}.hifi_reads.unbarcoded.bam",
+                 pbi = f"{redemux_dir}{cellid}.hifi_reads.unbarcoded.bam.pbi",
+                 xml = f"{redemux_dir}{cellid}.hifi_reads.unbarcoded.consensusreadset.xml" )
+    fail = dict( bam = f"{redemux_dir}{cellid}.fail_reads.unbarcoded.bam",
+                 pbi = f"{redemux_dir}{cellid}.fail_reads.unbarcoded.bam.pbi" )
 
     if check_exist:
         for f in chain(hifi.values(), fail.values()):
-            if not os.path.exists(f"{redemux_dir}/{f}"):
-                raise FileNotFoundError(f"missing {redemux_dir}/{f}")
+            if not os.path.exists(f):
+                raise FileNotFoundError(f"missing {f}")
 
     return dict( hifi_reads = hifi,
                  fail_reads = fail )
@@ -213,16 +237,16 @@ def files_per_barcode_redemux(redemux_dir, cellid, barcode, check_exist=True):
     """Returns the location of the reads files for a given barcode,
        and checks they exist (redemux mode).
     """
-    hifi = dict( bam = f"{barcode}/{cellid}.hifi_reads.{barcode}.bam",
-                 pbi = f"{barcode}/{cellid}.hifi_reads.{barcode}.bam.pbi",
-                 xml = f"{barcode}/{cellid}.hifi_reads.{barcode}.consensusreadset.xml" )
-    fail = dict( bam = f"{barcode}/{cellid}.fail_reads.{barcode}.bam",
-                 pbi = f"{barcode}/{cellid}.fail_reads.{barcode}.bam.pbi" )
+    hifi = dict( bam = f"{redemux_dir}{barcode}/{cellid}.hifi_reads.{barcode}.bam",
+                 pbi = f"{redemux_dir}{barcode}/{cellid}.hifi_reads.{barcode}.bam.pbi",
+                 xml = f"{redemux_dir}{barcode}/{cellid}.hifi_reads.{barcode}.consensusreadset.xml" )
+    fail = dict( bam = f"{redemux_dir}{barcode}/{cellid}.fail_reads.{barcode}.bam",
+                 pbi = f"{redemux_dir}{barcode}/{cellid}.fail_reads.{barcode}.bam.pbi" )
 
     if check_exist:
         for f in chain(hifi.values(), fail.values()):
-            if not os.path.exists(f"{redemux_dir}/{f}"):
-                raise FileNotFoundError(f"missing {redemux_dir}/{f}")
+            if not os.path.exists(f):
+                raise FileNotFoundError(f"missing {f}")
 
     return dict( hifi_reads = hifi,
                  fail_reads = fail )
@@ -233,16 +257,16 @@ def files_per_barcode(rundir, slot, cellid, barcode, check_exist=True):
     """
     barcode = f".{barcode}" if barcode else ""
 
-    hifi = dict( bam = f"{slot}/hifi_reads/{cellid}.hifi_reads{barcode}.bam",
-                 pbi = f"{slot}/hifi_reads/{cellid}.hifi_reads{barcode}.bam.pbi",
-                 xml = f"{slot}/pb_formats/{cellid}.hifi_reads{barcode}.consensusreadset.xml" )
-    fail = dict( bam = f"{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam",
-                 pbi = f"{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam.pbi" )
+    hifi = dict( bam = f"{rundir}{slot}/hifi_reads/{cellid}.hifi_reads{barcode}.bam",
+                 pbi = f"{rundir}{slot}/hifi_reads/{cellid}.hifi_reads{barcode}.bam.pbi",
+                 xml = f"{rundir}{slot}/pb_formats/{cellid}.hifi_reads{barcode}.consensusreadset.xml" )
+    fail = dict( bam = f"{rundir}{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam",
+                 pbi = f"{rundir}{slot}/fail_reads/{cellid}.fail_reads{barcode}.bam.pbi" )
 
     if check_exist:
         for f in chain(hifi.values(), fail.values()):
-            if not os.path.exists(f"{rundir}/{f}"):
-                raise FileNotFoundError(f"missing {rundir}/{f}")
+            if not os.path.exists(f):
+                raise FileNotFoundError(f"missing {f}")
 
     return dict( hifi_reads = hifi,
                  fail_reads = fail )
@@ -250,21 +274,21 @@ def files_per_barcode(rundir, slot, cellid, barcode, check_exist=True):
 def find_meta(rundir, slot, cellid):
     """Returns the location of the .metadata.xml, and checks it exists.
     """
-    res = f"{slot}/metadata/{cellid}.metadata.xml"
+    res = f"{rundir}{slot}/metadata/{cellid}.metadata.xml"
 
-    if not os.path.exists(f"{rundir}/{res}"):
-        raise FileNotFoundError(f"missing {rundir}/{res}")
+    if not os.path.exists(res):
+        raise FileNotFoundError(f"missing {res}")
 
     return res
 
 def find_reports_zip(rundir, slot, cellid, check_exist=True):
     """Returns the location of the .metadata.xml, and checks it exists.
     """
-    res = f"{slot}/statistics/{cellid}.reports.zip"
+    res = f"{rundir}{slot}/statistics/{cellid}.reports.zip"
 
     if check_exist:
-        if not os.path.exists(f"{rundir}/{res}"):
-            raise FileNotFoundError(f"missing {rundir}/{res}")
+        if not os.path.exists(res):
+            raise FileNotFoundError(f"missing {res}")
 
     return res
 
@@ -272,11 +296,11 @@ def find_lima_counts_redemux(redemux_dir, cellid, check_exist=True):
     """Returns the location of the lima_counts.txt file which in this case
        is missing the .txt extension. And it's an error if it does not exist.
     """
-    res = f"{cellid}.hifi_reads.lima.counts" # We're ignoring the fail_reads counts here
+    res = f"{redemux_dir}{cellid}.hifi_reads.lima.counts" # ignoring the fail_reads counts here
 
     if check_exist:
-        if not os.path.exists(f"{redemux_dir}/{res}"):
-            raise FileNotFoundError(f"missing {redemux_dir}/{res}")
+        if not os.path.exists(res):
+            raise FileNotFoundError(f"missing {res}")
 
     return res
 
@@ -284,9 +308,9 @@ def find_lima_counts(rundir, slot, cellid):
     """Returns the location of the lima_counts.txt file found under
        statistics. If there is no such file, returns None.
     """
-    res = f"{slot}/statistics/{cellid}.hifi_reads.lima_counts.txt"
+    res = f"{rundir}{slot}/statistics/{cellid}.hifi_reads.lima_counts.txt"
 
-    if not os.path.exists(f"{rundir}/{res}"):
+    if not os.path.exists(res):
         return None
 
     return res
@@ -300,7 +324,7 @@ def scan_cells_sequel(rundir, cell_list, extn_to_scan=".transferdone"):
         no filter is currently supported but I left this feature in just in case.
     """
     all_cells = { b.split('/')[-2]: b.split('/')[-1][:-len(extn_to_scan)]
-                  for b in glob(f"{rundir}/*/*{extn_to_scan}") }
+                  for b in glob(f"{rundir}*/*{extn_to_scan}") }
 
     # Now see if I need to filter by cell_list.
     if cell_list:
@@ -309,13 +333,14 @@ def scan_cells_sequel(rundir, cell_list, extn_to_scan=".transferdone"):
     # Note that the list of cells could well be empty.
     res = { cellid: { 'slot':  slot,
                       'parts': None,
-                      'meta':  f"{slot}/.{cellid}.metadata.xml"
+                      'meta':  f"{rundir}{slot}/.{cellid}.metadata.xml"
                     } for slot, cellid in all_cells.items() }
 
     # Assume no barcodes, and all reads are "default".
     # We don't really need this to work anyways - it's just for comparison.
     for cellid, cellinfo in res.items():
-        assert os.path.exists(f"{rundir}/{cellinfo['meta']}")
+        if not os.path.exists(cellinfo['meta']):
+            raise FileNotFoundError(f"missing {cellinfo['meta']}")
 
         parts = determine_parts_sequel(rundir, cellinfo['slot'], cellid)
         cellinfo['parts'] = sorted(parts, reverse=True)
@@ -326,7 +351,7 @@ def scan_cells_sequel(rundir, cell_list, extn_to_scan=".transferdone"):
 def determine_parts_sequel(rundir, slot, cellid):
     """Work out if this is a ['subreads', 'scraps'] cell or a ['reads'] cell.
     """
-    cellpath = f"{rundir}/{slot}/{cellid}"
+    cellpath = f"{rundir}{slot}/{cellid}"
     bamfiles = glob(f"{cellpath}.*.bam")
 
     def get_xml(slot, cellid, part):
@@ -338,8 +363,8 @@ def determine_parts_sequel(rundir, slot, cellid):
             return dict()
 
     parts = { part:
-              dict( bam = f"{slot}/{cellid}.{part}.bam",
-                    pbi = f"{slot}/{cellid}.{part}.bam.pbi",
+              dict( bam = f"{rundir}{slot}/{cellid}.{part}.bam",
+                    pbi = f"{rundir}{slot}/{cellid}.{part}.bam.pbi",
                     **get_xml(slot, cellid, part) )
               for b in bamfiles
               for part in [b[len(f"{cellpath}."):-len(".bam")]] }
@@ -349,7 +374,7 @@ def determine_parts_sequel(rundir, slot, cellid):
         for d in parts.values():
             for f in d.values():
                 # Ensure file exists
-                os.stat(f"{rundir}/{f}")
+                os.stat(f)
 
     return parts
 

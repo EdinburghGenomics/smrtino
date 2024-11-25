@@ -14,6 +14,7 @@ import logging
 import yaml
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/revio_examples')
+ORIGINAL_CWD = os.getcwd()
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 from scan_cells import scan_main, parse_args
@@ -33,7 +34,9 @@ class T(unittest.TestCase):
         self.maxDiff = None
 
     def tearDown(self):
-        pass
+        # Always return to the original working dir, or else we mess up all the other
+        # tests.
+        os.chdir(ORIGINAL_CWD)
 
     def get_empty_args(self):
         return parse_args(["--"])
@@ -41,7 +44,8 @@ class T(unittest.TestCase):
     def scan_revio_run(self, run_name, **kwargs):
 
         args = self.get_empty_args()
-        args.rundir = os.path.join(DATA_DIR, run_name)
+        args.rundir = "."
+        os.chdir(os.path.join(DATA_DIR, run_name))
         for k, v in kwargs.items():
             setattr(args, k, v)
 

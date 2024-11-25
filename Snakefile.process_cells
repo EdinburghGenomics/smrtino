@@ -47,8 +47,9 @@ if ( not os.path.dirname(workflow.snakefile) in os.environ['PATH'].split(':') an
      not os.path.dirname(os.path.abspath(workflow.snakefile)) in os.environ['PATH'].split(':') ):
      os.environ['PATH'] += ':' + os.path.dirname(workflow.snakefile)
 
-# Should not be necessary to give the run dir as pbpipeline/from should point to it...
-RUNDIR = config.get('rundir', 'pbpipeline/from')
+# Should not be necessary to give the run dir as filenames in sc_data.yaml should all
+# contain the full path to the inputs.
+#RUNDIR = config.get('rundir', 'pbpipeline/from')
 
 # Load the info prepared by scan_cells.py
 try:
@@ -95,7 +96,7 @@ def find_source_file(**args):
             # No barcode. Must be the metadata or reports.zip or lima_counts.txt file.
             fn = SC['cells'][wc.cell][wc.fmt]
 
-        return f"{RUNDIR}/{fn}"
+        return fn
 
     return _fsf
 

@@ -14,6 +14,7 @@ cells:
     parts:
     - hifi_reads
     - fail_reads
+    re-demultiplex: false
     reports_zip: 1_A01/statistics/m84140_240116_163605_s1.reports.zip
     slot: 1_A01
   m84140_240116_183509_s2:
@@ -39,6 +40,7 @@ cells:
     parts:
     - hifi_reads
     - fail_reads
+    re-demultiplex: false
     reports_zip: 1_B01/statistics/m84140_240116_183509_s2.reports.zip
     slot: 1_B01
     unassigned:
