@@ -83,22 +83,24 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone", redemux=No
 
     # Now we can make a result, keyed off cell ID (not the slot)
     res = dict()
+    use_re_demux = dict()
     for slot, cellid in all_cells.items():
         redemux_dir = redemux.format(slot=slot, cell=cellid, cellid=cellid)
-        if os.path.isdir(redemux_dir):
-            res['cellid'] = { 'slot': slot,
-                              'parts': ['hifi_reads', 'fail_reads'],
-                              'barcodes': find_barcodes_redemux(redemux_dir, cellid),
-                              'meta': find_meta(rundir, slot, cellid),
-                              'reports_zip': find_reports_zip(rundir, slot, cellid),
-                              'lima_counts': find_lima_counts_redemux(redemux_dir, cellid) }
+        use_re_demux[cellid] = os.path.isdir(redemux_dir)
+        if use_re_demux[cellid]:
+            res[cellid] = { 'slot': slot,
+                            'parts': ['hifi_reads', 'fail_reads'],
+                            'barcodes': find_barcodes_redemux(redemux_dir, cellid),
+                            'meta': find_meta(rundir, slot, cellid),
+                            'reports_zip': find_reports_zip(rundir, slot, cellid),
+                            'lima_counts': find_lima_counts_redemux(redemux_dir, cellid) }
         else:
-            res['cellid'] = { 'slot': slot,
-                              'parts': ['hifi_reads', 'fail_reads'],
-                              'barcodes': find_barcodes(rundir, slot, cellid),
-                              'meta': find_meta(rundir, slot, cellid),
-                              'reports_zip': find_reports_zip(rundir, slot, cellid),
-                              'lima_counts': find_lima_counts(rundir, slot, cellid) }
+            res[cellid] = { 'slot': slot,
+                            'parts': ['hifi_reads', 'fail_reads'],
+                            'barcodes': find_barcodes(rundir, slot, cellid),
+                            'meta': find_meta(rundir, slot, cellid),
+                            'reports_zip': find_reports_zip(rundir, slot, cellid),
+                            'lima_counts': find_lima_counts(rundir, slot, cellid) }
 
     # Add unassigned, and unbarcoded ('all'), possibly
     for cellid, v in res.items():
@@ -107,7 +109,8 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone", redemux=No
             v['unassigned'] = v['barcodes']['unassigned']
             del v['barcodes']['unassigned']
 
-        v['barcodes'].update(find_unbarcoded(rundir, v['slot'], cellid))
+        if not use_re_demux[cellid]:
+            v['barcodes'].update(find_unbarcoded(rundir, v['slot'], cellid))
 
     # Sanity check on lima_counts
     for cellid, v in res.items():
@@ -119,30 +122,57 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone", redemux=No
 
     return res
 
-def find_barcodes(rundir, slot, cellid):
-    """Find the barcodes used by globbing the files. Could also check the XML.
+def find_barcodes_redemux(redemux_dir, cellid, check_exist=True):
+    """Finds the data files and .consensusreadset.xml files for re-demultiplexing jobs
+       in SMRTLink.
+
+       For some reason the "unassigned" barcodes get called "unbarcoded" and also live
+       in the top level directory so I have to account for that naming.
+    """
+    # At this point I'm not checking that the directory name matches the file name,
+    # but files_per_barcode_redemux() will spot any anomalies.
+    xmlfiles = glob(f"{redemux_dir}/*/{cellid}.hifi_reads.*.consensusreadset.xml")
+    barcodes = [ os.path.basename(f)[len(f"{cellid}.hifi_reads."):-len(".consensusreadset.xml")]
+                 for f in xmlfiles ]
+
+    res = { bc: files_per_barcode_redemux(redemux_dir, cellid, bc, check_exist)
+            for bc in barcodes }
+
+    if ('unassigned' in res) or ('unbarcoded' in res):
+        raise RuntimeError("Did not expect to find 'unassigned' barcodes in subdirectories"
+                           "of re-demultiplex dir")
+
+    # But we do expect to find 'unbarcoded' reads
+    res['unassigned'] = unassigned_for_redemux(redemux_dir, cellid, check_exist)
+
+    return res
+
+def find_barcodes(rundir, slot, cellid, check_exist=True):
+    """Find the data files by barcode by globbing the files. Could also check the XML
+       to get this, but that doesn't work for re-demultiplexing.
 
        In Revio, "default" is regarded as a barcode but "unassigned" is
        special. We feel this may change in later releases.
     """
 
-    # Previously I was globbing the BAM files, but I think I'll glob the matadata files
+    # Previously I was globbing the BAM files, but I think I'll glob the metadata files
     # instead. Probably makes no difference.
     # eg: 1_C01/pb_formats/m84140_231018_155043_s3.hifi_reads.bc1002.consensusreadset.xml
 
-    xmlpath = f"{rundir}/{slot}/pb_formats"
-    xmlfiles = glob(f"{xmlpath}/{cellid}.hifi_reads.*.consensusreadset.xml")
-    barcodes = [ f[len(f"{xmlpath}/{cellid}.hifi_reads."):-len(".consensusreadset.xml")]
+    xmlfiles = glob(f"{rundir}/{slot}/pb_formats/{cellid}.hifi_reads.*.consensusreadset.xml")
+    barcodes = [ os.path.basename(f)[len(f"{cellid}.hifi_reads."):-len(".consensusreadset.xml")]
                  for f in xmlfiles ]
 
-    res = { bc: files_per_barcode(rundir, slot, cellid, bc)
+    res = { bc: files_per_barcode(rundir, slot, cellid, bc, check_exist)
             for bc in barcodes }
 
     return res
 
-def find_unbarcoded(rundir, slot, cellid):
+def find_unbarcoded(rundir, slot, cellid, check_exist=True):
     """With SMRTLink 13 we're back to having unbarcoded files. But to avoid a load of
        if/else logic I'm going to assign these to a barcode named "all".
+
+       Not to be confused with 'unbarcoded' reads in SMRTLink which are really 'unassigned'.
     """
     # I guess I could stick with the logic of Hesiod and make a bracode named "." but
     # I think this ended up being a bit confusing.
@@ -154,9 +184,48 @@ def find_unbarcoded(rundir, slot, cellid):
 
     res = {}
     if bamfiles:
-        res['all'] = files_per_barcode(rundir, slot, cellid, None)
+        res['all'] = files_per_barcode(rundir, slot, cellid, None, check_exist)
 
     return res
+
+def unassigned_for_redemux(redemux_dir, cellid, check_exist=True):
+    """Gets the unassigned (aka. unbarcoded) reads from redemux_dir
+
+       TODO - maybe I could also look for 'unassigned'. But I really don't expect to
+       find those.
+    """
+    hifi = dict( bam = f"{cellid}.hifi_reads.unbarcoded.bam",
+                 pbi = f"{cellid}.hifi_reads.unbarcoded.bam.pbi",
+                 xml = f"{cellid}.hifi_reads.unbarcoded.consensusreadset.xml" )
+    fail = dict( bam = f"{cellid}.fail_reads.unbarcoded.bam",
+                 pbi = f"{cellid}.fail_reads.unbarcoded.bam.pbi" )
+
+    if check_exist:
+        for f in chain(hifi.values(), fail.values()):
+            if not os.path.exists(f"{redemux_dir}/{f}"):
+                raise FileNotFoundError(f"missing {redemux_dir}/{f}")
+
+    return dict( hifi_reads = hifi,
+                 fail_reads = fail )
+
+
+def files_per_barcode_redemux(redemux_dir, cellid, barcode, check_exist=True):
+    """Returns the location of the reads files for a given barcode,
+       and checks they exist (redemux mode).
+    """
+    hifi = dict( bam = f"{barcode}/{cellid}.hifi_reads.{barcode}.bam",
+                 pbi = f"{barcode}/{cellid}.hifi_reads.{barcode}.bam.pbi",
+                 xml = f"{barcode}/{cellid}.hifi_reads.{barcode}.consensusreadset.xml" )
+    fail = dict( bam = f"{barcode}/{cellid}.fail_reads.{barcode}.bam",
+                 pbi = f"{barcode}/{cellid}.fail_reads.{barcode}.bam.pbi" )
+
+    if check_exist:
+        for f in chain(hifi.values(), fail.values()):
+            if not os.path.exists(f"{redemux_dir}/{f}"):
+                raise FileNotFoundError(f"missing {redemux_dir}/{f}")
+
+    return dict( hifi_reads = hifi,
+                 fail_reads = fail )
 
 def files_per_barcode(rundir, slot, cellid, barcode, check_exist=True):
     """Returns the location of the reads files for a given barcode,
@@ -172,7 +241,8 @@ def files_per_barcode(rundir, slot, cellid, barcode, check_exist=True):
 
     if check_exist:
         for f in chain(hifi.values(), fail.values()):
-            assert os.path.exists(f"{rundir}/{f}"), f"missing {rundir}/{f}"
+            if not os.path.exists(f"{rundir}/{f}"):
+                raise FileNotFoundError(f"missing {rundir}/{f}")
 
     return dict( hifi_reads = hifi,
                  fail_reads = fail )
@@ -182,16 +252,31 @@ def find_meta(rundir, slot, cellid):
     """
     res = f"{slot}/metadata/{cellid}.metadata.xml"
 
-    assert os.path.exists(f"{rundir}/{res}"), f"missing {rundir}/{res}"
+    if not os.path.exists(f"{rundir}/{res}"):
+        raise FileNotFoundError(f"missing {rundir}/{res}")
 
     return res
 
-def find_reports_zip(rundir, slot, cellid):
+def find_reports_zip(rundir, slot, cellid, check_exist=True):
     """Returns the location of the .metadata.xml, and checks it exists.
     """
     res = f"{slot}/statistics/{cellid}.reports.zip"
 
-    assert os.path.exists(f"{rundir}/{res}"), f"missing {rundir}/{res}"
+    if check_exist:
+        if not os.path.exists(f"{rundir}/{res}"):
+            raise FileNotFoundError(f"missing {rundir}/{res}")
+
+    return res
+
+def find_lima_counts_redemux(redemux_dir, cellid, check_exist=True):
+    """Returns the location of the lima_counts.txt file which in this case
+       is missing the .txt extension. And it's an error if it does not exist.
+    """
+    res = f"{cellid}.hifi_reads.lima.counts" # We're ignoring the fail_reads counts here
+
+    if check_exist:
+        if not os.path.exists(f"{redemux_dir}/{res}"):
+            raise FileNotFoundError(f"missing {redemux_dir}/{res}")
 
     return res
 
