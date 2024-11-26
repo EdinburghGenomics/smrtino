@@ -268,23 +268,33 @@ action_cell_ready(){
       scan_cells.py -c $CELLSREADY $CELLSPROCESSING $CELLSDONE > "$SC_DATA_FILE"
 
       Snakefile.kinnex_scan --config cells="$CELLSREADY" sc_data="$SC_DATA_FILE" \
-                                     ${EXTRA_SNAKE_CONFIG:-} \
-                            -p |& plog
+                                     ${EXTRA_SNAKE_CONFIG:-} -p
 
       always_run=(one_cell_info one_barcode_info list_blob_plots)
       Snakefile.process_cells -R "${always_run[@]}" \
                               --config cells="$CELLSREADY" sc_data="$SC_DATA_FILE" \
-                                       blobs="${BLOBS:-1}" cleanup=1 \
-                                       ${EXTRA_SNAKE_CONFIG:-} \
-                              -p |& plog
+                                       blobs="${BLOBS:-1}" cleanup=0 quick=1 \
+                                       ${EXTRA_SNAKE_CONFIG:-} -p
+
+      # At this point we have enough to deliver the data, if we do not want to wait for QC.
+      plog "Quick processing done for cells $CELLSREADY. Notifying RT"
+      rt_runticket_manager --comment "Finished quick processing for cells $CELLSREADY." || true
+      list_projects_ready.py > projects_ready.txt
+
+      # The inclusion of one_barcode_info in the re-run list should ensure this picks up all
+      # the new QC info into the YAML files.
+      Snakefile.process_cells -R "${always_run[@]}" \
+                              --config cells="$CELLSREADY" sc_data="$SC_DATA_FILE" \
+                                       blobs="${BLOBS:-1}" cleanup=1 quick=0 \
+                                       ${EXTRA_SNAKE_CONFIG:-} -p
 
       # Now we can have a report. This bit runs locally.
-      plog "Processing done. Now for Snakefile.report"
+      plog "Processing done for cells $CELLSREADY. Now for Snakefile.report"
 
       always_run=(make_report)
       Snakefile.report -R "${always_run[@]}" \
                        --config cells="$CELLSREADY" sc_data="$SC_DATA_FILE" \
-                       -p report_main |& plog
+                       -p report_main
 
       # Snakefile.report jobs can now run in parallel, but the upload still needs to be gated.
       touch_or_wait pbpipeline/report.started
@@ -292,8 +302,7 @@ action_cell_ready(){
           mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
       done
 
-      # Making projects_ready.txt is outside of the Snakefile now, and must
-      # be done after fixing the touch files.
+      # Final projects_ready list must be done after fixing the touch files.
       list_projects_ready.py > projects_ready.txt
 
     ) |& plog

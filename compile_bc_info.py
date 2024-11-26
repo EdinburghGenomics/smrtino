@@ -69,7 +69,7 @@ def gen_info(args):
         info['kinnex_type'] = load_yaml(args.kinnex)['mas']
 
     # Add stats if we have them
-    for s in args.stats or []:
+    for s in args.cstats or []:
         s_split = os.path.basename(s).split(".")
         hifi_or_fail = barcode = mas = "-"
         if s_split[0] == info['cell_id'] and s.endswith(".cstats.yaml"):
@@ -103,7 +103,7 @@ def parse_args(*args):
                             help="Optional metadata XML to be loaded for run info")
     argparser.add_argument("-p", "--plots", nargs="*",
                             help="Plots generated for this barcode (YAML files)")
-    argparser.add_argument("-s", "--stats", nargs="*",
+    argparser.add_argument("-s", "--cstats", nargs="*",
                             help="Stats generated for this barcode (YAML files)")
     argparser.add_argument("-t", "--taxon",
                             help="BLAST taxon guess for this barcode (text file)")

@@ -10,6 +10,9 @@ to write out the projects_ready.txt earlier.
 
 TODO - check the guard.
 
+Answer - the scan is for info.yaml, and if that file is present we can be sure all
+the data was copied and sorted already.
+
 2) More importantly, we can't deliver a run until all the QC finishes. This has become
 a problem recently. So I think we need to do what Illuminatus does and have a two
 phase processing.

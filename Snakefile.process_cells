@@ -172,19 +172,23 @@ def i_one_barcode_info(wc):
     else:
         bc_and_mas = barcode
 
+    # See if we want a quick run (ie. a pre-run, no QC) and blobs
+    quick = str(config.get('quick', '0')) != '0'
+    blobs = str(config.get('blobs', '1')) != '0'
+
     res = dict( md5 = [],
                 cstats = [],
                 bamhead = [],
                 cou = [],
                 xml = [],
-                blobs = [],
-                rrna = [],
+                plots = [], # blobs and rrna
                 taxon = [] )
 
     # We need md5sums and contig stats for hifi_reads and fail_reads
     for part in "hifi_reads fail_reads".split():
         res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.bam.md5")
-        res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.cstats.yaml")
+        if not quick:
+            res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.cstats.yaml")
 
     # Also the consensusreadset.xml and bam.head, but only for hifi_reads
     res['xml'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.consensusreadset.xml")
@@ -198,15 +202,16 @@ def i_one_barcode_info(wc):
     res['cou'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.fastq.count")
     res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.fastq.gz.md5")
 
-    # Blobs or no? Only on the HiFi reads.
-    if str(config.get('blobs', '1')) != '0':
-        res['blobs'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.plots.yaml")
+    # Blobs or no? Only on the HiFi reads in any case.
+    if blobs and not quick:
+        res['plots'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.plots.yaml")
         res['taxon'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.species.txt")
 
     # Likewise for the rRNA scan
-    res['rrna'].append(f"rRNA_scan/{cell}.hifi_reads.{bc_and_mas}.results.yaml")
+    if not quick:
+        res['plots'].append(f"rRNA_scan/{cell}.hifi_reads.{bc_and_mas}.results.yaml")
 
-    # And the actual Kinnex file too
+    # And the result of the kinnex scan too
     res['kinnex'] = f"kinnex_scan/{cell}.hifi_reads.{barcode}.kinnex_scan.yaml"
 
     return res
@@ -239,20 +244,25 @@ rule one_cell_info:
 rule one_barcode_info:
     output: "{cell}/{bc}/{cell}.info.{bc}.yaml"
     input:  unpack(i_one_barcode_info)
-    shell:
-       # What needs to go into the YML? Stuff from the XML and also some stuff from the
-       # stats, maybe? At present the script will discover extra files automagically.
-       # input.xml[0] is the xml for the hifi reads - we don't need to read the XML for
-       # the failed reads.
-       r"""compile_bc_info.py {input.xml[0]} \
-             --metaxml {input.metaxml} \
-             --stats  {input.cstats} \
-             --taxon {input.taxon} \
-             --kinnex {input.kinnex} \
-             --binning <( binned_or_not.py <{input.bamhead} ) \
-             --plots {input.rrna} {input.blobs} \
-             > {output}
-        """
+    run:
+        # Un-silence sys.stderr in sub-jobs:
+        logger.quiet.discard('all')
+
+        optional_bits = ""
+        for n in input._names:
+            if n in ['cstats', 'taxon', 'kinnex', 'plots']:
+                optional_bits += f"--{n} {getattr(input, n)} "
+
+        # What needs to go into the YML? Stuff from the XML and also some stuff from the
+        # stats, maybe? At present the script will discover extra files automagically.
+        # input.xml[0] is the xml for the hifi reads - we don't need to read the XML for
+        # the failed reads.
+        r"""compile_bc_info.py {input.xml[0]} \
+              --metaxml {input.metaxml} \
+              --binning <( binned_or_not.py <{input.bamhead} ) \
+              {optional_bits} \
+              > {output}
+         """
 
 # On GSEG this had to be on the login node as the worker nodes can't see FluidFS.
 # Still a useful option to have.

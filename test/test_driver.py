@@ -161,10 +161,13 @@ class T(unittest.TestCase):
 
         return status
 
-    def rt_cmd(self, *args):
+    def rt_cmd(self, *args, nosub=False):
         """Get the expected args to rt_runticket_manager.py
         """
-        return [*f"-r {self.run_name} -Q pbrun --subject".split(), *args]
+        if nosub:
+            return [*f"-r {self.run_name} -Q pbrun".split(), *args]
+        else:
+            return [*f"-r {self.run_name} -Q pbrun --subject".split(), *args]
 
     ### And the actual tests ###
 
@@ -409,8 +412,16 @@ class T(unittest.TestCase):
                              "--config", "cells=1_D01",
                                          "sc_data=sc_data.DATE.yaml",
                                          "blobs=1",
+                                         "cleanup=0",
+                                         "quick=1",
+                             "-p" ],
+                           [ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
+                             "--config", "cells=1_D01",
+                                         "sc_data=sc_data.DATE.yaml",
+                                         "blobs=1",
                                          "cleanup=1",
-                             "-p" ] ])
+                                         "quick=0",
+                             "-p" ], ])
 
         # Report should be made on just the one cell too
         self.assertEqual(self.bm.last_calls['Snakefile.report'],
@@ -483,7 +494,8 @@ class T(unittest.TestCase):
                                                        "--config", "cells=1_C01 1_D01",
                                                                    "sc_data=sc_data.DATE.yaml",
                                                                    "blobs=1",
-                                                                   "cleanup=1",
+                                                                   "cleanup=0",
+                                                                   "quick=1",
                                                        "-p" ]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
                                                      self.rt_cmd("failed", "--reply",
@@ -528,13 +540,21 @@ class T(unittest.TestCase):
         expected_calls = self.bm.empty_calls()
 
         expected_calls['upload_report.sh'] = [[self.to_path]]
-        expected_calls['list_projects_ready.py'] = [[]]
+        expected_calls['list_projects_ready.py'] = [[],[]]
 
         expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                                                        "--config", "cells=1_C01 1_D01",
                                                                    "sc_data=sc_data.DATE.yaml",
                                                                    "blobs=1",
+                                                                   "cleanup=0",
+                                                                   "quick=1",
+                                                       "-p" ],
+                                                    [ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
+                                                       "--config", "cells=1_C01 1_D01",
+                                                                   "sc_data=sc_data.DATE.yaml",
+                                                                   "blobs=1",
                                                                    "cleanup=1",
+                                                                   "quick=0",
                                                        "-p" ]]
         expected_calls['Snakefile.report'] = [[ "-R", "make_report",
                                                 "--config", "cells=1_C01 1_D01", "sc_data=sc_data.DATE.yaml",
@@ -543,7 +563,12 @@ class T(unittest.TestCase):
         expected_calls['Snakefile.kinnex_scan'] = [["--config", "cells=1_C01 1_D01", "sc_data=sc_data.DATE.yaml",
                                                     "-p"]]
 
+        # Ideally the "All 2 SMRT cells have run" message would be sent before the processing starts, but
+        # in real use the notification will trigger on the next CRON run so this is a quirk not a bug.
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd("processing", "--comment", "@???"),
+                                                     self.rt_cmd("--comment",
+                                                                 "Finished quick processing for cells 1_C01 1_D01.",
+                                                                 nosub = True),
                                                      self.rt_cmd("processing", "--reply",
                                                                   "All 2 SMRT cells have run on the instrument. "
                                                                   "Final report will follow soon."),
@@ -557,6 +582,7 @@ class T(unittest.TestCase):
                 cl.pop()
                 cl.append('@???')
 
+        # And we're not bothering to check how many times date was called
         expected_calls['date'] = self.bm.last_calls['date']
         self.assertEqual(self.bm.last_calls, expected_calls)
 

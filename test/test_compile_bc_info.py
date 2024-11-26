@@ -45,7 +45,7 @@ class T(unittest.TestCase):
         args = NoneMock()
 
         args.plots = []
-        args.stats = []
+        args.cstats = []
         args.debug = False
 
         # For all other attributes, NoneMock returns None
@@ -65,8 +65,8 @@ class T(unittest.TestCase):
         cellid = "m84140_240116_163605_s1"
         args = self.get_mock_args()
         args.xmlfile = [f"{ddir}/{cellid}.hifi_reads.all.consensusreadset.xml"]
-        args.stats.extend([ f"{ddir}/{cellid}.fail_reads.foo.cstats.yaml",
-                            f"{ddir}/{cellid}.hifi_reads.foo.cstats.yaml" ])
+        args.cstats.extend([ f"{ddir}/{cellid}.fail_reads.foo.cstats.yaml",
+                             f"{ddir}/{cellid}.hifi_reads.foo.cstats.yaml" ])
         args.plots.extend([ f"{ddir}/{cellid}.histoplots.yaml",
                             f"{ddir}/{cellid}.blobplots.yaml" ])
 
