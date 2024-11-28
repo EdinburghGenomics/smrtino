@@ -239,9 +239,8 @@ action_cell_ready(){
     done
 
     # Make an sc_data.yaml file with a timestamped name.
-    # Potential race condition if using a single sc_data.yaml. See doc/sc_data_race.txt
-    SC_DATA_FILE="sc_data.$(date +%s).yaml"
-    touch_atomic "$RUN_OUTPUT/$SC_DATA_FILE"
+    # There's a definite race condition if using a single sc_data.yaml. See doc/sc_data_race.txt
+    SC_DATA_FILE="$(mktemp sc_data.$(date +%s).XXX.yaml)"
 
     log "\_CELL_READY $RUNID ($CELLSREADY). Kicking off processing."
     plog_start
@@ -259,7 +258,7 @@ action_cell_ready(){
     BREAK=1
     plog "Preparing to process cell(s) $CELLSREADY into $RUN_OUTPUT"
     set +e ; ( set -e
-      log "  Starting Snakefile.process_cells on $RUNID."
+      log "  Starting Snakefile.kinnex_scan then Snakefile.process_cells on $RUNID."
 
       # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
       cd "$RUN_OUTPUT"
