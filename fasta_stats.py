@@ -80,7 +80,9 @@ def histo_to_result(histo, cutoffs=(0,), headings=True):
             res.setdefault('_headings', []).append(newl)
         return newl
 
-    res[labelize('Min read length', None)] = sum(1 for _ in takewhile(lambda i: i==0, histo))
+    res[labelize('Min read length', None)] = sum(1 for _ in
+                                                 takewhile( lambda i: i['tally']==0,
+                                                            histo ))
     res[labelize('Max read length', None)] = len(histo) - 1
 
     for cutoff in cutoffs:

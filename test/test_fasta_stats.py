@@ -78,6 +78,7 @@ class T(unittest.TestCase):
         self.assertEqual( res3['Reads >=6'], 1 )
         self.assertEqual( res3['Total bases for reads >=6'], 10 )
 
+        self.assertEqual( res3['Min read length'], 5 )
 
     def test_n50(self):
         """Look at some N50 values for simple files.
@@ -114,6 +115,7 @@ class T(unittest.TestCase):
         # Max subread length,Num subreads >=1,Total bases in subreads >=1,N50 for subreads >=1,GC subreads >=1,Mean length for subreads >=1
         # 10765,             10000,           10989199,                   1306,                50.1,           1098.9
 
+        self.assertEqual( res['Min read length'], 50 )
         self.assertEqual( res['Max read length'], 10765 )
         self.assertEqual( res['Reads'], 10000 )
         self.assertEqual( res['Total bases'], 10989199 )

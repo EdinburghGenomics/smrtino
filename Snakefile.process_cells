@@ -119,7 +119,7 @@ wildcard_constraints:
 # Main target is one yaml file (of metadata) per cell. A little bit like statfrombam.yml in the
 # project QC pipelines.
 localrules: main, one_cell_info, one_barcode_info
-localrules: copy_meta, get_bam_head, copy_reports_zip, copy_lima_counts
+localrules: copy_meta, get_bam_head, copy_reports_zip, copy_lima_counts, count_fastq
 rule main:
     input:
         yaml     = [ f"{c}.info.yaml" for c in SC['cells'] ]
@@ -257,12 +257,12 @@ rule one_barcode_info:
         # stats, maybe? At present the script will discover extra files automagically.
         # input.xml[0] is the xml for the hifi reads - we don't need to read the XML for
         # the failed reads.
-        r"""compile_bc_info.py {input.xml[0]} \
-              --metaxml {input.metaxml} \
-              --binning <( binned_or_not.py <{input.bamhead} ) \
-              {optional_bits} \
-              > {output}
-         """
+        shell("""compile_bc_info.py \
+                    --metaxml {input.metaxml} \
+                    --binning <( binned_or_not.py <{input.bamhead} ) \
+                    {optional_bits} \
+                    {input.xml[0]} > {output}
+              """)
 
 # On GSEG this had to be on the login node as the worker nodes can't see FluidFS.
 # Still a useful option to have.
