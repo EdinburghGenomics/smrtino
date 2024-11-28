@@ -29,6 +29,7 @@ PROGS_TO_MOCK = {
     "upload_report.sh"        : "echo STDERR upload_report.sh >&2",
     "list_projects_ready.py"  : "echo 00000",
     "date"                    : "echo DATE",
+    "mktemp"                  : '[ $# = 1 ] && { touch "$1" ; echo "$1" ;}',
 }
 
 class T(unittest.TestCase):
@@ -48,10 +49,11 @@ class T(unittest.TestCase):
 
         self.bm = BashMocker()
         for p, s in PROGS_TO_MOCK.items():
+            log_calls = (p not in ["date", "mktemp"])
             if type(s) is bool:
-                self.bm.add_mock(p, fail=(not s))
+                self.bm.add_mock(p, fail=(not s), log=log_calls)
             else:
-                self.bm.add_mock(p, side_effect=s)
+                self.bm.add_mock(p, side_effect=s, log=log_calls)
 
         # Set the driver to run in our test harness. Note I can set
         # $BIN_LOCATION to more than one path.
@@ -178,7 +180,6 @@ class T(unittest.TestCase):
         """
         self.bm_rundriver(expected_retval=1)
 
-        self.bm.last_calls['date'] = []
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
         self.assertTrue('no match' in self.bm.last_stderr)
@@ -191,7 +192,6 @@ class T(unittest.TestCase):
 
         self.bm_rundriver(expected_retval=1)
 
-        self.bm.last_calls['date'] = []
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
         self.assertTrue('does not contain a .smrtino file' in self.bm.last_stderr)
@@ -205,7 +205,6 @@ class T(unittest.TestCase):
         self.environment['PY3_VENV'] = '/dev/null/NO_SUCH_PATH'
         self.bm_rundriver(expected_retval=1)
 
-        self.bm.last_calls['date'] = []
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
         self.assertTrue('/dev/null/NO_SUCH_PATH/bin/activate: Not a directory' in self.bm.last_stderr)
@@ -255,8 +254,6 @@ class T(unittest.TestCase):
         self.bm.last_calls['rt_runticket_manager.py'][0][-1] = re.sub(
                                     r'@\S+$', '@???', self.bm.last_calls['rt_runticket_manager.py'][0][-1] )
 
-        # But nothing else should happen. And we don't care if date was called.
-        expected_calls['date'] = self.bm.last_calls['date']
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         # Log file should appear (here accessed via the output symlink)
@@ -280,7 +277,6 @@ class T(unittest.TestCase):
         self.assertInStdout(self.run_name, "PROCESSING")
 
         # Nothing should happen
-        self.bm.last_calls['date'] = []
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
     def test_run_just_finished(self):
@@ -304,7 +300,6 @@ class T(unittest.TestCase):
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd('processing', '--reply',
                                                                  'All 1 SMRT cells have run on the instrument.'
                                                                  ' Final report will follow soon.')]
-        expected_calls['date'] = self.bm.last_calls['date']
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.touch"))
@@ -327,7 +322,6 @@ class T(unittest.TestCase):
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd(
                                                        'aborted', '--no_create', '--status', 'resolved',
                                                        '--comment', 'No activity in the last 0 hours.' )]
-        expected_calls['date'] = self.bm.last_calls['date']
         self.assertEqual(self.bm.last_calls, expected_calls)
 
         # Now it should be aborted - since we're in verbose mode we do see this,
@@ -354,7 +348,6 @@ class T(unittest.TestCase):
         self.assertInStdout(run, "STALLED")
 
         # A this point, nothing much should happen. (flags are written to pbpipeline)
-        self.bm.last_calls['date'] = []
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
 
         # But on the next round, it should complete
@@ -375,14 +368,12 @@ class T(unittest.TestCase):
                                                      self.rt_cmd( 'Finished pipeline',
                                                        '--reply', last_reply_fd )]
         expected_calls['list_projects_ready.py'] = [[]]
-        expected_calls['date'] = self.bm.last_calls['date']
         self.assertEqual(self.bm.last_calls, expected_calls)
         self.assertTrue(os.path.exists(self.to_path + "/pbpipeline/notify_run_complete.touch"))
 
         # Now it should be in status COMPLETE because run of the cells did work
         # (note this check relies on driver.sh always being run in VERBOSE mode)
         self.bm_rundriver()
-        self.bm.last_calls['date'] = []
         self.assertEqual(self.bm.last_calls, self.bm.empty_calls())
         self.assertInStdout(run, "status=complete")
 
@@ -410,14 +401,14 @@ class T(unittest.TestCase):
         self.assertEqual(self.bm.last_calls['Snakefile.process_cells'],
                          [ [ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                              "--config", "cells=1_D01",
-                                         "sc_data=sc_data.DATE.yaml",
+                                         "sc_data=sc_data.DATE.XXX.yaml",
                                          "blobs=1",
                                          "cleanup=0",
                                          "quick=1",
                              "-p" ],
                            [ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                              "--config", "cells=1_D01",
-                                         "sc_data=sc_data.DATE.yaml",
+                                         "sc_data=sc_data.DATE.XXX.yaml",
                                          "blobs=1",
                                          "cleanup=1",
                                          "quick=0",
@@ -426,7 +417,7 @@ class T(unittest.TestCase):
         # Report should be made on just the one cell too
         self.assertEqual(self.bm.last_calls['Snakefile.report'],
                          [ ["-R", "make_report",
-                            "--config", "cells=1_D01", "sc_data=sc_data.DATE.yaml",
+                            "--config", "cells=1_D01", "sc_data=sc_data.DATE.XXX.yaml",
                             "-p", "report_main"] ])
 
         for r in "report.started report.done".split():
@@ -455,7 +446,7 @@ class T(unittest.TestCase):
         # Check the right things were called.
         self.assertEqual(self.bm.last_calls["Snakefile.report"],
                          [ ["-R", "make_report",
-                            '--config', "cells=1_C01 1_D01", "sc_data=sc_data.DATE.yaml",
+                            '--config', "cells=1_C01 1_D01", "sc_data=sc_data.DATE.XXX.yaml",
                             "-p", "report_main"] ])
 
 
@@ -488,11 +479,11 @@ class T(unittest.TestCase):
         # Check that upload_reports.sh is not called
         expected_calls = self.bm.empty_calls()
 
-        expected_calls['Snakefile.kinnex_scan'] = [["--config", "cells=1_C01 1_D01", "sc_data=sc_data.DATE.yaml",
+        expected_calls['Snakefile.kinnex_scan'] = [["--config", "cells=1_C01 1_D01", "sc_data=sc_data.DATE.XXX.yaml",
                                                     '-p']]
         expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                                                        "--config", "cells=1_C01 1_D01",
-                                                                   "sc_data=sc_data.DATE.yaml",
+                                                                   "sc_data=sc_data.DATE.XXX.yaml",
                                                                    "blobs=1",
                                                                    "cleanup=0",
                                                                    "quick=1",
@@ -508,7 +499,6 @@ class T(unittest.TestCase):
                 cl.pop()
                 cl.append('@???')
 
-        expected_calls['date'] = self.bm.last_calls['date']
         self.assertEqual(self.bm.last_calls, expected_calls)
 
     def test_process_run_rsync_fail(self):
@@ -544,23 +534,23 @@ class T(unittest.TestCase):
 
         expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                                                        "--config", "cells=1_C01 1_D01",
-                                                                   "sc_data=sc_data.DATE.yaml",
+                                                                   "sc_data=sc_data.DATE.XXX.yaml",
                                                                    "blobs=1",
                                                                    "cleanup=0",
                                                                    "quick=1",
                                                        "-p" ],
                                                     [ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                                                        "--config", "cells=1_C01 1_D01",
-                                                                   "sc_data=sc_data.DATE.yaml",
+                                                                   "sc_data=sc_data.DATE.XXX.yaml",
                                                                    "blobs=1",
                                                                    "cleanup=1",
                                                                    "quick=0",
                                                        "-p" ]]
         expected_calls['Snakefile.report'] = [[ "-R", "make_report",
-                                                "--config", "cells=1_C01 1_D01", "sc_data=sc_data.DATE.yaml",
+                                                "--config", "cells=1_C01 1_D01", "sc_data=sc_data.DATE.XXX.yaml",
                                                 "-p", "report_main"]]
 
-        expected_calls['Snakefile.kinnex_scan'] = [["--config", "cells=1_C01 1_D01", "sc_data=sc_data.DATE.yaml",
+        expected_calls['Snakefile.kinnex_scan'] = [["--config", "cells=1_C01 1_D01", "sc_data=sc_data.DATE.XXX.yaml",
                                                     "-p"]]
 
         # Ideally the "All 2 SMRT cells have run" message would be sent before the processing starts, but
@@ -582,8 +572,6 @@ class T(unittest.TestCase):
                 cl.pop()
                 cl.append('@???')
 
-        # And we're not bothering to check how many times date was called
-        expected_calls['date'] = self.bm.last_calls['date']
         self.assertEqual(self.bm.last_calls, expected_calls)
 
 

@@ -185,10 +185,10 @@ def i_one_barcode_info(wc):
                 taxon = [] )
 
     # We need md5sums and contig stats for hifi_reads and fail_reads
+    # May as well have cstats for all cases as we need them for the .count files
     for part in "hifi_reads fail_reads".split():
         res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.bam.md5")
-        if not quick:
-            res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.cstats.yaml")
+        res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.cstats.yaml")
 
     # Also the consensusreadset.xml and bam.head, but only for hifi_reads
     res['xml'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.consensusreadset.xml")
@@ -350,6 +350,7 @@ rule copy_meta:
         meta   = "{cell}.metadata.xml"
     input:
         meta   = find_source_file(fmt="meta")
+    shadow: 'minimal'
     shell:
         "sed '1s/utf-16/utf-8/' {input.meta} > {output.meta}"
 
@@ -358,6 +359,7 @@ rule copy_reports_zip:
     output: "{cell}.reports.zip"
     input:
         zip = find_source_file(fmt="reports_zip")
+    shadow: 'minimal'
     shell:
         "cp --no-preserve=all -Lv {input.zip} {output}"
 
@@ -367,22 +369,23 @@ rule copy_lima_counts:
     output: "{cell}.hifi_reads.lima_counts.txt"
     input:
         counts = find_source_file(fmt="lima_counts")
+    shadow: 'minimal'
     shell:
         "cp --no-preserve=all -Lv {input.counts} {output}"
 
-# This script produces some headline stats as well as a histogram we could use
+# This script produces some headline stats as well as (with the -H option) a histogram we could use
 # (but currently we don't)
 rule get_cstats_yaml:
     output:
         yaml = "{bam}.cstats.yaml",
-        histo = "histo/{bam}.length_histo.tsv"
     input:  "{bam}.bam"
     threads: 6
+    shadow: 'minimal'
     resources:
         mem_mb = 36000,
         n_cpus = 6,
     shell:
-        "fasta_stats.py -H {output.histo} <({TOOLBOX} samtools fasta -@ {threads} {input}) > {output.yaml}"
+        "fasta_stats.py <({TOOLBOX} samtools fasta -@ {threads} {input}) > {output.yaml}"
 
 rule get_bam_head:
     output: "{bam}.bam.head"
@@ -401,6 +404,7 @@ rule bam_to_fastq:
     resources:
         mem_mb = 108000,
         n_cpus = 16,
+    shadow: 'minimal'
     shell:
        r"""sam_threads=$((  ({threads} > 4) ? ({threads} / 4)     : 1 ))
            pigz_threads=$(( ({threads} > 2) ? (3 * {threads} / 4) : 1 ))
@@ -422,10 +426,14 @@ rule bam_to_subsampled_fasta:
         """
 
 # Make a .count file for the FASTQ file
+# Rather than re-scanning the file this should be able to re-use the info from fasta_stats.py,
+# so use that as an input.
 rule count_fastq:
     output: "{foo}.fastq.count"
-    input:  "{foo}.fastq.gz"
-    shell:  "fq_base_counter.py {input} > {output}"
+    input:
+        fastq  = "{foo}.fastq.gz",
+        cstats = "{foo}.cstats.yaml",
+    shell:  "fq_base_counter.py --cstats {input.cstats} {input.fastq} > {output}"
 
 # md5summer that keeps the file path out of the .md5 file
 rule md5sum_file:

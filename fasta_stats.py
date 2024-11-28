@@ -4,7 +4,7 @@
 """
 import os, sys
 from collections import namedtuple, OrderedDict
-from itertools import islice
+from itertools import islice, takewhile
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from smrtino import dump_yaml
@@ -66,7 +66,7 @@ def histo_to_result(histo, cutoffs=(0,), headings=True):
     """
     res = OrderedDict()
 
-    def labelize(l, cutoff):
+    def labelize(l, cutoff, no_heading=False):
         """Make a readable label and add it to the list of _headings
         """
         if not cutoff:
@@ -76,10 +76,11 @@ def histo_to_result(histo, cutoffs=(0,), headings=True):
         else:
             newl = "{} for reads >={}".format(l, cutoff)
 
-        if headings:
+        if headings and (not no_heading):
             res.setdefault('_headings', []).append(newl)
         return newl
 
+    res[labelize('Min read length', None)] = sum(1 for _ in takewhile(lambda i: i==0, histo))
     res[labelize('Max read length', None)] = len(histo) - 1
 
     for cutoff in cutoffs:
@@ -117,6 +118,9 @@ def histo_to_result(histo, cutoffs=(0,), headings=True):
             res[labelize('Mean length', cutoff)] = total_length / total_reads
         except Exception:
             res[labelize('Mean length', cutoff)] = 0.0
+
+        # Total non-N bases, but we don't add a heading for this as it's always (!?) zero
+        res[labelize('non-N bases', cutoff, True)] = total_at + total_gc
 
     return res
 

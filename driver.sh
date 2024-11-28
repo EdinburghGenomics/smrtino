@@ -240,7 +240,7 @@ action_cell_ready(){
 
     # Make an sc_data.yaml file with a timestamped name.
     # There's a definite race condition if using a single sc_data.yaml. See doc/sc_data_race.txt
-    SC_DATA_FILE="$(mktemp sc_data.$(date +%s).XXX.yaml)"
+    SC_DATA_FILE="$(cd "$RUN_OUTPUT" ; mktemp sc_data.$(date +%s).XXX.yaml)"
 
     log "\_CELL_READY $RUNID ($CELLSREADY). Kicking off processing."
     plog_start

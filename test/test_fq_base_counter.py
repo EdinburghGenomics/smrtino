@@ -7,7 +7,7 @@ import sys, os, re
 import unittest
 import logging
 import gzip
-from unittest.mock import Mock, patch
+from unittest.mock import NonCallableMock, patch
 from io import StringIO
 from textwrap import dedent as dd
 
@@ -15,6 +15,14 @@ DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/hifi_examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
 from fq_base_counter import main as fq_base_counter_main
+
+class NoneMock(NonCallableMock):
+    """A Mock where fetching undefined attributes returns None,
+       rather then a new Mock object. Useful for mocking command
+       line args.
+    """
+    def _get_child_mock(self, **kw):
+        return None
 
 class T(unittest.TestCase):
 
@@ -37,7 +45,7 @@ class T(unittest.TestCase):
     def test_fq(self):
         """Test that reading the file directly gets the expected result.
         """
-        mock_args = Mock( infile = [DATA_DIR + '/example_hifi_reads.fastq.gz'], stdin = False )
+        mock_args = NoneMock( infile = [DATA_DIR + '/example_hifi_reads.fastq.gz'] )
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             fq_base_counter_main(mock_args)
 
@@ -49,11 +57,11 @@ class T(unittest.TestCase):
     def test_fh(self):
         """Test that reading from a pipe gets the same result.
         """
-        mock_args = Mock( infile = ['blah/blah/example_hifi_reads.fastq.gz'], stdin = True )
+        mock_args = NoneMock( infile = ['blah/blah/example_hifi_reads.fastq.gz'], stdin = True )
 
         with gzip.open(DATA_DIR + '/example_hifi_reads.fastq.gz', 'rb') as fq_fh:
             with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
-                with patch('sys.stdin', Mock(buffer=fq_fh)) as mock_stdin:
+                with patch('sys.stdin', NonCallableMock(buffer=fq_fh)) as mock_stdin:
                     fq_base_counter_main(mock_args)
 
         mock_stdout.seek(0)
@@ -63,10 +71,10 @@ class T(unittest.TestCase):
     def test_empty(self):
         """Test that reading a zer-line file still produces a reasonable result.
         """
-        mock_args = Mock( infile = ['empty.fastq.gz'], stdin = True )
+        mock_args = NoneMock( infile = ['empty.fastq.gz'], stdin = True )
 
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
-            with patch('sys.stdin', Mock(buffer=StringIO())) as mock_stdin:
+            with patch('sys.stdin', NonCallableMock(buffer=StringIO())) as mock_stdin:
                 fq_base_counter_main(mock_args)
 
         mock_stdout.seek(0)

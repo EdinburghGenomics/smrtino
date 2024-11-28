@@ -26,8 +26,10 @@ def parse_args():
     parser = ArgumentParser( description = description,
                              formatter_class = ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("--stdin", "-s", action="store_true",
+    parser.add_argument("-s", "--stdin", action="store_true",
                         help="actually read from stdin, but using the given filename")
+    parser.add_argument("-c", "--cstats",
+                        help="actually get the numbers from cstats.yaml, but using the given filename")
 
     parser.add_argument("infile", nargs=1,
                         help=".fastq.gz file to be read")
@@ -38,10 +40,25 @@ def main(args):
 
     fn, = args.infile
 
-    if args.stdin:
+    if args.cstats:
+        # Short-circuit the file reading. Needs newer cstats with the extra infos
+        print_info(load_cstats(args.cstats), fn=os.path.basename(fn))
+    elif args.stdin:
         print_info(scan_fh(sys.stdin.buffer), fn=os.path.basename(fn))
     else:
         print_info(scan_fq(fn), fn=os.path.basename(fn))
+
+def load_cstats(filename):
+    import yaml
+
+    with open(filename) as yfh:
+        ydata = yaml.safe_load(yfh)
+
+    return dict( total_reads = ydata['Reads'],
+                 min_read_len = ydata['Min read length'] if ydata['Reads'] else 0,
+                 max_read_len = ydata['Max read length'] if ydata['Reads'] else 0,
+                 total_bases = ydata['Total bases'],
+                 non_n_bases = ydata['non-N bases'] if ydata['Reads'] else 0, )
 
 def scan_fh(filehandle):
     """ Read an open file handle. The data must be uncompressed.
@@ -101,7 +118,9 @@ def print_info(fq_info, fn='input.fastq.gz'):
 
     print( "total_bases: {}".format(total_bases) )
 
-    if 'n_bases' in fq_info:
+    if 'non_n_bases' in fq_info:
+        print( "non_n_bases: {}".format(fq_info['non_n_bases']) )
+    elif 'n_bases' in fq_info:
         print( "non_n_bases: {}".format(total_bases - fq_info['n_bases']) )
 
     if 'q30_bases' in fq_info:

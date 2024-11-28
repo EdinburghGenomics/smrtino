@@ -40,13 +40,16 @@ class T(unittest.TestCase):
         self.assertEqual(self.load_histo('empty'), [])
 
         self.assertEqual(dict(histo_to_result([])),
-                            { '_headings': [ 'Max read length',
+                            { '_headings': [ 'Min read length',
+                                             'Max read length',
                                              'Reads',
                                              'Total bases',
                                              'N50',
                                              'GC %',
                                              'Mean length'],
                               'Max read length': -1,
+                              'Min read length': 0,
+                              'non-N bases': 0,
                               'Reads' : 0,
                               'Total bases': 0,
                               'N50': -1,
@@ -55,6 +58,8 @@ class T(unittest.TestCase):
 
         self.assertEqual(dict(histo_to_result([], headings=False)),
                             { 'Max read length': -1,
+                              'Min read length': 0,
+                              'non-N bases': 0,
                               'Reads' : 0,
                               'Total bases': 0,
                               'N50': -1,
