@@ -14,7 +14,7 @@ BLOB_LEVELS    = config.get('blob_levels', "phylum order species".split())
 BLAST_SCRIPT   = config.get('blast_script', "blast_nt")
 
 # BLAST S sequences in C chunks. But now the numbers are data-dependent.
-def get_blob_spec(cell, all_cells=SC['cells']):
+def get_blob_size(cell, all_cells=SC['cells']):
     try:
         bc_num = len(all_cells[cell]['barcodes'])
     except KeyError:
@@ -54,7 +54,7 @@ rule list_blob_plots:
                                  thumb      = ['.__thumb', ''] ),
         subs = lambda wc: "subsampled_fasta/{wc.cell}.{wc.part}.{wc.bc_and_mas}+sub{sub}.fasta".format(
                                 wc = wc,
-                                sub = get_blob_spec(wc.cell)['BLOB_SUBSAMPLE']),
+                                sub = get_blob_size(wc.cell)['BLOB_SUBSAMPLE']),
     run:
         # Un-silence sys.stderr in sub-jobs:
         logger.quiet.discard('all')
@@ -117,15 +117,15 @@ def i_merge_blast_reports(wildcards):
                       for c in fasta_chunks ] )
 
 rule merge_blast_reports:
-    output: "blob/{foo}.blast"
+    output: "blob/{cell}.{foo}.blast"
     input:  unpack(i_merge_blast_reports)
     shell:
         'LC_ALL=C ; ( for i in {input.bparts} ; do sort -u -k1,2 "$i" ; done ) > {output}'
 
 # BLAST a chunk. Note the 'blast_nt' wrapper determines the database to search.
 rule blast_chunk:
-    output: temp("blob/{foo}.blast_parts/{chunk}.bpart")
-    input:  "blob/{foo}.fasta_parts/{chunk}.fasta"
+    output: temp("blob/{cell}.{foo}.blast_parts/{chunk}.bpart")
+    input:  "blob/{cell}.{foo}.fasta_parts/{chunk}.fasta"
     threads: 4
     resources:
         mem_mb = 24000,
@@ -149,7 +149,7 @@ checkpoint split_fasta_in_chunks:
         parts = temp(directory("blob/{cell}.{foo}.fasta_parts")),
     input: "subsampled_fasta/{cell}.{foo}.fasta"
     params:
-        chunksize = lambda wc: get_blob_spec(wc.cell)['BLOB_CHUNKSIZE']
+        chunksize = lambda wc: get_blob_size(wc.cell)['BLOB_CHUNKSIZE']
     shell:
         """mkdir {output.parts}
            touch {output.parts}/list
@@ -166,8 +166,9 @@ checkpoint split_fasta_in_chunks:
 
 # Makes a blob db per FASTA using the complexity file as a COV file.
 def i_blob_db(wildcards):
-    blob_spec = get_blob_spec(wildcards.cell)
-    common_prefix = "{wc.cell}.{wc.foo}+sub{sub}".format(wc=wildcards, sub=blob_spec(BLOB_SUBSAMPLE))
+    blob_spec = get_blob_size(wildcards.cell)
+    common_prefix = "{wc.cell}.{wc.foo}+sub{sub}".format( wc = wildcards,
+                                                          sub = blob_spec['BLOB_SUBSAMPLE'] )
 
     return dict( reads_sample  = "subsampled_fasta/{c}.fasta".format(c=common_prefix),
                  blast_results = "blob/{c}.blast".format(c=common_prefix),

@@ -124,7 +124,7 @@ rule make_report:
         pdflink    = "pdf/{cell}.pdf",
     shell:
        r"""rm -vf all_reports/img/{wildcards.cell}.*.cov0*.png
-           ln -vsrnt all_reports/img {input.blob_plots}
+           [ -z "{input.blob_plots}" ] || ln -vsrnt all_reports/img {input.blob_plots}
            make_report.py -o {output.pan} \
                 -y {input.yaml} -l {input.links} -r {params.pdflink} \
                 -S {input.sample} \

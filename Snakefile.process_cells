@@ -180,12 +180,10 @@ def i_one_barcode_info(wc):
                 cstats = [],
                 bamhead = [],
                 cou = [],
-                xml = [],
-                plots = [], # blobs and rrna
-                taxon = [] )
+                xml = [] )
 
     # We need md5sums and contig stats for hifi_reads and fail_reads
-    # May as well have cstats for all cases as we need them for the .count files
+    # May as well run cstats for all cases as we need them to make .count files
     for part in "hifi_reads fail_reads".split():
         res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.bam.md5")
         res['cstats'].append(f"{cell}/{barcode}/{cell}.{part}.{bc_and_mas}.cstats.yaml")
@@ -202,16 +200,17 @@ def i_one_barcode_info(wc):
     res['cou'].append(f"{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.fastq.count")
     res['md5'].append(f"md5sums/{cell}/{barcode}/{cell}.hifi_reads.{bc_and_mas}.fastq.gz.md5")
 
-    # Blobs or no? Only on the HiFi reads in any case.
-    if blobs and not quick:
-        res['plots'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.plots.yaml")
-        res['taxon'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.species.txt")
-
-    # Likewise for the rRNA scan
     if not quick:
-        res['plots'].append(f"rRNA_scan/{cell}.hifi_reads.{bc_and_mas}.results.yaml")
+        # Add in the rRNA scan
+        res['plots'] = [f"rRNA_scan/{cell}.hifi_reads.{bc_and_mas}.results.yaml"]
 
-    # And the result of the kinnex scan too
+        # Blobs or no? Only on the HiFi reads in any case.
+        # Only if we do the blobs do we get the taxon guess.
+        if blobs:
+            res['plots'].append(f"blob/{cell}.hifi_reads.{bc_and_mas}.plots.yaml")
+            res['taxon'] = f"blob/{cell}.hifi_reads.{bc_and_mas}.species.txt"
+
+    # And the result of the kinnex scan is always needed.
     res['kinnex'] = f"kinnex_scan/{cell}.hifi_reads.{barcode}.kinnex_scan.yaml"
 
     return res
