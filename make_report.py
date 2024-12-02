@@ -377,7 +377,9 @@ def format_per_barcode(bc, aggr, title, md_items=None):
                     ))
                 rep("</div>")
 
-            # if there is a label and fraction we do some funky plotting
+            # if there is a label and fraction we do some funky plotting. Ideally the styling
+            # would go in the CSS, but there's no way to dynamically set the gradient and
+            # I don't want to define 100 CSS styles to cover each % increment
             if 'fraction' in plot_group:
                 if plot_group['fraction'][1]:
                     fraction = (plot_group['fraction'][0] * 100) / plot_group['fraction'][1]

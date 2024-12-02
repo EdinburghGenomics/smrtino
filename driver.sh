@@ -228,14 +228,15 @@ action_new(){
     log DONE
 }
 
-# TODO - it might be that we don't want to run multiple processings in parallel after all
-# In which case split the "cell_ready" state into "idle_cell_ready" and "processing_cell_ready"
-# in the state diagram and then only trigger on "idle_cell_ready".
+# I'm using $CELLSREADY to indicate cells ready to start processing, and ${cell}.ready
+# to mean a cell is processed to the point where we could deliver. Hopefully that's not
+# too confusing
 action_cell_ready(){
     # It's time for Snakefile.process_cells to process one or more cells.
     local cell always_run
     for cell in $CELLSREADY ; do
         touch_atomic "$RUN_OUTPUT"/pbpipeline/${cell}.started
+        rm -f "$RUN_OUTPUT"/pbpipeline/${cell}.ready
     done
 
     # Make an sc_data.yaml file with a timestamped name.
@@ -278,6 +279,12 @@ action_cell_ready(){
       # At this point we have enough to deliver the data, if we do not want to wait for QC.
       plog "Quick processing done for cells $CELLSREADY. Notifying RT"
       rt_runticket_manager --comment "Finished quick processing for cells $CELLSREADY." || true
+
+      # Mark the cells as ready [for delivery], then make the projects_ready list with a script
+      # that scans for all .ready or .done touch files.
+      for cell in $CELLSREADY ; do
+          touch_atomic pbpipeline/${cell}.ready
+      done
       list_projects_ready.py > projects_ready.txt
 
       # The inclusion of one_barcode_info in the re-run list should ensure this picks up all
@@ -297,12 +304,6 @@ action_cell_ready(){
 
       # Snakefile.report jobs can now run in parallel, but the upload still needs to be gated.
       touch_or_wait pbpipeline/report.started
-      for cell in $CELLSREADY ; do
-          mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
-      done
-
-      # Final projects_ready list must be done after fixing the touch files.
-      list_projects_ready.py > projects_ready.txt
 
     ) |& plog
     if [ $? != 0 ] ; then
@@ -333,6 +334,11 @@ action_cell_ready(){
     # Last-ditch cleanup.
     ( cd "$RUN_OUTPUT" && rm -f pbpipeline/report.started )
 
+    # Mark the cells as done
+    for cell in $CELLSREADY ; do
+        mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
+        rm -f pbpipeline/${cell}.ready
+    done
 }
 
 action_processed() {

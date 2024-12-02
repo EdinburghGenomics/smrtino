@@ -33,3 +33,18 @@ extra data on the second round. So I think the implementation is:
 3) Use -R flags to ensure the stale bits get re-run
 
 OK, will do.
+
+--
+
+All good, but list_projects_ready.py is not doing what it needs to do. I had this
+comment in driver.sh:
+
+# Final projects_ready list must be done after fixing the touch files.
+
+And I couldn't remember why. Well, it's because list_projects_ready.py will only consider
+a cell ready once the .done file is written. I could feed a list of projects to the script
+but then if I re-ran the scan (or another thread re-runs it) I get a different list.
+So I think I need a new touch file. A .ready file.
+
+I don't think that pb_run_status needs to care about the file, but it should be removed when
+processing of a cell starts. Let us see. Implemented very simply - let us test it.
