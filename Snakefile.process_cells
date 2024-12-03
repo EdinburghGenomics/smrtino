@@ -273,6 +273,8 @@ if os.environ.get('FILTER_LOCALLY', '1') != '0':
 # These rules copy/link the files for a given barcode, then fix up the XML.
 # part may be "hifi_reads" (ie. pass) or "fail_reads".
 # Note there is no longer XML for the fail_reads, after SMRTLink 13.1
+# Also, I did make this use a shadow directory but then it can look like nothing
+# is happening while the file copies, so I've switched back to making a partial file.
 rule copy_reads:
     output:
         bam    = "{cell}/{barcode}/{cell}.{part}.{barcode}.bam",
@@ -282,10 +284,11 @@ rule copy_reads:
         pbi    = find_source_file(fmt="pbi"),
     resources:
         nfscopy=1
-    shadow: 'minimal'
     shell:
-        """cp --no-preserve=all -Lv {input.bam} {output.bam}
-           cp --no-preserve=all -Lv {input.pbi} {output.pbi}
+        """cp -f --no-preserve=all -Lv {input.bam} {output.bam}.part
+           mv {output.bam}.part {output.bam}
+           cp -f --no-preserve=all -Lv {input.pbi} {output.pbi}.part
+           mv {output.pbi}.part {output.pbi}
         """
 
 # For Kinnex reads we segment rather than copying the original BAM.
