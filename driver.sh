@@ -171,9 +171,8 @@ touch_or_wait(){
 
 mv_atomic(){
     # Used in place of "mv x.started x.done" and fails if the target exists.
-    # Doesn't actually move the file, just makes a new empty file.
     echo "renaming $1 -> $2"
-    (set -o noclobber ; >"$2") && rm "$1"
+    (set -o noclobber ; cat "$1" > "$2") && rm "$1"
 }
 
 ###--->>> ACTION CALLBACKS <<<---###
@@ -305,6 +304,12 @@ action_cell_ready(){
       # Snakefile.report jobs can now run in parallel, but the upload still needs to be gated.
       touch_or_wait pbpipeline/report.started
 
+      # Mark the cells as done while the report is run/uploaded
+      for cell in $CELLSREADY ; do
+          mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
+          rm -f pbpipeline/${cell}.ready
+      done
+
     ) |& plog
     if [ $? != 0 ] ; then
         pipeline_fail Processing_cells "$CELLSREADY"
@@ -312,6 +317,7 @@ action_cell_ready(){
     fi
 
     # And upload the reports. If all cells are done, go directly to action_processed
+    # Otherwise do an intermediate upload.
     plog "Processing and reporting done for cells $CELLSREADY. Uploading reports."
     if pb_run_status.py -i "$RUN_OUTPUT" | grep -qFx 'PipelineStatus: processed'  ; then
         # In case we didn't already...
@@ -321,7 +327,11 @@ action_cell_ready(){
             upload_reports FINAL
             cd "$RUN_OUTPUT"
             mv_atomic pbpipeline/report.started pbpipeline/report.done
-        ) |& plog ; [ $? = 0 ] || pipeline_fail Report_final_upload
+        ) |& plog
+        if [ $? != 0 ] ; then
+            pipeline_fail Report_final_upload
+            return
+        fi
         log "  Completed processing on $RUNID [$CELLS]."
     else
         # If this fails now, action_processed may still rectify things later.
@@ -331,14 +341,9 @@ action_cell_ready(){
         fi
         log DONE
     fi
-    # Last-ditch cleanup.
-    ( cd "$RUN_OUTPUT" && rm -f pbpipeline/report.started )
 
-    # Mark the cells as done
-    for cell in $CELLSREADY ; do
-        mv_atomic pbpipeline/${cell}.started pbpipeline/${cell}.done
-        rm -f pbpipeline/${cell}.ready
-    done
+    # Last-ditch cleanup.
+    rm -vf "$RUN_OUTPUT"/pbpipeline/report.started |& plog
 }
 
 action_processed() {
@@ -364,11 +369,19 @@ action_processed() {
 
         Snakefile.report -p report_main
         list_projects_ready.py > projects_ready.txt
-    ) |& plog ; [ $? = 0 ] || pipeline_fail Final_report
+    ) |& plog
+    if [ $? != 0 ] ; then
+        pipeline_fail Final_report
+        return
+    fi
 
     set +e ; ( set -e
         upload_reports FINAL
-    ) |& plog ; [ $? = 0 ] || pipeline_fail Report_final_upload
+    ) |& plog
+    if [ $? != 0 ] ; then
+        pipeline_fail Report_final_upload
+        return
+    fi
 
     # Final success is contingent on the report upload AND that message going to RT.
     ( cd "$RUN_OUTPUT" && mv_atomic pbpipeline/report.started pbpipeline/report.done )

@@ -92,7 +92,10 @@ rule smrtlink_get_sample:
     output: "{cell}.sample-setup.yaml"
     input:  "{cell}.info.yaml"
     shell:
-        "smrtlink_get_sample.py --errors_to_yaml {input} > {output}"
+        """smrtlink_get_sample.py --options pbpipeline/OVERRIDES.yaml \
+                                  --errors_to_yaml \
+                                  {input} > {output}
+        """
 
 # Invokes PanDoc with the template stuff
 rule pan_to_html:

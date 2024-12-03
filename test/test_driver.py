@@ -530,7 +530,7 @@ class T(unittest.TestCase):
         expected_calls = self.bm.empty_calls()
 
         expected_calls['upload_report.sh'] = [[self.to_path]]
-        expected_calls['list_projects_ready.py'] = [[],[]]
+        expected_calls['list_projects_ready.py'] = [[]]
 
         expected_calls['Snakefile.process_cells'] = [[ "-R", "one_cell_info", "one_barcode_info", "list_blob_plots",
                                                        "--config", "cells=1_C01 1_D01",

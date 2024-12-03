@@ -114,6 +114,11 @@ def main(args):
 def add_sample_to_reports(sample_dict, reports_dict):
     """Adds info from sample_dict into reports_dict['Sample Loaded']
     """
+    if '_error' in sample_dict:
+        L.error("Sample prep details could not be added. Error was:")
+        L.error(sample_dict['_error'])
+        return
+
     sl = reports_dict.setdefault('Sample Loaded', {})
     deets_dict = sample_dict['details']
 

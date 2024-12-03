@@ -60,8 +60,9 @@ rule list_blob_plots:
         logger.quiet.discard('all')
 
         wc = wildcards
-        # We want to know how big the subsample actually was, so check the FASTQ
-        count_from_fastq = int(next(shell("grep -o '^>' {input.subs} | wc -l", iterable=True)))
+        # We want to know how big the subsample actually was, so check the FASTA
+        with open(str(input.subs)) as fh:
+            count_from_fastq = sum(1 for l in fh if l.startswith(">"))
 
         # I need to emit the plots in order in pairs. Unfortunately expand() won't quite
         # cut it here but I can make a nested list comprehension.
@@ -133,10 +134,10 @@ rule blast_chunk:
     params:
         evalue = '1e-50',
         outfmt = '6 qseqid staxid bitscore'
+    shadow: 'minimal'
     shell:
         """{TOOLBOX} {BLAST_SCRIPT} -query {input} -outfmt '{params.outfmt}' \
-           -evalue {params.evalue} -max_target_seqs 1 -out {output}.tmp -num_threads {threads}
-           mv {output}.tmp {output}
+           -evalue {params.evalue} -max_target_seqs 1 -out {output} -num_threads {threads}
         """
 
 # Split the FASTA into (at most) BLOB_CHUNKS chunks. The number may be less than BLOB_CHUNKS so this
@@ -179,17 +180,16 @@ rule blob_db:
         json = "blob/{cell}.{foo}.blobDB.json",
     input: unpack(i_blob_db)
     params:
-        tmp_prefix = "blob_tmp/{cell}.{foo}"
+        tmp_prefix = "./{cell}.{foo}"
     shadow: 'minimal'
     resources:
         mem_mb = 30000,
         n_cpus = 6,
     shell:
        r"""if [ ! -s {input.reads_sample} ] ; then touch {output.json} ; exit 0 ; fi
-           mkdir blob_tmp
            {TOOLBOX} blobtools create -i {input.reads_sample} -o {params.tmp_prefix} \
                -t {input.blast_results} -c {input.cov}
-           ls -l blob_tmp
+           ls -l >&2
            mv {params.tmp_prefix}.blobDB.json {output.json}
         """
 
@@ -206,22 +206,21 @@ rule blob_plot_png:
     params:
         maxsize = "1750x1750",
         thumbsize = "320x320"
-    shadow: 'shallow'
+    shadow: 'minimal'
     resources:
         mem_mb = 30000,
         n_cpus = 6,
     shell:
-       r""" mkdir blob_tmp
-            if [ -s {input.json} ] ; then
+       r""" if [ -s {input.json} ] ; then
                 export BLOB_COVERAGE_LABEL=Non-Dustiness
-                {TOOLBOX} blobtools plot -i {input.json} -o blob_tmp/ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
-                ls -l blob_tmp
-                mv blob_tmp/{wildcards.foo}.*.stats.txt {output.stats}
+                {TOOLBOX} blobtools plot -i {input.json} -o ./ --sort_first no-hit,other,undef -r {wildcards.taxlevel}
+                ls -l >&2
+                mv {wildcards.foo}.*.stats.txt {output.stats}
 
-                {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png \
+                {TOOLBOX} convert {wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.cov0.png \
                     -resize {params.maxsize}'>' {output.plotc[0]}
 
-                {TOOLBOX} convert blob_tmp/{wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png \
+                {TOOLBOX} convert {wildcards.foo}.*.{wildcards.taxlevel}.*.blobplot.read_cov.cov0.png \
                     -resize {params.maxsize}'>' {output.plotr[0]}
             else
                echo "No data" > {output.stats}

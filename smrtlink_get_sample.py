@@ -17,13 +17,23 @@ conn = None
 def main(args):
     L.basicConfig(level=(L.DEBUG if args.debug else L.WARNING))
 
-    # Load that YAML filea
+    # Load that YAML file
     info_yaml = None
     if args.ws_name:
         ws_name = args.ws_name
     elif args.info_yaml:
         info_yaml = load_yaml(args.info_yaml)
         ws_name = info_yaml['ws_name']
+
+    # Load the options
+    options_yaml = dict()
+    if args.options:
+        try:
+            cell_id = info_yaml['cell_id']
+            options_yaml = load_yaml(args.options).get(cell_id) or dict()
+
+        except FileNotFoundError:
+            L.info(f"Skipping missing options file {args.options}")
 
     # Decide how we want to exit
     if not args.errors_to_yaml:
@@ -47,28 +57,33 @@ def main(args):
     global conn
     conn = SMRTLinkClient.connect_with_creds(section=args.rc_section)
 
-    L.debug("Getting the sample list form the API")
+    if options_yaml.get('smrtlink_sample_uuid'):
+        smrtlink_sample_uuid = options_yaml['smrtlink_sample_uuid']
+    else:
+        L.debug("Getting the sample list from the API")
 
-    # This is dumb. The UUIDs are broken so we need to fetch all the samples and look for a
-    # match by name. SRSLY.
-    # At the time of writing, multiple samples have multiple entries. "30940GK0002L01" is
-    # a case in point, being just from October 2024.
-    # We should sanity check that the On_Plate_Loading_Concentration and Insert_Size matches
-    # what we have in the metadata.xml when this info is used.
-    all_samples = conn.get_endpoint("/smrt-link/samples")
-    matching_samples = [s for s in all_samples if s['name'] == ws_name]
+        # This is dumb. The UUIDs are broken so we need to fetch all the samples and look for a
+        # match by name. SRSLY.
+        # At the time of writing, multiple samples have multiple entries. "30940GK0002L01" is
+        # a case in point, being just from October 2024.
+        # We should sanity check that the On_Plate_Loading_Concentration and Insert_Size matches
+        # what we have in the metadata.xml when this info is used.
+        all_samples = conn.get_endpoint("/smrt-link/samples")
+        matching_samples = [s for s in all_samples if s['name'] == ws_name]
 
-    if not(matching_samples):
-        exit(f"Sample {ws_name} was not found in the API")
+        if not(matching_samples):
+            exit(f"Sample {ws_name} was not found in the API")
 
-    if len(matching_samples) > 1:
-        if not args.use_latest:
-            exit(f"Multiple samples have the name {ws_name}.")
-        else:
-            L.warning(f"Using the last of {len(matching_samples)} samples with the name {ws_name}.")
+        if len(matching_samples) > 1:
+            if not args.use_latest:
+                exit(f"Multiple samples have the name {ws_name}.")
+            else:
+                L.warning(f"Using the last of {len(matching_samples)} samples with the name {ws_name}.")
+
+        smrtlink_sample_uuid = matching_samples[-1]['uniqueId']
 
     # Now we have to re-fetch to get the finalHtml which holds the "Sample Concentration (nM)"
-    sample_record = conn.get_endpoint(f"/smrt-link/samples/{matching_samples[-1]['uniqueId']}")
+    sample_record = conn.get_endpoint(f"/smrt-link/samples/{smrtlink_sample_uuid}")
 
     # The 'details' is an embedded jSON string. Of course it is.
     sample_record['details'] = json.loads(sample_record['details'])
@@ -160,14 +175,21 @@ def parse_args(*args):
     argparser.add_argument("info_yaml", nargs="?",
                            help=".info.yaml file produced by compile_cell_info.py")
     argparser.add_argument("--use_latest", action="store_true",
-                            help="Use the latest sample if the name is ambiguous.")
+                           help="Use the latest sample if the name is ambiguous.")
     argparser.add_argument("--errors_to_yaml", action="store_true",
-                            help="Add the errors into the JSON. Allows Snakemake to continue.")
+                           help="Add the errors into the JSON. Allows Snakemake to continue.")
+    argparser.add_argument("-o", "--options",
+                           help="Read this file for extra options/overrides. If the file is"
+                                " not present the script will just regard it as empty")
 
     argparser.add_argument("-d", "--debug", action="store_true",
                             help="Print more verbose debugging messages.")
 
     parsed_args = argparser.parse_args(*args)
+
+    if not(parsed_args.info_yaml) and parsed_args.options:
+        # Because we need to get the cell id to find the right section in the options file
+        exit("Setting an options file only works with the .info.yaml argument")
 
     if not(parsed_args.info_yaml or parsed_args.ws_name):
         argparser.print_help()

@@ -88,8 +88,8 @@ def main():
     verbose = (os.environ.get("VERBOSE") or "0") != "0"
     L.basicConfig(level=(L.DEBUG if verbose else L.WARNING), stream=sys.stderr)
 
-    plist = set(list_the_projects())
-    print( *sorted(plist), sep='\n' )
+    for p in sorted(set(list_the_projects())):
+        print(p)
 
 if __name__  == '__main__':
     main()
