@@ -104,13 +104,17 @@ def main(args):
         sample_record['details'][k] = int(sample_record['details'][k])
 
     if info_yaml is not None and 'reports' in info_yaml:
-        cross_check_info(info_yaml['reports'], sample_record['details'])
+        try:
+            cross_check_info(info_yaml['reports'], sample_record['details'])
+        except RuntimeError as e:
+            exit(str(e))
 
     # Shall we dump this as YAML or JSON? Other things are YAML, so stick with that.
     dump_yaml(sample_record, fh=sys.stdout)
 
 def cross_check_info(reports_dict, deets_dict):
-    """Sanity check that the info we have already does match the sample.
+    """Sanity check that the info we have already (in reports_dict) does match
+       the sample details we just fetched (deets_dict).
     """
     # Check the insert size we got from metadata.xml (in sl_dict) versus the one we
     # see in sample-setup.yaml (sample_dict)
@@ -125,9 +129,18 @@ def cross_check_info(reports_dict, deets_dict):
         raise RuntimeError("Value mismatch in On-Plate Loading Conc")
 
     # And the Application
-    run_dict = reports_dict['Run']
-    if run_dict['Library type'] != deets_dict['Application']:
-        raise RuntimeError("Value mismatch in Application")
+    app1 = reports_dict['Run']['Library type']
+    app2 = deets_dict['Application']
+    if app1 != app2:
+
+        # Seems we may have some leeway here. I'm not sure if it makes sense
+        # to add some specific exceptions but let's see.
+        if any( [ (app1 == x and app2.startswith(x)) or
+                  (app2 == x and app1.startswith(x))
+                  for x in ["other"] ] ):
+            L.info(f"Accepting mismatch in Application: {app1} != {app2}")
+        else:
+            raise RuntimeError(f"Value mismatch in Application: {app1} != {app2}")
 
 def scrape_sample_details_table(html_text):
 
@@ -189,13 +202,13 @@ def parse_args(*args):
 
     if not(parsed_args.info_yaml) and parsed_args.options:
         # Because we need to get the cell id to find the right section in the options file
-        exit("Setting an options file only works with the .info.yaml argument")
+        sys.exit("Setting an options file only works with the .info.yaml argument")
 
     if not(parsed_args.info_yaml or parsed_args.ws_name):
         argparser.print_help()
-        exit(2)
+        sys.exit(2)
     if parsed_args.info_yaml and parsed_args.ws_name:
-        exit("Please give either --ws_name or specify a .info.yaml file but not both")
+        sys.exit("Please give either --ws_name or specify a .info.yaml file but not both")
 
     return parsed_args
 
