@@ -307,9 +307,9 @@ rule segment_reads:
         pbi     = find_source_file(fmt="pbi"),
         primers = lambda wc: get_primers_masN(wc.n),
     resources:
-        mem_mb = 72000,
-        n_cpus = 12,
-    threads: 12
+        mem_mb = 128000,
+        n_cpus = 18,
+    threads: 18
     shadow: 'minimal'
     shell:
         """{TOOLBOX} smrt skera split -j {threads} {input.bam} {input.primers} {output.bam}
