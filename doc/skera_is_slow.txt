@@ -1,0 +1,44 @@
+Skera is slow. How fast can I get it to run?
+
+Let's start with our original sample file, but this time I'll get 200k reads.
+
+$ samtools view -H /lustre-gseg/pacbio/pacbio_data/r84140_20240806_121103/pbpipeline/from/2_C01/pb_formats/../hifi_reads/m84140_240806_181656_s2.hifi_reads.bam \
+  > mas8_ccs_200k.sam
+$ samtools view /lustre-gseg/pacbio/pacbio_data/r84140_20240806_121103/pbpipeline/from/2_C01/pb_formats/../hifi_reads/m84140_240806_181656_s2.hifi_reads.bam \
+  | head -n 20000 >> mas8_ccs_200k.sam
+$ samtools view -o mas8_ccs_200k.bam mas8_ccs_200k.sam
+
+Now I'll try skera split with 18 vs. 36 cores.
+
+Well, using >18 cores does not help. This 2.1GB file takes about 50
+seconds to process. Call it 30 secs per GB.
+
+But hang about. If skera is that fast, a full size file of 488 GB should take...
+
+4 hours. Oh, right. I'll up the CPU count a bit but I guess that 18 is basically
+the limit. So can I get any advantage by splitting the BAM and recombining?
+
+I suspect not, since the overhead of split and recombine will be large.
+
+Can Skera work directly from a pipe? Not sure. It complains if the file name
+is not x.bam, but I feel like I can symlink my way around this.
+
+Nope. I can't. Not possible.
+
+So, how long does it take to split my BAM into 4 parts. Fastest way I know how:
+
+$ samtools view -@ 12 -1 -e '[zm] & 3 == 3' -o mas8_ccs_200k_part3.bam mas8_ccs_200k.bam
+
+This splits on the ZMW number modulo 4, so we're sure of an even split.
+
+That takes about 10 seconds per chunk, but we can run the chunks in parallel.
+Then it would take 15 seconds to run skera. Then 20 seconds
+to cat it all back together. So 45 seconds. Maybe 10% faster. It's not worth it unless
+we start keeping the BAM files split up, because the re-assembly of the BAM files takes
+such a long time.
+
+Having said that, if we were also running lima then perhaps it starts to make more sense.
+Split into 8 chunks, run skera on all 8 chunks, run lima on all 8 chunks, then recombine
+per barcode. This now works, as the recombining step per barcode can be done in parallel.
+
+OK, so save this for a future idea.
