@@ -263,8 +263,10 @@ action_cell_ready(){
       # pb_run_status.py has sanity-checked that RUN_OUTPUT is the matching directory.
       cd "$RUN_OUTPUT"
 
-      # Compile info for all cells, not just the one being processed.
+      # Compile info for all cells, not just the one being processed. And fix the perms
+      # set by mktemp
       scan_cells.py -c $CELLSREADY $CELLSPROCESSING $CELLSDONE > "$SC_DATA_FILE"
+      chmod --reference=pipeline.log "$SC_DATA_FILE"
 
       Snakefile.kinnex_scan --config cells="$CELLSREADY" sc_data="$SC_DATA_FILE" \
                                      ${EXTRA_SNAKE_CONFIG:-} -p
