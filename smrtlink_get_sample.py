@@ -59,6 +59,7 @@ def main(args):
 
     if options_yaml.get('smrtlink_sample_uuid'):
         smrtlink_sample_uuid = options_yaml['smrtlink_sample_uuid']
+        ignore_app_mismatch = True
     else:
         L.debug("Getting the sample list from the API")
 
@@ -81,6 +82,7 @@ def main(args):
                 L.warning(f"Using the last of {len(matching_samples)} samples with the name {ws_name}.")
 
         smrtlink_sample_uuid = matching_samples[-1]['uniqueId']
+        ignore_app_mismatch = False
 
     # Now we have to re-fetch to get the finalHtml which holds the "Sample Concentration (nM)"
     sample_record = conn.get_endpoint(f"/smrt-link/samples/{smrtlink_sample_uuid}")
@@ -105,14 +107,16 @@ def main(args):
 
     if info_yaml is not None and 'reports' in info_yaml:
         try:
-            cross_check_info(info_yaml['reports'], sample_record['details'])
+            cross_check_info( info_yaml['reports'],
+                              sample_record['details'],
+                              ignore_app_mismatch )
         except RuntimeError as e:
             exit(str(e))
 
     # Shall we dump this as YAML or JSON? Other things are YAML, so stick with that.
     dump_yaml(sample_record, fh=sys.stdout)
 
-def cross_check_info(reports_dict, deets_dict):
+def cross_check_info(reports_dict, deets_dict, ignore_app_mismatch=False):
     """Sanity check that the info we have already (in reports_dict) does match
        the sample details we just fetched (deets_dict).
     """
@@ -132,12 +136,13 @@ def cross_check_info(reports_dict, deets_dict):
     app1 = reports_dict['Run']['Library type']
     app2 = deets_dict['Application']
     if app1 != app2:
-
+        if ignore_app_mismatch:
+            L.info(f"Ignoring mismatch in Application: {app1} != {app2}")
         # Seems we may have some leeway here. I'm not sure if it makes sense
         # to add some specific exceptions but let's see.
-        if any( [ (app1 == x and app2.startswith(x)) or
-                  (app2 == x and app1.startswith(x))
-                  for x in ["other"] ] ):
+        elif any( [ (app1 == x and app2.startswith(x)) or
+                    (app2 == x and app1.startswith(x))
+                    for x in ["other"] ] ):
             L.info(f"Accepting mismatch in Application: {app1} != {app2}")
         else:
             raise RuntimeError(f"Value mismatch in Application: {app1} != {app2}")
