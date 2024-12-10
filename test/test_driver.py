@@ -4,7 +4,7 @@ import unittest
 import sys, os, re
 from unittest.mock import patch
 
-import subprocess
+from subprocess import check_call
 from tempfile import mkdtemp
 from shutil import rmtree, copytree
 from glob import glob
@@ -153,16 +153,6 @@ class T(unittest.TestCase):
 
         self.assertFalse(o_split)
 
-    def shell(self, cmd):
-        """Call to os.system in 'safe mode'
-        """
-        # Note this now uses subprocess.run since we can thus specify BASH
-        status = subprocess.call("set -euo pipefail ; " + cmd, shell=True, executable="/bin/bash")
-        if status:
-            raise ChildProcessError("Exit status was %s running command:\n%s" % (status, cmd))
-
-        return status
-
     def rt_cmd(self, *args, nosub=False):
         """Get the expected args to rt_runticket_manager.py
         """
@@ -188,7 +178,7 @@ class T(unittest.TestCase):
         """When the .smrtino file is missing the driver should refuse to proceed.
            Message going to STDERR would trigger an alert from CRON if this happened in production.
         """
-        self.shell("rm " + os.path.join(self.temp_dir, 'pacbio_data', '.smrtino'))
+        check_call(["rm", os.path.join(self.temp_dir, 'pacbio_data', '.smrtino')])
 
         self.bm_rundriver(expected_retval=1)
 
@@ -268,10 +258,10 @@ class T(unittest.TestCase):
         test_data = self.copy_run("r84140_20231030_134730")
 
         # Mark the run as started, and let's say we're processing read1
-        self.shell("mkdir -p " + self.to_path + "/pbpipeline")
-        self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
-        self.shell("touch " + self.to_path + "/pbpipeline/1_A01.started")
-        self.shell("touch " + self.to_path + "/pbpipeline/notify_run_complete.touch")
+        check_call(["mkdir", "-p", f"{self.to_path}/pbpipeline"])
+        check_call(["ln", "-sr", test_data, "from"], cwd=f"{self.to_path}/pbpipeline")
+        check_call(["touch", f"{self.to_path}/pbpipeline/1_A01.started"])
+        check_call(["touch", f"{self.to_path}/pbpipeline/notify_run_complete.touch"])
 
         self.bm_rundriver()
         self.assertInStdout(self.run_name, "PROCESSING")
@@ -287,9 +277,9 @@ class T(unittest.TestCase):
         test_data = self.copy_run("r84140_20231030_134730")
 
         # Mark the run as started, and let's say we're processing cell 1
-        self.shell("mkdir -p " + self.to_path + "/pbpipeline")
-        self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
-        self.shell("touch " + self.to_path + "/pbpipeline/1_A01.started")
+        check_call(["mkdir", "-p", f"{self.to_path}/pbpipeline"])
+        check_call(["ln", "-sr", test_data, "from"], cwd=f"{self.to_path}/pbpipeline")
+        check_call(["touch", f"{self.to_path}/pbpipeline/1_A01.started"])
 
         self.bm_rundriver()
         self.assertInStdout(self.run_name, "PROCESSING")
@@ -335,9 +325,9 @@ class T(unittest.TestCase):
 
         # Copy run which has 1 cell ready, one pending. Make the ready cell done.
         test_data = self.copy_run(run)
-        self.shell("mkdir -p " + self.to_path + "/pbpipeline")
-        self.shell("cd " + self.to_path + "/pbpipeline && ln -sr " + test_data + " from")
-        self.shell("touch " + self.to_path + "/pbpipeline/1_D01.done")
+        check_call(["mkdir", "-p", f"{self.to_path}/pbpipeline"])
+        check_call(["ln", "-sr", test_data, "from"], cwd=f"{self.to_path}/pbpipeline")
+        check_call(["touch", f"{self.to_path}/pbpipeline/1_D01.done"])
 
         self.environment['STALL_TIME'] = '1'
         self.bm_rundriver()
@@ -353,6 +343,7 @@ class T(unittest.TestCase):
         # But on the next round, it should complete
         # Except that 'upload_report.sh' will appear to fail, so there will be an error.
         # I could add a side effect to the call, maybe.
+        check_call(["touch", f"{self.to_path}/sc_data.foo.yaml"])
         self.bm_rundriver()
         self.assertInStdout(run, "PROCESSED")
 
@@ -360,7 +351,8 @@ class T(unittest.TestCase):
         last_reply_fd = self.bm.last_calls['rt_runticket_manager.py'][-1][-1]
 
         expected_calls = self.bm.empty_calls()
-        expected_calls['Snakefile.report'] = [ ['-p', 'report_main'] ]
+        expected_calls['Snakefile.report'] = [ ['--config', 'sc_data=sc_data.foo.yaml',
+                                                '-p', 'report_main'] ]
         expected_calls['upload_report.sh'] = [[self.to_path]]
         expected_calls['rt_runticket_manager.py'] = [self.rt_cmd( 'processing',
                                                        '--reply',
@@ -427,8 +419,8 @@ class T(unittest.TestCase):
         """ Test processing a run when the cells are ready
         """
         test_data = self.copy_run("r84140_20231018_154254")
-        self.shell(f"touch {self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone")
-        self.shell(f"touch {self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone")
+        check_call(["touch", f"{self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone"])
+        check_call(["touch", f"{self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone"])
 
         # Run the pipeline once to setup the output directory
         self.bm_rundriver()
@@ -454,8 +446,8 @@ class T(unittest.TestCase):
         """ Test error handling when Snakefile.process_cells fails
         """
         test_data = self.copy_run("r84140_20231018_154254")
-        self.shell(f"touch {self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone")
-        self.shell(f"touch {self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone")
+        check_call(["touch", f"{self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone"])
+        check_call(["touch", f"{self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone"])
 
         self.bm.add_mock("Snakefile.process_cells", fail=True)
 
@@ -505,8 +497,8 @@ class T(unittest.TestCase):
         """ Test error handling when all is well but rsync fails
         """
         test_data = self.copy_run("r84140_20231018_154254")
-        self.shell(f"touch {self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone")
-        self.shell(f"touch {self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone")
+        check_call(["touch", f"{self.from_path}/1_C01/metadata/m84140_231018_155043_s3.transferdone"])
+        check_call(["touch", f"{self.from_path}/1_D01/metadata/m84140_231018_162059_s4.transferdone"])
 
         self.bm.add_mock("upload_report.sh", fail=True)
 

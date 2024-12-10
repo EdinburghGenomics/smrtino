@@ -369,6 +369,7 @@ action_processed() {
     set +e ; ( set -e
         cd "$RUN_OUTPUT"
 
+        shopt -s failglob
         SC_DATA_FILE="$(printf "%s\n" sc_data.*.yaml | tail -n1)"
 
         Snakefile.report --config sc_data="$SC_DATA_FILE" -p report_main
