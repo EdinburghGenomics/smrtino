@@ -114,6 +114,7 @@ def compile_json_reports(reports_dict, metadata_xml, lima_counts=None):
     # This stuff is to be found in {cell}.sample-setup.yaml but as this has to
     # be fetched with an API query we're going to fold it in at the make_report.py
     # stage. Insert Size does get copied to the metadata.xml file though.
+    reports['Sample Loaded']['Application'] = None
     reports['Sample Loaded']['Insert size (bp)'] = int(metadata_xml['insert_size'])
     reports['Sample Loaded']['Sample Concentration (ng/µl)'] = None
     reports['Sample Loaded']['Sample Concentration (nM)'] = None

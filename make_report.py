@@ -136,6 +136,10 @@ def add_sample_to_reports(sample_dict, reports_dict):
              deets_dict['On_Plate_Loading_Concentration'] ):
             raise RuntimeError("Value mismatch in On-Plate Loading Conc")
 
+    # If there is a mismatch in the Application do we take it from the sample setup
+    # or stick with what was in the run? I think we are going to need to report both.
+    sl['Application'] = deets_dict['Application']
+
     # Copy the other stuff
     sl['Sample Concentration (ng/µl)'] = deets_dict['Starting_Sample_Concentration']
     sl['Sample Concentration (nM)'] = deets_dict['Sample Concentration (nM)']
