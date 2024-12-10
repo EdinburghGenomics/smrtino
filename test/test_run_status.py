@@ -239,10 +239,13 @@ class T(T_base):
         # Now say the report is done, but there are still cells ready. I don't know how it
         # got in this state but I think the status needs to be 'unknown' as this is not
         # consistent.
+        # Actually, this could be that the report was done but we are trying to re-do a cell
+        # and forgot to remove report.done. So maybe the correct behaviour is to be in
+        # 'cell_ready' status and ensure that driver then removes report.done
         self.touch('pbpipeline/report.done')
         run_info._clear_cache()
         self.assertCountEqual( run_info.get_cells_ready(), "2_B01  3_C01".split() )
-        self.assertEqual( run_info.get_status(), 'unknown' )
+        self.assertEqual( run_info.get_status(), 'cell_ready' )
 
     def test_error_states(self):
         """ Simulate some pipeline activity on that run.
@@ -329,6 +332,32 @@ class T(T_base):
                             'RunID': 'r64175e_20210528_333333',
                             'StartTime': 'unknown',
                           } )
+
+    def test_report_failed(self):
+        """If the cells are all done but the report failed, the status
+           is failed.
+
+           If the cells are not all done but the report failed, the status
+           is cell_ready (since we do want to try processing the cell ASAP)
+        """
+        run_info = self.use_run('r64175e_20210528_333333', copy=False)
+        self.md('pbpipeline')
+        self.touch('pbpipeline/1_A01.done')
+        self.touch('pbpipeline/2_B01.done')
+        self.touch('pbpipeline/report.started')
+        self.touch('pbpipeline/failed')
+
+        res = run_info.get_yaml()
+        res_dict = yaml.safe_load(res)
+        self.assertEqual(res_dict['PipelineStatus'], 'cell_ready')
+
+        # But now we have a failure
+        self.touch('pbpipeline/3_C01.done')
+
+        run_info._clear_cache()
+        res = run_info.get_yaml()
+        res_dict = yaml.safe_load(res)
+        self.assertEqual(res_dict['PipelineStatus'], 'failed')
 
     def test_revio(self):
         """Revio runs need some slightly (but not massively) different detection rules

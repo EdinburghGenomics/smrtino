@@ -205,6 +205,15 @@ class RunStatus:
         # go in here to override the failed and complete statuses.
         all_cell_statuses = [ v for v in self.get_cells().values() if v != self.CELL_ABORTED ]
 
+        # If any cell is ready we need to get it processed, regardless of what the report is doing
+        # or previous failure.
+        if any( v == self.CELL_READY for v in all_cell_statuses ):
+            # If we're having issues with parallel processing, we could check that nothing
+            # is processing too.
+            #if not any( v == self.CELL_PROCESSING for v in all_cell_statuses ):
+            #   return "cell_ready"
+            return "cell_ready"
+
         if self._exists_to( 'pbpipeline/report.done' ):
             if self._exists_to( 'pbpipeline/failed' ):
                 return "failed"
@@ -229,14 +238,6 @@ class RunStatus:
         # But until the final report is generated, the master 'failed' flag is ignored, so it's
         # possible that an interim report fails but then a new cell gets processed and the report
         # is re-triggered and this time it works and the flag can be cleared. Yeah.
-
-        # If any cell is ready we need to get it processed
-        if any( v == self.CELL_READY for v in all_cell_statuses ):
-            # If we're having issues with parallel processing, we could check that nothing
-            # is processing too.
-            #if not any( v == self.CELL_PROCESSING for v in all_cell_statuses ):
-            #   return "cell_ready"
-            return "cell_ready"
 
         # If all are processed we're in state processed, and ready to trigger the final report
         if all_cell_statuses and all( v == self.CELL_PROCESSED for v in all_cell_statuses ):

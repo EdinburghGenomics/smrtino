@@ -233,9 +233,11 @@ action_new(){
 action_cell_ready(){
     # It's time for Snakefile.process_cells to process one or more cells.
     local cell always_run
+    # There should not be a report.done but if there is remove it
+    rm -f "$RUN_OUTPUT/pbpipeline/report.done"
     for cell in $CELLSREADY ; do
-        touch_atomic "$RUN_OUTPUT"/pbpipeline/${cell}.started
-        rm -f "$RUN_OUTPUT"/pbpipeline/${cell}.ready
+        touch_atomic "$RUN_OUTPUT/pbpipeline/${cell}.started"
+        rm -f "$RUN_OUTPUT/pbpipeline/${cell}.ready"
     done
 
     # Make an sc_data.yaml file with a timestamped name.
