@@ -50,6 +50,19 @@ def scan_cells(filter_by_config=True):
 
     return [ (v['slot'], k) for k, v in all_info.items() ]
 
+def ifexists(filepattern):
+    """Input decorator function that only adds an input file to a rule if that
+       file already exists.
+    """
+    def _inner(wildcards):
+        filename = filepattern.format(**vars(wildcards))
+        if os.path.exists(filename):
+            return [filename]
+        else:
+            return []
+
+    return _inner
+
 # Global wildcard patterns
 wildcard_constraints:
     cellslot   = r"\d_[A-Z]01",
@@ -87,14 +100,18 @@ rule smrtlink_pdf_report:
         shell("smrtlink_pdf_report.py -o {output} --empty_on_missing {cell_uuid}")
 
 # This digs the sample setup info out of SMRTLink, where it is buried
-# We may have to add the --use_latest flag but that's a bit dicey.
+# We may have to add the --use_latest flag but that's a bit dicey. We have
+# pbpipeline/OVERRIDES.yaml instead. I made this an input to this rule so as
+# to trigger a re-run if the OVERRIDES is edited.
 rule smrtlink_get_sample:
     output: "{cell}.sample-setup.yaml"
-    input:  "{cell}.info.yaml"
+    input:
+        info = "{cell}.info.yaml",
+        overrides = ifexists("pbpipeline/OVERRIDES.yaml"),
     shell:
         """smrtlink_get_sample.py --options pbpipeline/OVERRIDES.yaml \
                                   --errors_to_yaml \
-                                  {input} > {output}
+                                  {input.info} > {output}
         """
 
 # Invokes PanDoc with the template stuff
