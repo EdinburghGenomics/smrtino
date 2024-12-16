@@ -87,23 +87,29 @@ def main(args):
     # Now we have to re-fetch to get the finalHtml which holds the "Sample Concentration (nM)"
     sample_record = conn.get_endpoint(f"/smrt-link/samples/{smrtlink_sample_uuid}")
 
-    # The 'details' is an embedded jSON string. Of course it is.
-    sample_record['details'] = json.loads(sample_record['details'])
+    try:
+        # The 'details' is an embedded jSON string. Of course it is.
+        sample_record['details'] = json.loads(sample_record['details'])
+
+
+        # Make 'Insert_Size' be an int. Ditto 'On_Plate_Loading_Concentration'
+        for k in ['Insert_Size', 'On_Plate_Loading_Concentration']:
+            sample_record['details'][k] = int(sample_record['details'][k])
+    except KeyError as e:
+        exit(f"KeyError: {e}")
 
     # And in a final piece of silliness, extract the "Sample Concentration (nM)" and
-    # "Sample Volume to Use" the finalHtml text.
-    sample_details_table = scrape_sample_details_table(sample_record['finalHtml'])
-    sample_record['details']['Sample Concentration (nM)'] = (
-            scrape_sample_conc_nm(sample_details_table) )
-    sample_record['details']['Sample Volume to Use'] = (
-            scrape_volume_to_use(sample_details_table) )
+    # "Sample Volume to Use" from the finalHtml text. But I'm not sure when this actually
+    # appears in the database??
+    if 'finalHtml' in sample_record:
+        sample_details_table = scrape_sample_details_table(sample_record['finalHtml'])
+        sample_record['details']['Sample Concentration (nM)'] = (
+                scrape_sample_conc_nm(sample_details_table) )
+        sample_record['details']['Sample Volume to Use'] = (
+                scrape_volume_to_use(sample_details_table) )
 
-    # And we can now get rid of sample_record['finalHtml']
-    del sample_record['finalHtml']
-
-    # Make 'Insert_Size' be an int. Ditto 'On_Plate_Loading_Concentration'
-    for k in ['Insert_Size', 'On_Plate_Loading_Concentration']:
-        sample_record['details'][k] = int(sample_record['details'][k])
+        # And we can now get rid of sample_record['finalHtml']
+        del sample_record['finalHtml']
 
     if info_yaml is not None and 'reports' in info_yaml:
         try:

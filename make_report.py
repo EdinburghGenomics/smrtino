@@ -142,11 +142,13 @@ def add_sample_to_reports(sample_dict, reports_dict):
 
     # Copy the other stuff
     sl['Sample Concentration (ng/µl)'] = deets_dict['Starting_Sample_Concentration']
-    sl['Sample Concentration (nM)'] = deets_dict['Sample Concentration (nM)']
-    sl['Sample Volume to Use (µl)'] = deets_dict['Sample Volume to Use']
-    sl['Concentration after clean-up (ng/ul)'] = None # This one is not in SMRTLink
+    sl['Sample Concentration (nM)'] = deets_dict.get('Sample Concentration (nM)',
+                                                     sl.get('Sample Concentration (nM)'))
+    sl['Sample Volume to Use (µl)'] = deets_dict.get('Sample Volume to Use',
+                                                     sl.get('Sample Volume to Use (µl)'))
+    #sl['Concentration after clean-up (ng/ul)'] = None # This one is not in SMRTLink
     sl['% of recovery (anticipated)'] = deets_dict['Cleanup_Anticipated_Yield']
-    sl['% of recovery (real)'] = None
+    # sl['% of recovery (real)'] = None
 
     # Nothing to return - we mutated the input dict
     return
