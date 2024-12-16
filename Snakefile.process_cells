@@ -305,7 +305,7 @@ rule segment_reads:
     input:
         bam     = find_source_file(fmt="bam"),
         pbi     = find_source_file(fmt="pbi"),
-        primers = lambda wc: get_primers_masN(wc.n),
+        primers = lambda wc: ancient(get_primers_masN(wc.n)),
     resources:
         mem_mb = 128000,
         n_cpus = 18,
