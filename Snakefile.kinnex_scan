@@ -117,7 +117,7 @@ rule skera_mas16:
         json = "kinnex_scan/{bam}.segmented_mas16.summary.json",
     input:
         bam = "kinnex_scan/{bam}.bam",
-        primers = get_primers_mas16(),
+        primers = ancient(get_primers_mas16()),
     params:
         bam = "kinnex_scan/{bam}.segmented_mas16.bam"
     threads: 2
