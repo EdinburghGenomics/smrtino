@@ -305,8 +305,10 @@ def get_readset_info(xmlfile, smrtlink_base=None):
                       for mbc in bs.findall('pbmeta:DNABarcodes/pbmeta:DNABarcode', _ns) ]
 
     # Get the barcode according to the filename
+    # This regex may capture "bc0001.mas16" so we need to chop off any
+    # extra extension
     mo = re.search(r"_reads\.(\S+)\.(consensus)?readset.xml$", xmlfile)
-    barcode_from_filename = mo.group(1) if mo else "unknown"
+    barcode_from_filename = mo.group(1).split(".")[0] if mo else "unknown"
 
     # There should be, unless this !
     L.debug(f"Found {len(bio_samples)} BioSample records, {len(samp_barcodes)}+{len(meta_barcodes)} DNABarcodes")
