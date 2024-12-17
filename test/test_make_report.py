@@ -115,7 +115,8 @@ class T(unittest.TestCase):
     def test_format_report(self):
         """This is a complex function but we'll at least check that the base case works.
         """
-        empty_bc = dict( barcode = "bc1",
+        empty_bc = dict( barcode = "bc1--bc1",
+                         barcode_squashed = "bc1",
                          ws_name = "test_ws_name",
                          bs_project = "00000",
                          bs_name = "test_bs_name" )
@@ -265,14 +266,42 @@ class T(unittest.TestCase):
                           ('dfb8647e-eb3e-4b6c-9351-92930fb6f058',
                            'https://smrtlink.genepool.private:8243/sl/run-qc/dfb8647e-eb3e-4b6c-9351-92930fb6f058') )
 
+    def test_barcode_list_squash(self):
+        """In the "SMRT cell info" section, under "Basics", the list of barcodes should
+           be reported in squashed format, and likewise the "QC for barcode ..." headings
+           should use the squashed format. But for cell m84140_241213_122201_s4 this
+           is not happening. So test it.
+        """
+        # As a reminder, the file
+        # m84140_241213_122201_s4/bcM0001--bcM0001/m84140_241213_122201_s4.info.bcM0001--bcM0001.yaml
+        # loaded via m84140_241213_122201_s4.info.yaml contains both the squashed and unsquashed name
+        # of the barcode.
+
+        cell_info = f"{DATA_DIR}/r84140_20241213_121411/m84140_241213_122201_s4.info.yaml"
+
+        loaded_data = load_input(cell_info)
+        rep = list(format_report(loaded_data))
+
+        # Grep out the barcode summary line
+        barcodes_heading = rep.index("<dt>barcodes</dt>")
+        self.assertEqual(rep[barcodes_heading+1], r"<dd>bcM0001\, bcM0002\, bcM0003</dd>")
+
+        # And the heading lines
+        qc_headings = [ l for l in rep if l.startswith("# QC for") ]
+        self.assertEqual(qc_headings, [
+                            "# QC for barcode bcM0001",
+                            "# QC for barcode bcM0002",
+                            "# QC for barcode bcM0003",
+                            "# QC for unassigned reads", ])
+
 
     def test_escape_md(self):
         # Double backslash is the most confusing.
         self.assertEqual( escape_md(r'\ '), r'\\ ')
 
         # And all the rest
-        self.assertEqual( escape_md(r'<[][\`*_{}()#+-.!>foo'),
-                          r'\<\[\]\[\\\`\*\_\{\}\(\)\#\+\-\.\!\>foo' )
+        self.assertEqual( escape_md(r'<[][\`*_{}()#+-.!,>@foo'),
+                          r'\<\[\]\[\\\`\*\_\{\}\(\)\#\+\-\.\!\,\>@foo' )
 
 if __name__ == '__main__':
     unittest.main()

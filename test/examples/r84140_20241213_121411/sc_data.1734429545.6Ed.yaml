@@ -1,0 +1,49 @@
+run:
+  run_or_cell: run
+  fullname: r84140_20241213_121411
+  platform: Revio
+  instrument: '84140'
+  rundate: 2024-12-13 12:14:11
+cells:
+  m84140_241213_122201_s4:
+    slot: 1_B01
+    parts:
+    - hifi_reads
+    - fail_reads
+    re-demultiplex: true
+    barcodes:
+      bcM0001--bcM0001:
+        hifi_reads:
+          bam: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0001--bcM0001/m84140_241213_122201_s4.hifi_reads.bcM0001--bcM0001.bam
+          pbi: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0001--bcM0001/m84140_241213_122201_s4.hifi_reads.bcM0001--bcM0001.bam.pbi
+          xml: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0001--bcM0001/m84140_241213_122201_s4.hifi_reads.bcM0001--bcM0001.consensusreadset.xml
+        fail_reads:
+          bam: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0001--bcM0001/m84140_241213_122201_s4.fail_reads.bcM0001--bcM0001.bam
+          pbi: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0001--bcM0001/m84140_241213_122201_s4.fail_reads.bcM0001--bcM0001.bam.pbi
+      bcM0002--bcM0002:
+        hifi_reads:
+          bam: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0002--bcM0002/m84140_241213_122201_s4.hifi_reads.bcM0002--bcM0002.bam
+          pbi: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0002--bcM0002/m84140_241213_122201_s4.hifi_reads.bcM0002--bcM0002.bam.pbi
+          xml: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0002--bcM0002/m84140_241213_122201_s4.hifi_reads.bcM0002--bcM0002.consensusreadset.xml
+        fail_reads:
+          bam: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0002--bcM0002/m84140_241213_122201_s4.fail_reads.bcM0002--bcM0002.bam
+          pbi: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0002--bcM0002/m84140_241213_122201_s4.fail_reads.bcM0002--bcM0002.bam.pbi
+      bcM0003--bcM0003:
+        hifi_reads:
+          bam: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0003--bcM0003/m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.bam
+          pbi: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0003--bcM0003/m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.bam.pbi
+          xml: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0003--bcM0003/m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.consensusreadset.xml
+        fail_reads:
+          bam: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0003--bcM0003/m84140_241213_122201_s4.fail_reads.bcM0003--bcM0003.bam
+          pbi: pbpipeline/re-demultiplex-m84140_241213_122201_s4/bcM0003--bcM0003/m84140_241213_122201_s4.fail_reads.bcM0003--bcM0003.bam.pbi
+    meta: pbpipeline/from/1_B01/metadata/m84140_241213_122201_s4.metadata.xml
+    reports_zip: pbpipeline/from/1_B01/statistics/m84140_241213_122201_s4.reports.zip
+    lima_counts: pbpipeline/re-demultiplex-m84140_241213_122201_s4/m84140_241213_122201_s4.hifi_reads.lima.counts
+    unassigned:
+      hifi_reads:
+        bam: pbpipeline/re-demultiplex-m84140_241213_122201_s4/m84140_241213_122201_s4.hifi_reads.unbarcoded.bam
+        pbi: pbpipeline/re-demultiplex-m84140_241213_122201_s4/m84140_241213_122201_s4.hifi_reads.unbarcoded.bam.pbi
+        xml: pbpipeline/re-demultiplex-m84140_241213_122201_s4/m84140_241213_122201_s4.hifi_reads.unbarcoded.consensusreadset.xml
+      fail_reads:
+        bam: pbpipeline/re-demultiplex-m84140_241213_122201_s4/m84140_241213_122201_s4.fail_reads.unbarcoded.bam
+        pbi: pbpipeline/re-demultiplex-m84140_241213_122201_s4/m84140_241213_122201_s4.fail_reads.unbarcoded.bam.pbi

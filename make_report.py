@@ -153,7 +153,7 @@ def add_sample_to_reports(sample_dict, reports_dict):
     # Nothing to return - we mutated the input dict
     return
 
-def escape_md(in_txt, backwhack=re.compile(r'([][\\`*_{}()#+-.!<>])')):
+def escape_md(in_txt, backwhack=re.compile(r'([][\\`*_{}()#+,.!<>-])')):
     """ HTML escaping is not the same as markdown escaping
     """
     return re.sub(backwhack, r'\\\1', str(in_txt))
@@ -197,7 +197,7 @@ def get_pipeline_metadata(pipe_dir):
     return dict( version = '+'.join(sorted(versions)),
                  rundir = os.path.basename(os.path.realpath(pipe_dir + '/..')) )
 
-def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None):
+def format_report(yaml_data, pipedata=None, run_status=None, pdfreport=None, rep_time=None):
     """ Make a full report based upon the contents of a dict of {cell_id: {infos}, ...}
         Return a list of lines to be printed as a PanDoc markdown doc.
 
@@ -207,6 +207,8 @@ def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None
           * rep_time is a datetime but normally not needed as the current time will be used
     """
     rep = aggregator()
+    pipedata = pipedata or {}
+    run_status = run_status or {}
     time_header = (rep_time or datetime.now()).strftime("%A, %d %b %Y %H:%M")
 
     cell_id = yaml_data['cell_id']
@@ -218,7 +220,6 @@ def format_report(yaml_data, pipedata, run_status, pdfreport=None, rep_time=None
     rep( f"% {time_header}\n" )
 
     # Add the run_status meta-data
-    run_status = run_status or {}
     rep("\n# About the whole run\n")
 
     rep("[⮰ Reports for all cells](./)\n")
@@ -298,7 +299,7 @@ def format_cell(cdict, cell_link=None):
         elif k == 'barcodes':
             # There will always be at least one barcode per cell, but it may
             # not have an actual 'barcode'.
-            bc_str = ', '.join([b['barcode'] for b in v if 'barcode' in b])
+            bc_str = ', '.join([b['barcode_squashed'] for b in v if 'barcode' in b])
             if bc_str:
                 rep(f"<dt>{k}</dt>")
                 rep(f"<dd>{escape_md(bc_str)}</dd>")
@@ -335,7 +336,7 @@ def format_cell(cdict, cell_link=None):
     # Now the per-barcode formatting
     for bc in cdict.get('barcodes', []):
         if 'barcode' in bc:
-            title = f"QC for barcode {bc['barcode']}"
+            title = f"QC for barcode {bc['barcode_squashed']}"
         else:
             title = "QC for all reads"
         format_per_barcode( bc,

@@ -1,0 +1,88 @@
+run_id: r84140_20241213_121411
+run_slot: 1_B01
+cell_id: m84140_241213_122201_s4
+cell_uuid: a4b6070d-bafe-47ce-8f00-4d8c3db49d58
+readset_type: Revio (HiFi)
+_readset_type: ccsreads
+_parts:
+- hifi_reads
+- fail_reads
+ws_name: 12345XXpool01
+ws_desc: ''
+ws_project: '12345'
+barcode: bcM0003--bcM0003
+barcode_squashed: bcM0003
+bs_name: 12345XXpool03
+bs_desc: ''
+bs_project: '12345'
+project: '12345'
+_run:
+  ExperimentId: ''
+  ChipType: 25mChip
+  InstrumentType: Revio
+  CreatedBy: rfoster2
+  TimeStampedName: r84140_20241213_121411
+_filename: m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.consensusreadset.xml
+_plots:
+- - title: Percentage of rRNA found in subsample (0 sequences)
+    label: N/A
+    fraction:
+    - 0.0
+    - 100
+- - title: Taxonomy for hifi_reads bcM0003--bcM0003 (0 sequences) by phylum, order,
+      species
+    files:
+    - - m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.phylum.read_cov.cov0.png
+      - m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.order.read_cov.cov0.png
+      - m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.species.read_cov.cov0.png
+    - - m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.phylum.cov0.png
+      - m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.order.cov0.png
+      - m84140_241213_122201_s4.hifi_reads.bcM0003--bcM0003.species.cov0.png
+guessed_taxon: No hits >10.0%
+quality_binning: Unbinned
+kinnex_type: null
+_cstats:
+- _headings:
+  - Barcode
+  - File
+  - Kinnex
+  - Min read length
+  - Max read length
+  - Reads
+  - Total bases
+  - N50
+  - GC %
+  - Mean length
+  Min read length: 0
+  Max read length: -1
+  Reads: 0
+  Total bases: 0
+  N50: -1
+  GC %: 0.0
+  Mean length: 0.0
+  non-N bases: 0
+  Barcode: bcM0003
+  File: Hifi_reads
+  Kinnex: '-'
+- _headings:
+  - Barcode
+  - File
+  - Kinnex
+  - Min read length
+  - Max read length
+  - Reads
+  - Total bases
+  - N50
+  - GC %
+  - Mean length
+  Min read length: 114
+  Max read length: 61430
+  Reads: 484
+  Total bases: 7190385
+  N50: 15178
+  GC %: 47.09045482265553
+  Mean length: 14856.167355371901
+  non-N bases: 7190385
+  Barcode: bcM0003
+  File: Fail_reads
+  Kinnex: '-'

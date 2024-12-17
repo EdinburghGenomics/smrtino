@@ -1,0 +1,12 @@
+sc_data: '@sc_data.1734429545.6Ed.yaml'
+unassigned: '@m84140_241213_122201_s4/unassigned/m84140_241213_122201_s4.info.unassigned.yaml'
+barcodes:
+- '@m84140_241213_122201_s4/bcM0001--bcM0001/m84140_241213_122201_s4.info.bcM0001--bcM0001.yaml'
+- '@m84140_241213_122201_s4/bcM0002--bcM0002/m84140_241213_122201_s4.info.bcM0002--bcM0002.yaml'
+- '@m84140_241213_122201_s4/bcM0003--bcM0003/m84140_241213_122201_s4.info.bcM0003--bcM0003.yaml'
+run_id: r84140_20241213_121411
+run_slot: 1_B01
+cell_id: m84140_241213_122201_s4
+cell_uuid: a4b6070d-bafe-47ce-8f00-4d8c3db49d58
+ws_name: 12345XXpool01
+ws_desc: ''

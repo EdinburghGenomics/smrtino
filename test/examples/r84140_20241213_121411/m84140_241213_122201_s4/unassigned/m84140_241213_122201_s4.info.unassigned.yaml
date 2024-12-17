@@ -1,0 +1,86 @@
+run_id: r84140_20241213_121411
+run_slot: 1_B01
+cell_id: m84140_241213_122201_s4
+cell_uuid: a4b6070d-bafe-47ce-8f00-4d8c3db49d58
+readset_type: Revio (HiFi)
+_readset_type: ccsreads
+_parts:
+- hifi_reads
+- fail_reads
+ws_name: 12345XXpool01
+ws_desc: ''
+ws_project: '12345'
+bs_name: 12345XXpool01
+bs_desc: ''
+bs_project: '12345'
+project: '12345'
+_run:
+  ExperimentId: ''
+  ChipType: 25mChip
+  InstrumentType: Revio
+  CreatedBy: rfoster2
+  TimeStampedName: r84140_20241213_121411
+_filename: m84140_241213_122201_s4.hifi_reads.unassigned.consensusreadset.xml
+_plots:
+- - title: Percentage of rRNA found in subsample (10000 sequences)
+    label: 1.52%
+    fraction:
+    - 1.52
+    - 100
+- - title: Taxonomy for hifi_reads unassigned (10000 sequences) by phylum, order,
+      species
+    files:
+    - - m84140_241213_122201_s4.hifi_reads.unassigned.phylum.read_cov.cov0.png
+      - m84140_241213_122201_s4.hifi_reads.unassigned.order.read_cov.cov0.png
+      - m84140_241213_122201_s4.hifi_reads.unassigned.species.read_cov.cov0.png
+    - - m84140_241213_122201_s4.hifi_reads.unassigned.phylum.cov0.png
+      - m84140_241213_122201_s4.hifi_reads.unassigned.order.cov0.png
+      - m84140_241213_122201_s4.hifi_reads.unassigned.species.cov0.png
+guessed_taxon: Homo sapiens (94.3%)
+quality_binning: Unbinned
+kinnex_type: null
+_cstats:
+- _headings:
+  - Barcode
+  - File
+  - Kinnex
+  - Min read length
+  - Max read length
+  - Reads
+  - Total bases
+  - N50
+  - GC %
+  - Mean length
+  Min read length: 206
+  Max read length: 31505
+  Reads: 35193
+  Total bases: 405912285
+  N50: 12212
+  GC %: 47.07240235411943
+  Mean length: 11533.892677521098
+  non-N bases: 405912285
+  Barcode: unassigned
+  File: Hifi_reads
+  Kinnex: '-'
+- _headings:
+  - Barcode
+  - File
+  - Kinnex
+  - Min read length
+  - Max read length
+  - Reads
+  - Total bases
+  - N50
+  - GC %
+  - Mean length
+  Min read length: 85
+  Max read length: 288071
+  Reads: 478009
+  Total bases: 7147709682
+  N50: 14582
+  GC %: 46.55361080738422
+  Mean length: 14953.08599210475
+  non-N bases: 7147709682
+  Barcode: unassigned
+  File: Fail_reads
+  Kinnex: '-'
