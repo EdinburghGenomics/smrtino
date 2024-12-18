@@ -5,7 +5,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datetime import datetime
 from collections import OrderedDict
 
-from smrtino import load_yaml, aggregator
+from smrtino import load_yaml, aggregator, sort_versions
 
 """ Makes a report (in PanDoc format) for a cell. We will only report on
     processed SMRT cells where the info.yaml has been generated - so no
@@ -181,7 +181,7 @@ def get_pipeline_metadata(pipe_dir):
     versions = set([os.environ.get('SMRTINO_VERSION','unknown')])
 
     if not pipe_dir:
-        return dict( version = '+'.join(sorted(versions)) )
+        return dict( version = '+'.join(sort_versions(versions)) )
 
     # The start_times file reveals the previous versions applied
     try:
@@ -194,7 +194,7 @@ def get_pipeline_metadata(pipe_dir):
 
     # Also the name of the directory what pipe_dir is in -
     # Should be the same as the run name.
-    return dict( version = '+'.join(sorted(versions)),
+    return dict( version = '+'.join(sort_versions(versions)),
                  rundir = os.path.basename(os.path.realpath(pipe_dir + '/..')) )
 
 def format_report(yaml_data, pipedata=None, run_status=None, pdfreport=None, rep_time=None):

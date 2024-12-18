@@ -173,11 +173,11 @@ class T(unittest.TestCase):
     def test_get_pipeline_metadata(self):
         """This mostly just reads the version log
         """
-        with patch("os.environ", dict(SMRTINO_VERSION='99.99')):
+        with patch("os.environ", dict(SMRTINO_VERSION='1.7.19')):
             pmd = get_pipeline_metadata( DATA_DIR + '/rundir1/pbpipeline' )
 
         self.assertEqual( pmd,
-                          dict( version = "1.7.2+1.7.3+99.99",
+                          dict( version = "1.7.2+1.7.3+1.7.19",
                                 rundir = 'rundir1') )
 
 

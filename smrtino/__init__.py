@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import os, re
 from datetime import datetime
-
-# Currently provides the "glob" function and the "smrtino_version" constant.
 from glob import glob as _glob
+from packaging.version import parse as parse_version
 
 # And some YAML enhancement
 from smrtino.yaml_ordered import yaml, yamlloader, dictify
@@ -135,5 +134,10 @@ def dump_yaml(foo, filename=None, fh=None):
         with open(filename, 'w') as yfh:
             print(ydoc, file=yfh, end='')
     return ydoc
+
+def sort_versions(vlist):
+    """When sorting versions, 1.1.10 comes after 1.1.9
+    """
+    return sorted(vlist, key=parse_version)
 
 smrtino_version = _determine_version()
