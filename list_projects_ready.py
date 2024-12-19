@@ -21,7 +21,7 @@ def find_projects_from_yaml(filename):
         # Resolve the @ lines
         for idx in range(len(ydata['barcodes'])):
             v = ydata['barcodes'][idx]
-            if type(v) == str and v.startswith("@"):
+            if type(v) is str and v.startswith("@"):
                 ydata['barcodes'][idx] = load_yaml(v[1:], relative_to=filename)
 
         # What should I do here if some barcodes have a project and others do not?

@@ -28,9 +28,9 @@ def load_input(yaml_file, links_file=None):
     # Some of the items in the YAML will be references to other YAML files,
     # but we only need to look down one level.
     for k, v in yaml_info.items():
-        if type(v) == str and v.startswith("@"):
+        if type(v) is str and v.startswith("@"):
             yaml_info[k] = load_yaml(v[1:], relative_to=yaml_file)
-        elif type(v) == list:
+        elif type(v) is list:
             for idx in range(len(v)):
                 if v[idx].startswith("@"):
                     v[idx] = load_yaml(v[idx][1:], relative_to=yaml_file)
@@ -303,7 +303,7 @@ def format_cell(cdict, cell_link=None):
             if bc_str:
                 rep(f"<dt>{k}</dt>")
                 rep(f"<dd>{escape_md(bc_str)}</dd>")
-        elif type(v) != str:
+        elif type(v) is not str:
             # Leave this for now
             pass
         elif not(k.startswith('_')):
@@ -413,9 +413,9 @@ def make_table(rows, headings=None):
         headings = rows[0]['_headings']
 
     def fmt(v):
-        if type(v) == float:
+        if type(v) is float:
             return "{:,.02f}".format(v)
-        elif type(v) == int:
+        elif type(v) is int:
             return "{:,d}".format(v)
         else:
             return "{}".format(v)

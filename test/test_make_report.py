@@ -160,7 +160,7 @@ class T(unittest.TestCase):
             <dt>bs_project</dt>
             <dd>00000</dd>
             <dt>bs_name</dt>
-            <dd>test\_bs\_name</dd>
+            <dd>test\\_bs\\_name</dd>
             </dl>
 
             *~~~*

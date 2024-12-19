@@ -132,7 +132,7 @@ class OAUTHClient:
            Returns a dict with 'Filename', 'Content-Type', 'Content-Length' entries,
            if these are known.
         """
-        if type(dest_file) == str:
+        if type(dest_file) is str:
             with open(dest_file, 'wb') as dfh:
                 return self.download_endpoint(ep_path, dfh, **params)
 
