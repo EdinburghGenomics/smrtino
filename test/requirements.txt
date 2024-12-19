@@ -1,3 +1,4 @@
+packaging
 git+https://github.com/EdinburghGenomics/bashmocker@v0.3.1
 pyyaml==6.0.1
 yamlloader==1.1.0

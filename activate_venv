@@ -49,6 +49,7 @@ else
         check_ctypes
 
         pip_install wheel
+        pip_install packaging
         pip_install 'pyyaml<6.1'
         pip_install 'yamlloader<2'
         pip_install 'rt<3'
