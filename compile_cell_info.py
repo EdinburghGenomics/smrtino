@@ -253,10 +253,14 @@ def summarize_lima_counts(lima_counts):
     """
     unassigned = lima_counts['unassigned']
     assigned = [v for k, v in lima_counts.items() if k != 'unassigned']
+    if len(assigned) > 1:
+        cov = stdev(assigned) / mean(assigned)
+    else:
+        cov = 0.0
 
     return { 'Number of samples': len(assigned),
              'Assigned Reads (%)': "{:.2f}".format(sum(assigned) * 100 / (sum(assigned) + unassigned)),
-             'CV': "{:.2f}".format(stdev(assigned) / mean(assigned)) }
+             'CV': "{:.2f}".format(cov) }
 
 def calculate_cv(counts_list, qual_list):
     """Calculate the CV of counts_list. If qual_list is provided I'll use it to spot the non-barcoded
