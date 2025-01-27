@@ -43,16 +43,16 @@ def main(args):
         post_res = conn.post_endpoint('/smrt-link/job-manager/jobs/make-dataset-reports', post_body)
     except HTTPError as e:
         if e.response.status_code == 422:
-            L.exception("Status 422 normally indicates that the cell_uuid is not in SMRTLink")
+            L.error("Status 422 normally indicates that the cell_uuid is not in SMRTLink")
             if args.empty_on_missing:
                 L.warning("Saving empty report as --empty_on_missing is set")
                 with open(out_file, 'wb'):
                     pass
                 return
-            else:
-                raise
-        else:
-            raise
+        elif e.response.status_code == 404:
+            L.error("Status 404 normally indicates that the cell_uuid is malformed")
+
+        raise
 
     # From this we can build an endpoint prefix for the following calls
     job_endpoint = f"/smrt-link/job-manager/jobs/{post_res['jobTypeId']}/{post_res['uuid']}"
