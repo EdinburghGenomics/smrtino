@@ -66,8 +66,8 @@ def _get_automation_parameters(root):
         if k in res:
             raise KeyError(f"AutomationParameter {k} is repeated in XML.")
 
-        if dtype == "Boolean":
-            # But at least some booleans are tagged as strings
+        if dtype == "Boolean" or k in ["DynamicLoadingCognate"]:
+            # At least some booleans are tagged as strings, hence the special case
             res[k] = val == "True"
         elif dtype == "String":
             res[k] = val
@@ -265,7 +265,7 @@ def get_metadata_info2(xmlfile):
                     root.find('.//pbmeta:OnPlateLoadingConcentration', _ns).text )
 
     # software versions
-    vi = { e.attrib['Name']: e.attrib['Version'] for e in
+    vi = { e.attrib['Name']: e.attrib.get('Version', 'unknown') for e in
            root.findall('.//pbmeta:ComponentVersions/pbmeta:VersionInfo', _ns) }
     run_info['version_ics'] = vi['ics']
     run_info['version_chemistry'] = vi['chemistry']

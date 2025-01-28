@@ -105,7 +105,7 @@ def compile_json_reports(reports_dict, metadata_xml, lima_counts=None):
     # Let's load it up. This will be a long function.
     reports['Run']['Movie Time (hours)'] = metadata_xml['movie_time']
     reports['Run']['Library type'] = metadata_xml['application'] # Maybe?
-    reports['Run']['Adaptive loading'] = metadata_xml['adaptive_loading']
+    reports['Run']['Adaptive loading'] = "{}".format(metadata_xml['adaptive_loading'])
     reports['Run']['SMRT Cell Lot Number'] = metadata_xml['smrt_cell_lot_number']
     reports['Run']['Well Sample Name'] = metadata_xml['ws_name']
     reports['Run']['Well name'] = metadata_xml['run_slot']

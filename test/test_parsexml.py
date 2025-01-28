@@ -23,7 +23,9 @@ from smrtino.ParseXML import ( get_metadata_summary, get_metadata_info, get_meta
 revio_meta_xml = [ f"{DATA_DIR}/r84140_20231018_154254/1_C01/metadata/m84140_231018_155043_s3.metadata.xml",
                    f"{DATA_DIR}/r84140_20231018_154254/1_D01/metadata/m84140_231018_162059_s4.metadata.xml",
                    f"{DATA_DIR}/r84140_20231030_134730/1_A01/metadata/m84140_231030_135502_s1.metadata.xml",
-                   f"{DATA_DIR}/r84140_20241007_154722/1_D01/metadata/m84140_241007_155450_s3.metadata.xml"]
+                   f"{DATA_DIR}/r84140_20241007_154722/1_D01/metadata/m84140_241007_155450_s3.metadata.xml" ]
+
+revio_meta_xml_2025 = [ f"{DATA_DIR}/r84140_20250121_143858/1_C01/metadata/m84140_250121_185015_s3.metadata.xml", ]
 
 smrtlink_13_meta = [ f"{DATA_DIR_OUT}/r84140_20240116_162812/m84140_240116_163605_s1.metadata.xml",
                      f"{DATA_DIR_OUT}/r84140_20240116_162812/m84140_240116_183509_s2.metadata.xml" ]
@@ -98,7 +100,7 @@ class T(unittest.TestCase):
            his spreadsheet
         """
         md0 = get_metadata_info2(revio_meta_xml[0])
-        self.assertEqual(md0, {'adaptive_loading': 'False',
+        self.assertEqual(md0, {'adaptive_loading': False,
                                'application': 'hifiReads',
                                'cell_id': 'm84140_231018_155043_s3',
                                'cell_uuid': '577ccdb1-d463-42b3-bdd9-6fffbf659105',
@@ -121,7 +123,7 @@ class T(unittest.TestCase):
 
         # Let's add a test for a Kinnex run. Maybe r84140_20241007_154722
         md3 = get_metadata_info2(revio_meta_xml[3])
-        self.assertEqual(md3, {'adaptive_loading': 'True',
+        self.assertEqual(md3, {'adaptive_loading': True,
                                'application': 'masSeq16SrRNA',
                                'cell_id': 'm84140_241007_155450_s3',
                                'cell_uuid': 'ee1c0ae0-c693-44c1-9767-ab5db6906aca',
@@ -141,6 +143,31 @@ class T(unittest.TestCase):
                                'version_smrtlink': '13.1.0.221970',
                                'ws_desc': '',
                                'ws_name': '33950NSpool01L01'})
+
+    def test_get_metadata_info2_2025(self):
+        """As above, but PacBio changed the file format
+        """
+        md0 = get_metadata_info2(revio_meta_xml_2025[0])
+        self.assertEqual(md0, {'adaptive_loading': True,
+                               'application': 'masSeqForIsoSeq',
+                               'cell_id': 'm84140_250121_185015_s3',
+                               'cell_uuid': '79c79af3-fcd8-4250-b40c-003a80ed7530',
+                               'insert_size': 10000,
+                               'instrument_id': '84140',
+                               'instrument_name': 'Obelix',
+                               'movie_time': 30,
+                               'on_plate_loading_conc': 185,
+                               'run_id': 'r84140_20250121_143858',
+                               'run_slot': '1_C01',
+                               'run_start': '2025-01-21',
+                               'smrt_cell_label_number': 'EA156579',
+                               'smrt_cell_lot_number': '1000003526',
+                               'smrtlink_user': 'rfoster2',
+                               'version_chemistry': '13.3.0.249246',
+                               'version_ics': '13.3.0.253824',
+                               'version_smrtlink': '25.1.0.257715',
+                               'ws_desc': '',
+                               'ws_name': '33461BMpool01'})
 
     def test_meta_summary_13(self):
         """Try reading a cell metadata file from the Revio to get the
