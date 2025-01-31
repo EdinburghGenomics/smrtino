@@ -43,7 +43,7 @@ else
         activate_venv
 
         # We need to upgrade pip so that --prefer-binary is a valid option
-        pip3 --disable-pip-version-check install --upgrade 'pip>22' 2>&1
+        pip3 --disable-pip-version-check install --upgrade 'pip>24' 2>&1
 
         # A check that the Python is not broken
         check_ctypes
@@ -69,6 +69,7 @@ else
         pip_install pysam==0.22.1
         pip_install tqdm==4.67.0
         pip_install ujson==5.10.0
+        pip_install lxml==5.3.0
 
         # snakemake and drmaa (note the settings/wrapper in shell_helper_functions.sh)
         pip_install yte==1.5.4
