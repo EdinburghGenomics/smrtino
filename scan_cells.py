@@ -85,6 +85,7 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone", redemux=No
         {cell}.reads.bam.pbi - ditto
         {cell}.consensusreadset.xml - under pb_formats
         {cell}.metadata.xml - under metadata
+        {cell}.sts.xml - under metadata
         {cell}.reports.zip - ditto
         {cell}.lima_counts.txt - ditto, but optional
 
@@ -116,13 +117,15 @@ def scan_cells_revio(rundir, cell_list, extn_to_scan=".transferdone", redemux=No
         if res[cellid]['re-demultiplex']:
             res[cellid].update({
                     'barcodes': find_barcodes_redemux(redemux_dir, cellid),
-                    'meta': find_meta(rundir, slot, cellid),
+                    'metadata': find_meta(rundir, slot, cellid),
+                    'sts': find_meta(rundir, slot, cellid, fmt="sts"),
                     'reports_zip': find_reports_zip(rundir, slot, cellid),
                     'lima_counts': find_lima_counts_redemux(redemux_dir, cellid) })
         else:
             res[cellid].update({
                     'barcodes': find_barcodes(rundir, slot, cellid),
-                    'meta': find_meta(rundir, slot, cellid),
+                    'metadata': find_meta(rundir, slot, cellid),
+                    'sts': find_meta(rundir, slot, cellid, fmt="sts"),
                     'reports_zip': find_reports_zip(rundir, slot, cellid),
                     'lima_counts': find_lima_counts(rundir, slot, cellid) })
 
@@ -271,10 +274,11 @@ def files_per_barcode(rundir, slot, cellid, barcode, check_exist=True):
     return dict( hifi_reads = hifi,
                  fail_reads = fail )
 
-def find_meta(rundir, slot, cellid):
+def find_meta(rundir, slot, cellid, fmt="metadata"):
     """Returns the location of the .metadata.xml, and checks it exists.
+       Also works for the sts.xml file.
     """
-    res = f"{rundir}{slot}/metadata/{cellid}.metadata.xml"
+    res = f"{rundir}{slot}/metadata/{cellid}.{fmt}.xml"
 
     if not os.path.exists(res):
         raise FileNotFoundError(f"missing {res}")

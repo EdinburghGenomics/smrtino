@@ -6,7 +6,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from statistics import stdev, mean
 from zipfile import ZipFile
 from smrtino import load_yaml, dump_yaml
-from smrtino.ParseXML import get_metadata_info2
+from smrtino.ParseXML import get_metadata_info2, get_sts_info
 import json
 
 """ The info needed to report on a SMRT cell consists of several YAML files:
@@ -33,6 +33,11 @@ def main(args):
     else:
         metadata_xml_info = None
 
+    if args.stsxml:
+        sts_xml_info = get_sts_info(args.stsxml)
+    else:
+        sts_xml_info = None
+
     # Due to the possibility of re-demultiplexing, we want to get the barcode metrics
     # form this report file.
     lima_counts = None
@@ -51,7 +56,10 @@ def main(args):
         info.update(extract_ids_multi(args.bcfiles))
 
     if json_reports:
-        info.update(compile_json_reports(json_reports, metadata_xml_info, lima_counts))
+        info.update(compile_json_reports( json_reports,
+                                          metadata_xml = metadata_xml_info,
+                                          sts_xml = sts_xml_info,
+                                          lima_counts = lime_counts ))
 
     dump_yaml(info, fh=sys.stdout)
 
@@ -199,13 +207,16 @@ def compile_json_reports(reports_dict, metadata_xml, sts_xml=None, lima_counts=N
     reports['Control']['Control Read Concordance Mode'] = "{:.3f}".format(cond['control.concordance_mode'])
 
     # Adapter
-    try: # FIXME FIXME
+    reports['Adapter']['Local Base Rate'] = "unknown"
+    if sts_xml:
+        reports['Adapter']['Adapter Dimers (0-10bp) %'] = "{:.4f}".format(sts_xml['adapter_dimers'])
+        reports['Adapter']['Short Inserts (11-100bp) %'] = "{:.4f}".format(sts_xml['short_inserts'])
+        reports['Adapter']['Local Base Rate'] = "{:.2f}".format(sts_xml['local_base_rate_median'])
+    elif 'adapter' in reports_dict:
         adad = { a['id']: a['value'] for a in reports_dict['adapter']['attributes'] }
         reports['Adapter']['Adapter Dimers (0-10bp) %'] = "{:.2f}".format(adad['adapter_xml_report.adapter_dimers'])
         reports['Adapter']['Short Inserts (11-100bp) %'] = "{:.2f}".format(adad['adapter_xml_report.short_inserts'])
         reports['Adapter']['Local Base Rate'] = "{:.2f}".format(adad['adapter_xml_report.local_base_rate_median'])
-    except KeyError:
-        reports['Adapter']['Local Base Rate'] = "missing report"
 
     # Instrument
     reports['Instrument']['Run ID'] = metadata_xml['run_id']
@@ -357,6 +368,8 @@ def parse_args(*args):
 
     argparser.add_argument("--metaxml",
                             help="Location of metadata.xml for this cell")
+    argparser.add_argument("--stsxml",
+                            help="Location of sts.xml for this cell")
     argparser.add_argument("--lima_counts",
                             help="Location of lima_counts.txt for this cell")
 

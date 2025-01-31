@@ -17,7 +17,8 @@ _ns = dict( pbmeta   = 'http://pacificbiosciences.com/PacBioCollectionMetadata.x
             pb       = 'http://pacificbiosciences.com/PacBioDatasets.xsd',
             pbmodel  = 'http://pacificbiosciences.com/PacBioDataModel.xsd',
             pbbase   = 'http://pacificbiosciences.com/PacBioBaseDataModel.xsd',
-            pbsample = 'http://pacificbiosciences.com/PacBioSampleInfo.xsd', )
+            pbsample = 'http://pacificbiosciences.com/PacBioSampleInfo.xsd',
+            pbps     = 'http://pacificbiosciences.com/PacBioPipelineStats.xsd', )
 
 rs_constants = dict( Revio = \
                         dict( label = 'Revio (HiFi)',
@@ -272,6 +273,31 @@ def get_metadata_info2(xmlfile):
     run_info['version_smrtlink'] = vi['smrtlink']
 
     return run_info
+
+def get_sts_info(xmlfile):
+    """Get some info from the sts file, specifically:
+
+        adapter_dimers (as a percentage)
+        short_inserts (as a percentage)
+        local_base_rate_median (as is)
+    """
+    sts_info = dict()
+
+    root = _load_xml(xmlfile)
+    if root.tag != f"{{{_ns['pbps']}}}PipeStats":
+        raise RuntimeError("This function must be run on a sts.xml file."
+                           f" Root tag is: {root.tag}.")
+
+    lbrm_elem = root.find('.//pbps:LocalBaseRateDist/pbbase:SampleMed', _ns)
+    sts_info['local_base_rate_median'] = float(lbrm_elem.text)
+
+    adf_elem = root.find('.//pbps:AdapterDimerFraction', _ns)
+    sts_info['adapter_dimers'] = float(adf_elem.text) * 100
+
+    sif_elem = root.find('.//pbps:ShortInsertFraction', _ns)
+    sts_info['short_inserts'] = float(sif_elem.text) * 100
+
+    return sts_info
 
 def _get_cellpac(root):
     """Get the CellPac element attribs

@@ -9,7 +9,8 @@ cells:
           bam: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.default.bam
           pbi: 1_A01/hifi_reads/m84140_231030_135502_s1.hifi_reads.default.bam.pbi
           xml: 1_A01/pb_formats/m84140_231030_135502_s1.hifi_reads.default.consensusreadset.xml
-    meta: 1_A01/metadata/m84140_231030_135502_s1.metadata.xml
+    metadata: 1_A01/metadata/m84140_231030_135502_s1.metadata.xml
+    sts: 1_A01/metadata/m84140_231030_135502_s1.sts.xml
     parts:
     - hifi_reads
     - fail_reads

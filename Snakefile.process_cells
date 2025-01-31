@@ -148,6 +148,8 @@ def i_one_cell_info(wc):
 
     # Also the metadata.xml file (which is also included in one_barcode_info)
     res['metaxml'] = f"{cell}.metadata.xml"
+    # And the sts.xml file, which is not
+    res['stsxml'] = f"{cell}.sts.xml"
 
     # Lima counts is optional
     if SC['cells'][cell].get('lima_counts'):
@@ -230,7 +232,7 @@ rule one_cell_info:
         # Add all the reports, and unassigned if we have it
         optional_bits = ""
         for n in input._names:
-            if n in ['unass', 'reports_zip', 'lima_counts', 'metaxml']:
+            if n in ['unass', 'reports_zip', 'lima_counts', 'metaxml', 'stsxml']:
                 optional_bits += f"--{n} {getattr(input, n)} "
 
         shell("""compile_cell_info.py \
@@ -329,7 +331,7 @@ rule copy_xml:
            {TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {output.xml}
         """
 
-# FIXME the XML will need some further jigging here
+# The XML will need some further jigging here
 rule copy_xml_segged:
     output:
         xml    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.consensusreadset.xml",
@@ -346,15 +348,15 @@ rule copy_xml_segged:
              {input.bam}
         """
 
-# This file just gets copied. Except that we have to fix the XML declaration.
+# XML files get copied, but pretty-printed as we go
 rule copy_meta:
     output:
-        meta   = "{cell}.metadata.xml"
+        meta   = "{cell}.{fmt,metadata|sts}.xml"
     input:
-        meta   = find_source_file(fmt="meta")
+        meta   = find_source_file()
     shadow: 'minimal'
     shell:
-        "sed '1s/utf-16/utf-8/' {input.meta} > {output.meta}"
+        "xml_pp.py {input.meta} > {output.meta}"
 
 # This rule copies the reports.zip file. No real need to unpack it.
 rule copy_reports_zip:

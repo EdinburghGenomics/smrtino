@@ -18,7 +18,8 @@ cells:
           pbi: 1_D01/hifi_reads/m84140_231018_162059_s4.hifi_reads.bc1012.bam.pbi
           xml: 1_D01/pb_formats/m84140_231018_162059_s4.hifi_reads.bc1012.consensusreadset.xml
     lima_counts: 1_D01/statistics/m84140_231018_162059_s4.hifi_reads.lima_counts.txt
-    meta: 1_D01/metadata/m84140_231018_162059_s4.metadata.xml
+    metadata: 1_D01/metadata/m84140_231018_162059_s4.metadata.xml
+    sts: 1_D01/metadata/m84140_231018_162059_s4.sts.xml
     parts:
     - hifi_reads
     - fail_reads

@@ -13,7 +13,8 @@ VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 L.basicConfig(level=(L.DEBUG if VERBOSE else L.ERROR))
 
 from smrtino.ParseXML import ( get_metadata_summary, get_metadata_info, get_metadata_info2,
-                               get_readset_info, _get_automation_parameters, _get_cellpac, _load_xml )
+                               get_sts_info, get_readset_info,
+                               _get_automation_parameters, _get_cellpac, _load_xml )
 
 # The three functions are:
 #  get_metadata_summary() - need to read the unmodified metadata files
@@ -24,6 +25,8 @@ revio_meta_xml = [ f"{DATA_DIR}/r84140_20231018_154254/1_C01/metadata/m84140_231
                    f"{DATA_DIR}/r84140_20231018_154254/1_D01/metadata/m84140_231018_162059_s4.metadata.xml",
                    f"{DATA_DIR}/r84140_20231030_134730/1_A01/metadata/m84140_231030_135502_s1.metadata.xml",
                    f"{DATA_DIR}/r84140_20241007_154722/1_D01/metadata/m84140_241007_155450_s3.metadata.xml" ]
+
+revio_sts_xml = [ f"{DATA_DIR}/r84140_20250121_143858/1_A01/metadata/m84140_250121_144700_s1.sts.xml", ]
 
 revio_meta_xml_2025 = [ f"{DATA_DIR}/r84140_20250121_143858/1_C01/metadata/m84140_250121_185015_s3.metadata.xml", ]
 
@@ -204,7 +207,21 @@ class T(unittest.TestCase):
                         'barcodes':      ["bc1003", "bc1008"],
                          })
 
+    def test_sts_info(self):
 
+        info = get_sts_info( revio_sts_xml[0] )
+
+        # The floats will be rounded a little so test like this
+        expected = { 'adapter_dimers': 1.19209e-05, # (as a percentage)
+                     'short_inserts': 1.93119e-03,  # (as a percentage)
+                     'local_base_rate_median': 2.18531
+                   }
+
+        # Check the keys
+        self.assertCountEqual(info, expected)
+
+        for k in expected:
+            self.assertAlmostEqual(info[k], expected[k])
 
     def test_meta_info(self):
         """Try reading the cell metadata file to get the cell info
