@@ -59,7 +59,7 @@ def main(args):
         info.update(compile_json_reports( json_reports,
                                           metadata_xml = metadata_xml_info,
                                           sts_xml = sts_xml_info,
-                                          lima_counts = lime_counts ))
+                                          lima_counts = lima_counts ))
 
     dump_yaml(info, fh=sys.stdout)
 
@@ -141,16 +141,18 @@ def compile_json_reports(reports_dict, metadata_xml, sts_xml=None, lima_counts=N
     reports['Raw Data']['Longest Subread N50'] = "{}".format(rd['raw_data_report.insert_n50'])
     reports['Raw Data']['Unique Molecular Yield (Gb)'] = "{:.1f}".format(rd['raw_data_report.unique_molecular_yield'] / 1e9)
 
-    # This one from reports_dict['loading'], aside from OPLC
-    try: # FIXME FIXME
-        lt, = [t for t in reports_dict['loading']['tables'] if t['id'] == 'loading_xml_report.loading_xml_table']
-        ld = { c['id']: c['values'][0] for c in lt['columns'] }
-        reports['Loading']['P0 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_0_pct'])
-        reports['Loading']['P1 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_1_pct'])
-        reports['Loading']['P2 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_2_pct'])
-    except ValueError:
-        reports['Loading']['OPLC (pM), On-Plate Loading Conc.'] = metadata_xml['on_plate_loading_conc']
-        reports['Loading']['Real OPLC (pM), after clean-up'] = "to be calculated"
+    # This one from reports_dict['loading'], aside from OPLC which we don't have
+    ld = { v['id']: v['value'] for v in reports_dict['loading']['attributes'] }
+    productive_zmws = ld['loading_xml_report.productive_zmws']
+    for n in ["0", "1", "2"]:
+        if productive_zmws:
+            productivity_pct = (ld[f'loading_xml_report.productivity_{n}_n'] / productive_zmws) * 100
+            reports['Loading'][f'P{n} %'] = "{:.2f}".format(productivity_pct)
+        else:
+            reports['Loading'][f'P{n} %'] = "0.0"
+
+    reports['Loading']['OPLC (pM), On-Plate Loading Conc.'] = metadata_xml['on_plate_loading_conc']
+    reports['Loading']['Real OPLC (pM), after clean-up'] = "to be calculated"
 
     # This is under reports_dict['ccs'] and yes these really are HiFi numbers
     ccsd = { a['id']: a['value'] for a in reports_dict['ccs']['attributes'] }

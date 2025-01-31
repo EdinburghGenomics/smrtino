@@ -69,3 +69,13 @@ to get the pipeline run today.
 
 Also for the laoding report. I think for this I just need to divide some numbers, but I need to check.
 Hmmm.
+
+Looking at
+r84140_20241220_153042/1_D01/statistics/m84140_241220_153813_s1.reports.zip loading.report.json
+
+I see that the values for productivity_0_pct, productivity_1_pct, productivity_2_pct are:
+24.442 74.956 0.602
+
+And yes, we can just get these by dividing the numbers by Productive ZMWs.
+
+Implemented. Cool. Let's go.
