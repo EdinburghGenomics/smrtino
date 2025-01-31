@@ -84,10 +84,12 @@ def load_reports_zip(args_dict):
 
     return res
 
-def compile_json_reports(reports_dict, metadata_xml, lima_counts=None):
+def compile_json_reports(reports_dict, metadata_xml, sts_xml=None, lima_counts=None):
     """This attempts to aggregate all the per-cell QC items wanted for the sign-off
-       spreadsheet. The results will be arranged in a dictionary mimicing the current
+       spreadsheet. The results will be arranged in a dictionary mimicking the current
        spreadsheet headings.
+
+       We also bring in info from metadata_xml and sts_xml.
     """
     reports = { 'Run': {},
                 'Sample Loaded': {},
@@ -132,13 +134,15 @@ def compile_json_reports(reports_dict, metadata_xml, lima_counts=None):
     reports['Raw Data']['Unique Molecular Yield (Gb)'] = "{:.1f}".format(rd['raw_data_report.unique_molecular_yield'] / 1e9)
 
     # This one from reports_dict['loading'], aside from OPLC
-    lt, = [t for t in reports_dict['loading']['tables'] if t['id'] == 'loading_xml_report.loading_xml_table']
-    ld = { c['id']: c['values'][0] for c in lt['columns'] }
-    reports['Loading']['P0 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_0_pct'])
-    reports['Loading']['P1 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_1_pct'])
-    reports['Loading']['P2 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_2_pct'])
-    reports['Loading']['OPLC (pM), On-Plate Loading Conc.'] = metadata_xml['on_plate_loading_conc']
-    reports['Loading']['Real OPLC (pM), after clean-up'] = "to be calculated"
+    try: # FIXME FIXME
+        lt, = [t for t in reports_dict['loading']['tables'] if t['id'] == 'loading_xml_report.loading_xml_table']
+        ld = { c['id']: c['values'][0] for c in lt['columns'] }
+        reports['Loading']['P0 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_0_pct'])
+        reports['Loading']['P1 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_1_pct'])
+        reports['Loading']['P2 %'] = "{:.1f}".format(ld['loading_xml_report.loading_xml_table.productivity_2_pct'])
+    except ValueError:
+        reports['Loading']['OPLC (pM), On-Plate Loading Conc.'] = metadata_xml['on_plate_loading_conc']
+        reports['Loading']['Real OPLC (pM), after clean-up'] = "to be calculated"
 
     # This is under reports_dict['ccs'] and yes these really are HiFi numbers
     ccsd = { a['id']: a['value'] for a in reports_dict['ccs']['attributes'] }
@@ -195,10 +199,13 @@ def compile_json_reports(reports_dict, metadata_xml, lima_counts=None):
     reports['Control']['Control Read Concordance Mode'] = "{:.3f}".format(cond['control.concordance_mode'])
 
     # Adapter
-    adad = { a['id']: a['value'] for a in reports_dict['adapter']['attributes'] }
-    reports['Adapter']['Adapter Dimers (0-10bp) %'] = "{:.2f}".format(adad['adapter_xml_report.adapter_dimers'])
-    reports['Adapter']['Short Inserts (11-100bp) %'] = "{:.2f}".format(adad['adapter_xml_report.short_inserts'])
-    reports['Adapter']['Local Base Rate'] = "{:.2f}".format(adad['adapter_xml_report.local_base_rate_median'])
+    try: # FIXME FIXME
+        adad = { a['id']: a['value'] for a in reports_dict['adapter']['attributes'] }
+        reports['Adapter']['Adapter Dimers (0-10bp) %'] = "{:.2f}".format(adad['adapter_xml_report.adapter_dimers'])
+        reports['Adapter']['Short Inserts (11-100bp) %'] = "{:.2f}".format(adad['adapter_xml_report.short_inserts'])
+        reports['Adapter']['Local Base Rate'] = "{:.2f}".format(adad['adapter_xml_report.local_base_rate_median'])
+    except KeyError:
+        reports['Adapter']['Local Base Rate'] = "missing report"
 
     # Instrument
     reports['Instrument']['Run ID'] = metadata_xml['run_id']

@@ -1,0 +1,71 @@
+As of the SMRTLink Jan 2025 update, there is no adapter.report.json in reports.zip
+
+I think I may be able to get the same info out of, say
+/lustre-gseg/pacbio/pacbio_data/r84140_20250121_143858/pbpipeline/from/1_A01/metadata/m84140_250121_144700_s1.sts.xml
+
+But I need to check in some older runs to see if this info actually tallies:
+
+<AdapterDimerFraction>1.19209e-07</AdapterDimerFraction>
+<ShortInsertFraction>1.93119e-05</ShortInsertFraction>
+<IsReadsFraction>0.521313</IsReadsFraction>
+
+If it does, I can include this file into the report.
+
+Let us look at a recentr SMRTino report:
+https://egcloud.bio.ed.ac.uk/smrtino/r84140_20241218_172052/1_A01-m84140_241218_172837_s2.html
+
+In all the examples I have, Adapter Dimers and Short Inserts are 0.
+But the Local Base Rate is around 2 - here 2.24
+
+So what do I see in the report here?
+
+----
+
+unzip -p /lustre-gseg/smrtlink/sequel_seqdata/r84140_20241218_172052/1_A01/statistics/m84140_241218_172837_s2.reports.zip adapter.report.json | less
+
+    {
+        "id": "adapter_xml_report.adapter_dimers",
+        "name": "Adapter Dimers (0-10bp) %",
+        "value": 0.0
+    },
+    {
+        "id": "adapter_xml_report.short_inserts",
+        "name": "Short Inserts (11-100bp) %",
+        "value": 0.0
+    },
+    {
+        "id": "adapter_xml_report.local_base_rate_median",
+        "name": "Local Base Rate",
+        "value": 2.24183
+    }
+
+----
+
+And what about in the sts file?
+
+<AdapterDimerFraction>4.76837e-07</AdapterDimerFraction> <-- Need to multiply by 100
+<ShortInsertFraction>2.07424e-05</ShortInsertFraction>   <-- ditto ie. "{:.04f}".format(2.07424e-05 * 100)
+<IsReadsFraction>0.553221</IsReadsFraction>
+
+and
+
+<LocalBaseRateDist>
+<ns:SampleSize>19139945</ns:SampleSize>
+<ns:SampleMean>2.15231</ns:SampleMean>
+<ns:SampleMed>2.24183</ns:SampleMed>        <--- There it is!
+<ns:SampleMode>2.65539</ns:SampleMode>
+<ns:SampleStd>0.721815</ns:SampleStd>
+<ns:Sample95thPct>3.21115</ns:Sample95thPct>
+<ns:NumBins>30</ns:NumBins>
+
+---
+
+OK so we have the infos. I need to copy the sts.xml the same way I copy the metadata.xml but I'll
+pretty-print it as I go. I also need to have a parser that extracts the three bits of info and
+feed all this to compile_cell_info.py
+
+But before that, I can make a version of compile_cell_info.py that just ignores these numbers so as
+to get the pipeline run today.
+
+Also for the laoding report. I think for this I just need to divide some numbers, but I need to check.
+Hmmm.
