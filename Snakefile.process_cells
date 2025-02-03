@@ -39,7 +39,6 @@ from smrtino import load_yaml, dump_yaml
     cells are not conflicting.
 """
 TOOLBOX = 'env PATH="{}:$PATH"'.format(os.environ['TOOLBOX'])
-PBCORETOOLS = TOOLBOX + " smrt python3 -m pbcoretools.tasks"
 
 # Other than that, ensure that scripts in the directory with this Snakefile are
 # in the PATH (we have to do it here as $PATH does not get preserved on cluster jobs).
@@ -331,7 +330,8 @@ rule copy_xml:
            {TOOLBOX} smrt dataset --skipCounts --log-level INFO relativize {output.xml}
         """
 
-# The XML will need some further jigging here
+# Use of "shadow: 'minimal' results in a load of warnings for unresolved resources
+# in --metadata but the result is fine.
 rule copy_xml_segged:
     output:
         xml    = "{cell}/{barcode}/{cell}.{part}.{barcode}.mas{n}.consensusreadset.xml",
@@ -356,7 +356,7 @@ rule copy_meta:
         meta   = find_source_file()
     shadow: 'minimal'
     shell:
-        "xml_pp.py {input.meta} > {output.meta}"
+        "xml_pp.py < {input.meta} > {output.meta}"
 
 # This rule copies the reports.zip file. No real need to unpack it.
 rule copy_reports_zip:
