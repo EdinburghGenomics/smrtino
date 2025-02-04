@@ -2,7 +2,7 @@
 import os, re
 from datetime import datetime
 from glob import glob as _glob
-from packaging.version import parse as parse_version
+from functools import partial
 
 # And some YAML enhancement
 from smrtino.yaml_ordered import yaml, yamlloader, dictify
@@ -136,8 +136,25 @@ def dump_yaml(foo, filename=None, fh=None):
     return ydoc
 
 def sort_versions(vlist):
-    """When sorting versions, 1.1.10 comes after 1.1.9
+    """When sorting versions, 1.1.10 comes after 1.1.9 etc.
     """
-    return sorted(vlist, key=parse_version)
+    def parse_version(v, s=( r'\s+',
+                             r'\.',
+                              '[-~]',
+                              '_+',
+                              r'(?<=[0-9])(?=[^0-9])|(?<=[^0-9])(?=[0-9])'),
+                         pad=10):
+        # I need a non-strict version parser. I came up with this horror. Sorry.
+        if not s:
+            try:
+                return "{v: {pad}d}".format(v=int(v), pad=pad)
+            except ValueError:
+                return v
+
+        return tuple( parse_version(v_part, s[1:], pad) for v_part in re.split(s[0], v) )
+
+    pv = partial(parse_version, pad=max(len(v) for v in vlist))
+
+    return sorted(vlist, key=pv)
 
 smrtino_version = _determine_version()

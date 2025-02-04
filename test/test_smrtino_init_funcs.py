@@ -11,7 +11,7 @@ from datetime import datetime
 DATA_DIR = os.path.abspath(os.path.dirname(__file__) + '/examples')
 VERBOSE = os.environ.get('VERBOSE', '0') != '0'
 
-from smrtino import load_yaml, parse_run_name
+from smrtino import load_yaml, parse_run_name, sort_versions
 
 class T(unittest.TestCase):
 
@@ -111,6 +111,17 @@ class T(unittest.TestCase):
                             'platform': 'Revio',
                             'run_or_cell': 'run',
                             'rundate': None } )
+
+    def test_sort_versions(self):
+
+        self.assertEqual( sort_versions("1.10.1 1.9.1 1.9 1.9.0".split()),
+                          ["1.9", "1.9.0", "1.9.1", "1.10.1"] )
+
+        self.assertEqual( sort_versions(set("1.9.1 1.9.1-x2 1.9.1-x3 1.9.3 1.9.10 unknown".split())),
+                          ["1.9.1", "1.9.1-x2", "1.9.1-x3", "1.9.3", "1.9.10", "unknown"] )
+
+        self.assertEqual( sort_versions(set("1.2.3.4 1.2-3.4 1.2_3.4a1 1.2_3.401".split())),
+                          ["1.2.3.4", "1.2-3.4", "1.2_3.4a1", "1.2_3.401"] )
 
 if __name__ == '__main__':
     unittest.main()
