@@ -158,6 +158,13 @@ def scrape_sample_details_table(html_text):
     # The HTML is actually XHTML so we can do this...
     root = ET.fromstring(html_text)
     deets_table = root.find(".//table[@class='SampleDetailsTable SampleDetailsTableHT']")
+    if not deets_table:
+        # Try the alternative
+        deets_table = root.find(".//table[@class='SampleDetailsTable SampleDetailsTableHTNarrow']")
+
+    if not deets_table:
+        exit("No SampleDetailsTable was found in the HTML fetched from SMRTLink")
+
     deets_rows = [ r.findall('td') for r in deets_table.findall('tbody/tr') ]
 
     return deets_rows
