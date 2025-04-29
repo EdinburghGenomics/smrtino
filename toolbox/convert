@@ -2,5 +2,6 @@
 
 # Wrapper for GM convert. I could equally have just made this a symlink
 # to the the IM convert binary.
+BASE="/mnt/lustre/e1000/home/edg01/edg01/shared"
 
-exec /lustre-gseg/software/graphicsmagick/GraphicsMagick-1.3.34/bin/gm convert "$@"
+exec "$BASE"/software/graphicsmagick/GraphicsMagick-1.3.34/bin/gm convert "$@"
