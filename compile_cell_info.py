@@ -165,21 +165,25 @@ def compile_json_reports(reports_dict, metadata_xml, sts_xml=None, lima_counts=N
     reports['HiFi Data']['HiFi Number of Passes (mean)'] = "{}".format(ccsd['ccs2.mean_npasses'])
 
     # Shred two tables from the reports_dict['ccs'] section
-    ccst1, = [ t['columns'] for t in reports_dict['ccs']['tables']
-               if t['id'] == 'ccs2.hifi_length_summary' ]
-    ccsd1 = dict(zip(*[c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.read_length'],
-                     *[c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.reads_pct']))
-    reports['HiFi Length %']['≥ 5,000 bp'] = "{:.1f}".format(ccsd1['≥ 5,000'])
-    reports['HiFi Length %']['≥ 10,000 bp'] = "{:.1f}".format(ccsd1['≥ 10,000'])
-    reports['HiFi Length %']['≥ 15,000 bp'] = "{:.1f}".format(ccsd1['≥ 15,000'])
-    reports['HiFi Length %']['≥ 20,000 bp'] = "{:.1f}".format(ccsd1['≥ 20,000'])
+    try:
+        ccst1, = [ t['columns'] for t in reports_dict['ccs']['tables']
+                   if t['id'] == 'ccs2.hifi_length_summary' ]
+        ccsd1 = dict(zip(*[c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.read_length'],
+                         *[c['values'] for c in ccst1 if c['id'] == 'ccs2.hifi_length_summary.reads_pct']))
+        reports['HiFi Length %']['≥ 5,000 bp'] = "{:.1f}".format(ccsd1['≥ 5,000'])
+        reports['HiFi Length %']['≥ 10,000 bp'] = "{:.1f}".format(ccsd1['≥ 10,000'])
+        reports['HiFi Length %']['≥ 15,000 bp'] = "{:.1f}".format(ccsd1['≥ 15,000'])
+        reports['HiFi Length %']['≥ 20,000 bp'] = "{:.1f}".format(ccsd1['≥ 20,000'])
 
-    ccst2, = [ t['columns'] for t in reports_dict['ccs']['tables']
-               if t['id'] == 'ccs2.read_quality_summary' ]
-    ccsd2 = dict(zip(*[c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.read_qv'],
-                     *[c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.reads_pct']))
-    reports['Hifi Quality %']['≥ Q30'] = "{:.1f}".format(ccsd2['≥ Q30'])
-    reports['Hifi Quality %']['≥ Q40'] = "{:.1f}".format(ccsd2['≥ Q40'])
+        ccst2, = [ t['columns'] for t in reports_dict['ccs']['tables']
+                   if t['id'] == 'ccs2.read_quality_summary' ]
+        ccsd2 = dict(zip(*[c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.read_qv'],
+                         *[c['values'] for c in ccst2 if c['id'] == 'ccs2.read_quality_summary.reads_pct']))
+        reports['Hifi Quality %']['≥ Q30'] = "{:.1f}".format(ccsd2['≥ Q30'])
+        reports['Hifi Quality %']['≥ Q40'] = "{:.1f}".format(ccsd2['≥ Q40'])
+    except ValueError:
+        reports['HiFi Length %']['all'] = "missing table in JSON"
+        reports['Hifi Quality %']['all'] = "missing table in JSON"
 
     # Barcodes
     if lima_counts:
